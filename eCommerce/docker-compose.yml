@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  ecomm-fit-2026:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ecomm-fit-2026
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: qweasd123!
+    ports:
+      - "1435:1433"
+    expose:
+      - "1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - ecomm-2026
+  ecomm-fit-2026-api:
+    build:
+      context: .
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=ecomm-fit-2026;Database=eCommerce;User Id=sa;Password=qweasd123!;TrustServerCertificate=True;
+    ports:
+      - "5121:5121"
+    expose:
+       - "5121"
+    depends_on:
+      - ecomm-fit-2026
+    networks:
+      - ecomm-2026
+
+
+
+volumes:
+  sqlserver_data:
+
+networks:
+  ecomm-2026:
+    driver: bridge
