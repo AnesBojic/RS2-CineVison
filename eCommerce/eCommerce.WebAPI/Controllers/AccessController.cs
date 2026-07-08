@@ -1,8 +1,8 @@
-﻿using Azure;
-using eCommerce.Model.Access;
+﻿using eCommerce.Model.Access;
 using eCommerce.Model.Requests;
 using eCommerce.Services;
 using eCommerce.WebAPI.Services.AccessManager;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace eCommerce.WebAPI.Controllers
@@ -13,11 +13,13 @@ namespace eCommerce.WebAPI.Controllers
     {
         private readonly IAccessManager _accessManager;
         private readonly IUserService _userService;
+        private readonly IAuthenticatedUserAccessor _userAccessor;
 
-        public AccessController(IAccessManager accessManager, IUserService userService)
+        public AccessController(IAccessManager accessManager, IUserService userService, IAuthenticatedUserAccessor userAccessor)
         {
             _accessManager = accessManager;
             _userService = userService;
+            _userAccessor = userAccessor;
         }
 
         [HttpPost("Login")]
@@ -39,6 +41,20 @@ namespace eCommerce.WebAPI.Controllers
         {
             await _userService.InsertAsync(request);
             return Ok("You have registered successfully");
+        }
+
+        [Authorize]
+        [HttpPost("Logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var userId = _userAccessor.GetUserId();
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            await _accessManager.LogoutAsync(userId.Value);
+            return Ok("You have logged out successfully");
         }
     }
 }

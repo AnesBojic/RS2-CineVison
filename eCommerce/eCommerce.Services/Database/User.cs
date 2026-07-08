@@ -33,7 +33,9 @@ namespace eCommerce.Services.Database
         public bool IsActive { get; set; } = true;
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        
+
+        public DateTime? UpdatedAt { get; set; }
+
         public DateTime? LastLoginAt { get; set; }
         
         [Phone]
@@ -46,5 +48,8 @@ namespace eCommerce.Services.Database
         public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+        // Navigation property for reviews written by this user
+        public ICollection<Review> Reviews { get; set; } = new List<Review>();
     }
 } 

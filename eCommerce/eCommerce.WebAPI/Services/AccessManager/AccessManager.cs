@@ -147,6 +147,11 @@ namespace eCommerce.WebAPI.Services.AccessManager
             return tokenHandler.WriteToken(token);
         }
 
+        public async Task LogoutAsync(int userId)
+        {
+            await _refreshTokenService.DeleteAllUserRefreshTokensAsync(userId);
+        }
+
         private static string GenerateRefreshToken()
         {
             var randombytes = RandomNumberGenerator.GetBytes(64);

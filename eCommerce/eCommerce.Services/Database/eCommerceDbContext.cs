@@ -9,21 +9,18 @@ namespace eCommerce.Services.Database
         }
 
         // DbSets for all entities
-        public DbSet<Category> Categories { get; set; }
-        public DbSet<Product> Products { get; set; }
-        public DbSet<ProductType> ProductTypes { get; set; }
-        public DbSet<UnitOfMeasure> UnitOfMeasures { get; set; }
-        public DbSet<ProductCategory> ProductCategories { get; set; }
-        public DbSet<ProductReview> ProductReviews { get; set; }
+        public DbSet<Genre> Genres { get; set; }
+        public DbSet<Movie> Movies { get; set; }
+        public DbSet<Hall> Halls { get; set; }
+        public DbSet<Seat> Seats { get; set; }
+        public DbSet<Screening> Screenings { get; set; }
+        public DbSet<Reservation> Reservations { get; set; }
+        public DbSet<ReservationSeat> ReservationSeats { get; set; }
+        public DbSet<Review> Reviews { get; set; }
+        public DbSet<Asset> Assets { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
-        public DbSet<Cart> Carts { get; set; }
-        public DbSet<CartItem> CartItems { get; set; }
-        public DbSet<Order> Orders { get; set; }
-        public DbSet<OrderItem> OrderItems { get; set; }
-        public DbSet<Asset> Assets { get; set; }
-        public DbSet<Cupon> Cupons { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -33,9 +30,6 @@ namespace eCommerce.Services.Database
             CreateConfiguration(modelBuilder);
 
             CreateSeed(modelBuilder);
-            
         }
-
-       
     }
 }

@@ -19,10 +19,12 @@ namespace eCommerce.Services
     public class UserService : BaseCRUDService<User, UserResponse, UserSearch, UserInsertRequest, UserUpdateRequest>, IUserService
     {
         private readonly ICryptoService _cryptoService;
-        public UserService(ECommerceDbContext dbContext, MapsterMapper.IMapper mapper, IValidator<UserInsertRequest> insertValidator, IValidator<UserUpdateRequest> updateValidator, ICryptoService cryptoService)
+        private readonly IValidator<UserProfileUpdateRequest> _profileValidator;
+        public UserService(ECommerceDbContext dbContext, MapsterMapper.IMapper mapper, IValidator<UserInsertRequest> insertValidator, IValidator<UserUpdateRequest> updateValidator, ICryptoService cryptoService, IValidator<UserProfileUpdateRequest> profileValidator)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
             _cryptoService = cryptoService;
+            _profileValidator = profileValidator;
         }
 
 
@@ -116,11 +118,69 @@ namespace eCommerce.Services
             }
 
             MapUpdateRequestToEntity(request, entity);
+            entity.UpdatedAt = DateTime.UtcNow;
 
             _dbContext.Users.Update(entity);
             await _dbContext.SaveChangesAsync();
 
             return _mapper.Map<UserResponse>(entity);
+        }
+
+        public async Task<UserResponse> GetProfileAsync(int userId)
+        {
+            var response = await GetWithRoleByIdAsync(userId)
+                ?? throw new KeyNotFoundException($"User with id {userId} not found.");
+            return response;
+        }
+
+        public async Task<UserResponse> UpdateProfileAsync(int userId, UserProfileUpdateRequest request)
+        {
+            await _profileValidator.ValidateAndThrowAsync(request);
+
+            var entity = await _dbContext.Users
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (entity == null)
+            {
+                throw new KeyNotFoundException($"User with id {userId} not found.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.Email) && !request.Email.Equals(entity.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId))
+                {
+                    throw new InvalidOperationException($"Email '{request.Email}' is already in use.");
+                }
+                entity.Email = request.Email;
+            }
+
+            // Only self-service editable fields; role, IsActive, username and password are never touched here.
+            if (request.FirstName != null)
+            {
+                entity.FirstName = request.FirstName;
+            }
+            if (request.LastName != null)
+            {
+                entity.LastName = request.LastName;
+            }
+            if (request.PhoneNumber != null)
+            {
+                entity.PhoneNumber = request.PhoneNumber;
+            }
+            if (request.ProfileImageBase64 != null)
+            {
+                entity.ProfileImageBase64 = request.ProfileImageBase64;
+            }
+
+            entity.UpdatedAt = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+
+            var response = _mapper.Map<UserResponse>(entity);
+            response.Role = entity.UserRoles.FirstOrDefault()?.Role.Name ?? string.Empty;
+            return response;
         }
 
         public override async Task DeleteAsync(int id)
@@ -148,7 +208,7 @@ namespace eCommerce.Services
             if (user != null)
             {
                 response = _mapper.Map<UserSensitveResponse>(user);
-                response.Role = user.UserRoles.FirstOrDefault()?.Role.Name;
+                response.Role = user.UserRoles.FirstOrDefault()?.Role.Name ?? string.Empty;
             }
 
             return response;

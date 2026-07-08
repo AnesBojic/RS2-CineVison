@@ -46,77 +46,17 @@ namespace eCommerce.Services.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("ProductId")
+                    b.Property<int>("MovieId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductId");
+                    b.HasIndex("MovieId");
 
                     b.ToTable("Assets");
                 });
 
-            modelBuilder.Entity("eCommerce.Services.Database.Cart", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("SessionId")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Carts");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.CartItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("AddedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("CartId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CartId");
-
-                    b.HasIndex("ProductId");
-
-                    b.ToTable("CartItems");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.Category", b =>
+            modelBuilder.Entity("eCommerce.Services.Database.Genre", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -140,201 +80,117 @@ namespace eCommerce.Services.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int?>("ParentCategoryId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ParentCategoryId");
-
-                    b.ToTable("Categories");
+                    b.ToTable("Genres");
 
                     b.HasData(
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Electronic devices and accessories",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "High-energy action films",
                             IsActive = true,
-                            Name = "Electronics"
+                            Name = "Action"
                         },
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Desktops, laptops and related hardware",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Character-driven dramatic stories",
                             IsActive = true,
-                            Name = "Computers",
-                            ParentCategoryId = 1
+                            Name = "Drama"
                         },
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Smartphones and mobile devices",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Light-hearted and funny films",
                             IsActive = true,
-                            Name = "Mobile Phones",
-                            ParentCategoryId = 1
+                            Name = "Comedy"
                         },
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Device accessories and peripherals",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Science fiction and futuristic stories",
                             IsActive = true,
-                            Name = "Accessories"
+                            Name = "Sci-Fi"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Suspense and horror films",
+                            IsActive = true,
+                            Name = "Horror"
                         });
                 });
 
-            modelBuilder.Entity("eCommerce.Services.Database.Cupon", b =>
+            modelBuilder.Entity("eCommerce.Services.Database.Hall", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<double>("DiscountAmount")
-                        .HasColumnType("float");
-
-                    b.Property<int>("DiscountType")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Uses")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Cupons");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Code = "WELCOME10",
-                            CreatedAt = new DateTime(2026, 5, 16, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DiscountAmount = 10.0,
-                            DiscountType = 0,
-                            ExpiresAt = new DateTime(2026, 12, 31, 23, 59, 59, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            Uses = 0
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Code = "SPRING15",
-                            CreatedAt = new DateTime(2026, 5, 16, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DiscountAmount = 15.0,
-                            DiscountType = 0,
-                            ExpiresAt = new DateTime(2026, 6, 30, 23, 59, 59, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            Uses = 0
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Code = "SAVE20",
-                            CreatedAt = new DateTime(2026, 5, 16, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DiscountAmount = 20.0,
-                            DiscountType = 1,
-                            ExpiresAt = new DateTime(2026, 11, 30, 23, 59, 59, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            Uses = 0
-                        });
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.Order", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("CuponId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("OrderDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("OrderNumber")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTime?>("PaymentDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("PaymentTransactionId")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ShippingAddress")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("ShippingCity")
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("ShippingCountry")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ShippingState")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ShippingZipCode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                    b.Property<int>("ScreenType")
+                        .HasColumnType("int");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CuponId");
+                    b.ToTable("Halls");
 
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Orders");
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Main auditorium with 40 seats",
+                            IsActive = true,
+                            Name = "Hall A",
+                            ScreenType = 1,
+                            Status = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Smaller auditorium with 24 seats",
+                            IsActive = true,
+                            Name = "Hall B",
+                            ScreenType = 0,
+                            Status = 0
+                        });
                 });
 
-            modelBuilder.Entity("eCommerce.Services.Database.OrderItem", b =>
+            modelBuilder.Entity("eCommerce.Services.Database.Movie", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -342,607 +198,163 @@ namespace eCommerce.Services.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<decimal>("Discount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("OrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrderId");
-
-                    b.HasIndex("ProductId");
-
-                    b.ToTable("OrderItems");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.Product", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<string>("AgeRating")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Director")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("GenreId")
+                        .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("ProductState")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<int?>("ProductTypeId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("SKU")
+                    b.Property<string>("Language")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("StockQuantity")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("UnitOfMeasureId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal?>("Weight")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProductTypeId");
-
-                    b.HasIndex("UnitOfMeasureId");
-
-                    b.ToTable("Products");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "High-performance laptop suitable for gaming and development",
-                            IsActive = true,
-                            Name = "Gaming Laptop",
-                            Price = 999.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "LAP-1000",
-                            StockQuantity = 10,
-                            Weight = 2500m
-                        },
-                        new
-                        {
-                            Id = 2,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Latest generation smartphone with advanced camera features",
-                            IsActive = true,
-                            Name = "Smartphone X",
-                            Price = 699.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "PHN-2000",
-                            StockQuantity = 25,
-                            Weight = 180m
-                        },
-                        new
-                        {
-                            Id = 3,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Ergonomic wireless mouse with long battery life",
-                            IsActive = true,
-                            Name = "Wireless Mouse",
-                            Price = 19.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "MSE-300",
-                            StockQuantity = 150,
-                            Weight = 100m
-                        },
-                        new
-                        {
-                            Id = 4,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "65W USB-C fast charger compatible with laptops and phones",
-                            IsActive = true,
-                            Name = "USB-C Fast Charger",
-                            Price = 29.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "CHR-400",
-                            StockQuantity = 200,
-                            Weight = 120m
-                        },
-                        new
-                        {
-                            Id = 5,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "RGB mechanical keyboard with tactile switches",
-                            IsActive = true,
-                            Name = "Mechanical Keyboard",
-                            Price = 89.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "KEY-500",
-                            StockQuantity = 75,
-                            Weight = 900m
-                        },
-                        new
-                        {
-                            Id = 6,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Over-ear headphones with active noise cancellation",
-                            IsActive = true,
-                            Name = "Noise-Cancelling Headphones",
-                            Price = 199.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "HDP-600",
-                            StockQuantity = 40,
-                            Weight = 350m
-                        },
-                        new
-                        {
-                            Id = 7,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "27-inch 4K UHD monitor with HDR and low response time",
-                            IsActive = true,
-                            Name = "27\" 4K Monitor",
-                            Price = 349.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "MON-700",
-                            StockQuantity = 30,
-                            Weight = 4500m
-                        },
-                        new
-                        {
-                            Id = 8,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Portable 1TB external SSD with high-speed USB-C connectivity",
-                            IsActive = true,
-                            Name = "External SSD 1TB",
-                            Price = 129.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "SSD-800",
-                            StockQuantity = 60,
-                            Weight = 80m
-                        },
-                        new
-                        {
-                            Id = 9,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Full HD webcam with built-in microphone and privacy shutter",
-                            IsActive = true,
-                            Name = "Webcam Pro 1080p",
-                            Price = 59.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "CAM-900",
-                            StockQuantity = 90,
-                            Weight = 140m
-                        },
-                        new
-                        {
-                            Id = 10,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Compact Bluetooth speaker with waterproof design and deep bass",
-                            IsActive = true,
-                            Name = "Bluetooth Speaker",
-                            Price = 49.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "SPK-1000",
-                            StockQuantity = 110,
-                            Weight = 620m
-                        },
-                        new
-                        {
-                            Id = 11,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Fitness-focused smartwatch with heart-rate tracking and GPS",
-                            IsActive = true,
-                            Name = "Smartwatch Active",
-                            Price = 149.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "WCH-1100",
-                            StockQuantity = 55,
-                            Weight = 50m
-                        },
-                        new
-                        {
-                            Id = 12,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Adjustable aluminum laptop stand for improved desk ergonomics",
-                            IsActive = true,
-                            Name = "Laptop Stand Aluminum",
-                            Price = 39.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "STD-1200",
-                            StockQuantity = 85,
-                            Weight = 750m
-                        },
-                        new
-                        {
-                            Id = 13,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Dual-band Wi-Fi 6 router with extended coverage for home networks",
-                            IsActive = true,
-                            Name = "Wi-Fi 6 Router",
-                            Price = 119.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "RTR-1300",
-                            StockQuantity = 45,
-                            Weight = 680m
-                        },
-                        new
-                        {
-                            Id = 14,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Digital drawing tablet with pressure-sensitive stylus",
-                            IsActive = true,
-                            Name = "Graphics Tablet",
-                            Price = 79.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "TAB-1400",
-                            StockQuantity = 35,
-                            Weight = 420m
-                        },
-                        new
-                        {
-                            Id = 15,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "20000mAh portable power bank with dual USB output",
-                            IsActive = true,
-                            Name = "Portable Power Bank",
-                            Price = 34.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "PWR-1500",
-                            StockQuantity = 130,
-                            Weight = 410m
-                        },
-                        new
-                        {
-                            Id = 16,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Cat 6 Ethernet cable for reliable high-speed wired networking",
-                            IsActive = true,
-                            Name = "Ethernet Cable 10m",
-                            Price = 12.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "NET-1600",
-                            StockQuantity = 300,
-                            Weight = 260m
-                        },
-                        new
-                        {
-                            Id = 17,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "USB-C docking station with HDMI, Ethernet, USB-A, and card reader ports",
-                            IsActive = true,
-                            Name = "Docking Station",
-                            Price = 99.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "DOC-1700",
-                            StockQuantity = 50,
-                            Weight = 520m
-                        },
-                        new
-                        {
-                            Id = 18,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Adjustable LED desk lamp with touch controls and multiple brightness levels",
-                            IsActive = true,
-                            Name = "Smart LED Desk Lamp",
-                            Price = 44.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "LMP-1800",
-                            StockQuantity = 70,
-                            Weight = 850m
-                        },
-                        new
-                        {
-                            Id = 19,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Compact 4K action camera with waterproof casing and image stabilization",
-                            IsActive = true,
-                            Name = "Action Camera",
-                            Price = 179.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "ACT-1900",
-                            StockQuantity = 28,
-                            Weight = 160m
-                        },
-                        new
-                        {
-                            Id = 20,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Standalone virtual reality headset with motion controllers",
-                            IsActive = true,
-                            Name = "VR Headset",
-                            Price = 299.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "VRH-2000",
-                            StockQuantity = 20,
-                            Weight = 620m
-                        },
-                        new
-                        {
-                            Id = 21,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Central smart home hub for connecting lights, sensors, and voice assistants",
-                            IsActive = true,
-                            Name = "Smart Home Hub",
-                            Price = 84.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "HUB-2100",
-                            StockQuantity = 42,
-                            Weight = 300m
-                        },
-                        new
-                        {
-                            Id = 22,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Lightweight fitness tracker with step counting, sleep monitoring, and notifications",
-                            IsActive = true,
-                            Name = "Fitness Tracker Band",
-                            Price = 69.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "FIT-2200",
-                            StockQuantity = 95,
-                            Weight = 35m
-                        },
-                        new
-                        {
-                            Id = 23,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Slim wireless charging pad compatible with Qi-enabled smartphones and earbuds",
-                            IsActive = true,
-                            Name = "Wireless Charging Pad",
-                            Price = 24.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "WCP-2300",
-                            StockQuantity = 160,
-                            Weight = 110m
-                        },
-                        new
-                        {
-                            Id = 24,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Two-bay network attached storage enclosure for backups and media sharing",
-                            IsActive = true,
-                            Name = "NAS Storage Enclosure",
-                            Price = 229.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "NAS-2400",
-                            StockQuantity = 18,
-                            Weight = 1300m
-                        },
-                        new
-                        {
-                            Id = 25,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Portable digital voice recorder with noise reduction and long recording time",
-                            IsActive = true,
-                            Name = "Digital Voice Recorder",
-                            Price = 54.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "REC-2500",
-                            StockQuantity = 65,
-                            Weight = 90m
-                        },
-                        new
-                        {
-                            Id = 26,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Portable mini projector with HDMI input and built-in speaker",
-                            IsActive = true,
-                            Name = "Mini Projector",
-                            Price = 159.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "PRJ-2600",
-                            StockQuantity = 32,
-                            Weight = 950m
-                        },
-                        new
-                        {
-                            Id = 27,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Wi-Fi smart doorbell camera with motion detection and two-way audio",
-                            IsActive = true,
-                            Name = "Smart Doorbell Camera",
-                            Price = 139.99m,
-                            ProductState = "DraftProductState",
-                            SKU = "DRB-2700",
-                            StockQuantity = 38,
-                            Weight = 250m
-                        });
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.ProductCategory", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CategoryId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CategoryId");
-
-                    b.HasIndex("ProductId");
-
-                    b.ToTable("ProductCategories");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CategoryId = 2,
-                            ProductId = 1
-                        },
-                        new
-                        {
-                            Id = 2,
-                            CategoryId = 3,
-                            ProductId = 2
-                        },
-                        new
-                        {
-                            Id = 3,
-                            CategoryId = 4,
-                            ProductId = 3
-                        },
-                        new
-                        {
-                            Id = 4,
-                            CategoryId = 4,
-                            ProductId = 4
-                        },
-                        new
-                        {
-                            Id = 5,
-                            CategoryId = 2,
-                            ProductId = 5
-                        },
-                        new
-                        {
-                            Id = 6,
-                            CategoryId = 1,
-                            ProductId = 6
-                        },
-                        new
-                        {
-                            Id = 7,
-                            CategoryId = 2,
-                            ProductId = 7
-                        });
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.ProductReview", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Comment")
+                    b.Property<string>("MovieState")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<string>("PosterImageBase64")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ReleaseDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<bool>("IsApproved")
-                        .HasColumnType("bit");
-
-                    b.Property<int?>("OrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Rating")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrderId");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("ProductReviews");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.ProductType", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
+                    b.Property<string>("Title")
                         .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("TrailerUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
-                    b.ToTable("ProductTypes");
+                    b.HasIndex("GenreId");
+
+                    b.ToTable("Movies");
 
                     b.HasData(
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Tangible products that require shipping",
+                            AgeRating = "PG-13",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "A soldier relives the same brutal battle in a loop against an alien invasion.",
+                            Director = "Doug Liman",
+                            DurationMinutes = 113,
+                            GenreId = 4,
                             IsActive = true,
-                            Name = "Physical"
+                            Language = "English",
+                            MovieState = "ActiveMovieState",
+                            ReleaseDate = new DateTime(2026, 1, 15, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Title = "Edge of Tomorrow",
+                            ViewCount = 320
                         },
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Intangible products that can be downloaded",
+                            AgeRating = "PG",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "An ageing comedian gets one final shot at the spotlight.",
+                            Director = "Greta Park",
+                            DurationMinutes = 98,
+                            GenreId = 3,
                             IsActive = true,
-                            Name = "Digital"
+                            Language = "English",
+                            MovieState = "ActiveMovieState",
+                            ReleaseDate = new DateTime(2026, 2, 10, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Title = "The Last Laugh",
+                            ViewCount = 140
                         },
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "Non-physical products that provide a service",
+                            AgeRating = "R",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "A family moves into a house that hides a terrifying secret.",
+                            Director = "Mark Reyes",
+                            DurationMinutes = 105,
+                            GenreId = 5,
                             IsActive = true,
-                            Name = "Service"
+                            Language = "English",
+                            MovieState = "ActiveMovieState",
+                            ReleaseDate = new DateTime(2026, 3, 5, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Title = "Silent Shadows",
+                            ViewCount = 210
+                        },
+                        new
+                        {
+                            Id = 4,
+                            AgeRating = "PG-13",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Two strangers cross the country and find unexpected friendship.",
+                            Director = "Lena Holt",
+                            DurationMinutes = 127,
+                            GenreId = 2,
+                            IsActive = true,
+                            Language = "English",
+                            MovieState = "ActiveMovieState",
+                            ReleaseDate = new DateTime(2026, 4, 20, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Title = "Broken Roads",
+                            ViewCount = 90
+                        },
+                        new
+                        {
+                            Id = 5,
+                            AgeRating = "PG-13",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "An elite agent races to stop a global catastrophe.",
+                            Director = "Sam Okafor",
+                            DurationMinutes = 118,
+                            GenreId = 1,
+                            IsActive = true,
+                            Language = "English",
+                            MovieState = "ActiveMovieState",
+                            ReleaseDate = new DateTime(2026, 5, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Title = "Final Strike",
+                            ViewCount = 260
+                        },
+                        new
+                        {
+                            Id = 6,
+                            AgeRating = "PG-13",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "A physicist discovers a way to travel between parallel worlds.",
+                            Director = "Iris Vance",
+                            DurationMinutes = 134,
+                            GenreId = 4,
+                            IsActive = true,
+                            Language = "English",
+                            MovieState = "DraftMovieState",
+                            ReleaseDate = new DateTime(2026, 6, 12, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Title = "Quantum Drift",
+                            ViewCount = 60
                         });
                 });
 
@@ -970,6 +382,183 @@ namespace eCommerce.Services.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.Reservation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CustomerEmail")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("PaymentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymentTransactionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("ReservationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReservationNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("ScreeningId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScreeningId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Reservations");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.ReservationSeat", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("ReservationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ScreeningId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SeatId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReservationId");
+
+                    b.HasIndex("SeatId");
+
+                    b.HasIndex("ScreeningId", "SeatId")
+                        .IsUnique();
+
+                    b.ToTable("ReservationSeats");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.Review", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MovieId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MovieId");
+
+                    b.HasIndex("UserId", "MovieId")
+                        .IsUnique();
+
+                    b.ToTable("Reviews");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Comment = "Loved the relentless time-loop action.",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MovieId = 1,
+                            Rating = 5,
+                            UserId = 4
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Comment = "A great sci-fi thrill ride.",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MovieId = 1,
+                            Rating = 4,
+                            UserId = 5
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Comment = "Solid, fast-paced action.",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MovieId = 5,
+                            Rating = 4,
+                            UserId = 4
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Comment = "A charming but slight comedy.",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MovieId = 2,
+                            Rating = 3,
+                            UserId = 4
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Comment = "Creepy atmosphere, slow middle.",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MovieId = 3,
+                            Rating = 3,
+                            UserId = 5
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Comment = "A heartfelt cross-country journey.",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MovieId = 4,
+                            Rating = 5,
+                            UserId = 5
+                        });
                 });
 
             modelBuilder.Entity("eCommerce.Services.Database.Role", b =>
@@ -1004,7 +593,7 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Administrator role with full permissions",
                             IsActive = true,
                             Name = "Admin"
@@ -1012,14 +601,22 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Default customer role",
                             IsActive = true,
                             Name = "Customer"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Employee role for content management and analytics",
+                            IsActive = true,
+                            Name = "Staff"
                         });
                 });
 
-            modelBuilder.Entity("eCommerce.Services.Database.UnitOfMeasure", b =>
+            modelBuilder.Entity("eCommerce.Services.Database.Screening", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -1027,61 +624,721 @@ namespace eCommerce.Services.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Abbreviation")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                    b.Property<decimal>("BasePrice")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                    b.Property<DateTime>("EndTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("HallId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("HasSubtitles")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
+                    b.Property<string>("Language")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("MovieId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.ToTable("UnitOfMeasures");
+                    b.HasIndex("HallId");
+
+                    b.HasIndex("MovieId");
+
+                    b.ToTable("Screenings");
 
                     b.HasData(
                         new
                         {
                             Id = 1,
-                            Abbreviation = "pc",
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "",
+                            BasePrice = 8.50m,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EndTime = new DateTime(2026, 7, 5, 19, 53, 0, 0, DateTimeKind.Utc),
+                            HallId = 1,
+                            HasSubtitles = false,
                             IsActive = true,
-                            Name = "Piece"
+                            Language = "English",
+                            MovieId = 1,
+                            StartTime = new DateTime(2026, 7, 5, 18, 0, 0, 0, DateTimeKind.Utc)
                         },
                         new
                         {
                             Id = 2,
-                            Abbreviation = "kg",
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "",
+                            BasePrice = 8.50m,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EndTime = new DateTime(2026, 7, 5, 22, 53, 0, 0, DateTimeKind.Utc),
+                            HallId = 1,
+                            HasSubtitles = true,
                             IsActive = true,
-                            Name = "Kilogram"
+                            Language = "English",
+                            MovieId = 1,
+                            StartTime = new DateTime(2026, 7, 5, 21, 0, 0, 0, DateTimeKind.Utc)
                         },
                         new
                         {
                             Id = 3,
-                            Abbreviation = "L",
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Description = "",
+                            BasePrice = 7.00m,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EndTime = new DateTime(2026, 7, 6, 19, 8, 0, 0, DateTimeKind.Utc),
+                            HallId = 1,
+                            HasSubtitles = false,
                             IsActive = true,
-                            Name = "Liter"
+                            Language = "English",
+                            MovieId = 2,
+                            StartTime = new DateTime(2026, 7, 6, 17, 30, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = 4,
+                            BasePrice = 9.00m,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EndTime = new DateTime(2026, 7, 6, 21, 45, 0, 0, DateTimeKind.Utc),
+                            HallId = 2,
+                            HasSubtitles = false,
+                            IsActive = true,
+                            Language = "English",
+                            MovieId = 3,
+                            StartTime = new DateTime(2026, 7, 6, 20, 0, 0, 0, DateTimeKind.Utc)
+                        },
+                        new
+                        {
+                            Id = 5,
+                            BasePrice = 10.00m,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            EndTime = new DateTime(2026, 7, 7, 20, 58, 0, 0, DateTimeKind.Utc),
+                            HallId = 2,
+                            HasSubtitles = true,
+                            IsActive = true,
+                            Language = "English",
+                            MovieId = 5,
+                            StartTime = new DateTime(2026, 7, 7, 19, 0, 0, 0, DateTimeKind.Utc)
+                        });
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.Seat", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("HallId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("RowLabel")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
+
+                    b.Property<int>("SeatNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SeatType")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HallId", "RowLabel", "SeatNumber")
+                        .IsUnique();
+
+                    b.ToTable("Seats");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 1,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 2,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 3,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 3,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 4,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 4,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 5,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 5,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 6,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 6,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 7,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 7,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 8,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 8,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 9,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 1,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 10,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 2,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 11,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 3,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 12,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 4,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 13,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 5,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 14,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 6,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 15,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 7,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 16,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 8,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 17,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 1,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 18,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 2,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 19,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 3,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 20,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 4,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 21,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 5,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 22,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 6,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 23,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 7,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 24,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 8,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 25,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 1,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 26,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 2,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 27,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 3,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 28,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 4,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 29,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 5,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 30,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 6,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 31,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 7,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 32,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 8,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 33,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "E",
+                            SeatNumber = 1,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 34,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "E",
+                            SeatNumber = 2,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 35,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "E",
+                            SeatNumber = 3,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 36,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "E",
+                            SeatNumber = 4,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 37,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "E",
+                            SeatNumber = 5,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 38,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "E",
+                            SeatNumber = 6,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 39,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "E",
+                            SeatNumber = 7,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 40,
+                            HallId = 1,
+                            IsActive = true,
+                            RowLabel = "E",
+                            SeatNumber = 8,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 41,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 1,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 42,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 2,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 43,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 3,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 44,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 4,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 45,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 5,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 46,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "A",
+                            SeatNumber = 6,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 47,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 1,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 48,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 2,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 49,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 3,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 50,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 4,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 51,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 5,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 52,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "B",
+                            SeatNumber = 6,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 53,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 1,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 54,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 2,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 55,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 3,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 56,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 4,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 57,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 5,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 58,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "C",
+                            SeatNumber = 6,
+                            SeatType = 0
+                        },
+                        new
+                        {
+                            Id = 59,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 1,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 60,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 2,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 61,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 3,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 62,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 4,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 63,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 5,
+                            SeatType = 1
+                        },
+                        new
+                        {
+                            Id = 64,
+                            HallId = 2,
+                            IsActive = true,
+                            RowLabel = "D",
+                            SeatNumber = 6,
+                            SeatType = 1
                         });
                 });
 
@@ -1132,6 +1389,9 @@ namespace eCommerce.Services.Migrations
                     b.Property<string>("ProfileImageBase64")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1145,7 +1405,7 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "admin1@gmail.com",
                             FirstName = "Alice",
                             IsActive = true,
@@ -1157,11 +1417,11 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "admin2@gmail.com",
                             FirstName = "Bob",
                             IsActive = true,
-                            LastName = "Admin",
+                            LastName = "Staff",
                             PasswordHash = "GBoyh1WP+OMgGjqRj6vK6L1+oGc=",
                             PasswordSalt = "0AXpKx6xRp9xM42jCf/PiA==",
                             Username = "admin2"
@@ -1169,11 +1429,11 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "admin3@gmail.com",
                             FirstName = "Carol",
                             IsActive = true,
-                            LastName = "Admin",
+                            LastName = "Staff",
                             PasswordHash = "x6JHKCTQywdAzTcZxGWFvrKPORM=",
                             PasswordSalt = "IwhTfKQNgyqWfOlTqCDXrg==",
                             Username = "admin3"
@@ -1181,7 +1441,7 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "customer1@gmail.com",
                             FirstName = "Dave",
                             IsActive = true,
@@ -1193,7 +1453,7 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 5,
-                            CreatedAt = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Email = "customer2@gmail.com",
                             FirstName = "Eve",
                             IsActive = true,
@@ -1233,35 +1493,35 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 1,
-                            DateAssigned = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DateAssigned = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             RoleId = 1,
                             UserId = 1
                         },
                         new
                         {
                             Id = 2,
-                            DateAssigned = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            RoleId = 1,
+                            DateAssigned = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            RoleId = 3,
                             UserId = 2
                         },
                         new
                         {
                             Id = 3,
-                            DateAssigned = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
-                            RoleId = 1,
+                            DateAssigned = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            RoleId = 3,
                             UserId = 3
                         },
                         new
                         {
                             Id = 4,
-                            DateAssigned = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DateAssigned = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             RoleId = 2,
                             UserId = 4
                         },
                         new
                         {
                             Id = 5,
-                            DateAssigned = new DateTime(2026, 3, 9, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DateAssigned = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             RoleId = 2,
                             UserId = 5
                         });
@@ -1269,150 +1529,23 @@ namespace eCommerce.Services.Migrations
 
             modelBuilder.Entity("eCommerce.Services.Database.Asset", b =>
                 {
-                    b.HasOne("eCommerce.Services.Database.Product", "Product")
+                    b.HasOne("eCommerce.Services.Database.Movie", "Movie")
                         .WithMany("Assets")
-                        .HasForeignKey("ProductId")
+                        .HasForeignKey("MovieId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Product");
+                    b.Navigation("Movie");
                 });
 
-            modelBuilder.Entity("eCommerce.Services.Database.Cart", b =>
+            modelBuilder.Entity("eCommerce.Services.Database.Movie", b =>
                 {
-                    b.HasOne("eCommerce.Services.Database.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.HasOne("eCommerce.Services.Database.Genre", "Genre")
+                        .WithMany("Movies")
+                        .HasForeignKey("GenreId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.CartItem", b =>
-                {
-                    b.HasOne("eCommerce.Services.Database.Cart", "Cart")
-                        .WithMany("CartItems")
-                        .HasForeignKey("CartId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("eCommerce.Services.Database.Product", "Product")
-                        .WithMany("CartItems")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Cart");
-
-                    b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.Category", b =>
-                {
-                    b.HasOne("eCommerce.Services.Database.Category", "ParentCategory")
-                        .WithMany("ChildCategories")
-                        .HasForeignKey("ParentCategoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("ParentCategory");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.Order", b =>
-                {
-                    b.HasOne("eCommerce.Services.Database.Cupon", "Cupon")
-                        .WithMany("Orders")
-                        .HasForeignKey("CuponId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("eCommerce.Services.Database.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Cupon");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.OrderItem", b =>
-                {
-                    b.HasOne("eCommerce.Services.Database.Order", "Order")
-                        .WithMany("OrderItems")
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("eCommerce.Services.Database.Product", "Product")
-                        .WithMany("OrderItems")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Order");
-
-                    b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.Product", b =>
-                {
-                    b.HasOne("eCommerce.Services.Database.ProductType", "ProductType")
-                        .WithMany("Products")
-                        .HasForeignKey("ProductTypeId");
-
-                    b.HasOne("eCommerce.Services.Database.UnitOfMeasure", "UnitOfMeasure")
-                        .WithMany("Products")
-                        .HasForeignKey("UnitOfMeasureId");
-
-                    b.Navigation("ProductType");
-
-                    b.Navigation("UnitOfMeasure");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.ProductCategory", b =>
-                {
-                    b.HasOne("eCommerce.Services.Database.Category", "Category")
-                        .WithMany("ProductCategories")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("eCommerce.Services.Database.Product", "Product")
-                        .WithMany("ProductCategories")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Category");
-
-                    b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.ProductReview", b =>
-                {
-                    b.HasOne("eCommerce.Services.Database.Order", "Order")
-                        .WithMany("ProductReviews")
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("eCommerce.Services.Database.Product", "Product")
-                        .WithMany("Reviews")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("eCommerce.Services.Database.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Order");
-
-                    b.Navigation("Product");
-
-                    b.Navigation("User");
+                    b.Navigation("Genre");
                 });
 
             modelBuilder.Entity("eCommerce.Services.Database.RefreshToken", b =>
@@ -1424,6 +1557,101 @@ namespace eCommerce.Services.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.Reservation", b =>
+                {
+                    b.HasOne("eCommerce.Services.Database.Screening", "Screening")
+                        .WithMany("Reservations")
+                        .HasForeignKey("ScreeningId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("eCommerce.Services.Database.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Screening");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.ReservationSeat", b =>
+                {
+                    b.HasOne("eCommerce.Services.Database.Reservation", "Reservation")
+                        .WithMany("ReservationSeats")
+                        .HasForeignKey("ReservationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("eCommerce.Services.Database.Screening", "Screening")
+                        .WithMany("ReservationSeats")
+                        .HasForeignKey("ScreeningId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("eCommerce.Services.Database.Seat", "Seat")
+                        .WithMany("ReservationSeats")
+                        .HasForeignKey("SeatId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Reservation");
+
+                    b.Navigation("Screening");
+
+                    b.Navigation("Seat");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.Review", b =>
+                {
+                    b.HasOne("eCommerce.Services.Database.Movie", "Movie")
+                        .WithMany("Reviews")
+                        .HasForeignKey("MovieId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("eCommerce.Services.Database.User", "User")
+                        .WithMany("Reviews")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Movie");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.Screening", b =>
+                {
+                    b.HasOne("eCommerce.Services.Database.Hall", "Hall")
+                        .WithMany("Screenings")
+                        .HasForeignKey("HallId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("eCommerce.Services.Database.Movie", "Movie")
+                        .WithMany("Screenings")
+                        .HasForeignKey("MovieId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Hall");
+
+                    b.Navigation("Movie");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.Seat", b =>
+                {
+                    b.HasOne("eCommerce.Services.Database.Hall", "Hall")
+                        .WithMany("Seats")
+                        .HasForeignKey("HallId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Hall");
                 });
 
             modelBuilder.Entity("eCommerce.Services.Database.UserRole", b =>
@@ -1445,46 +1673,30 @@ namespace eCommerce.Services.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("eCommerce.Services.Database.Cart", b =>
+            modelBuilder.Entity("eCommerce.Services.Database.Genre", b =>
                 {
-                    b.Navigation("CartItems");
+                    b.Navigation("Movies");
                 });
 
-            modelBuilder.Entity("eCommerce.Services.Database.Category", b =>
+            modelBuilder.Entity("eCommerce.Services.Database.Hall", b =>
                 {
-                    b.Navigation("ChildCategories");
+                    b.Navigation("Screenings");
 
-                    b.Navigation("ProductCategories");
+                    b.Navigation("Seats");
                 });
 
-            modelBuilder.Entity("eCommerce.Services.Database.Cupon", b =>
-                {
-                    b.Navigation("Orders");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.Order", b =>
-                {
-                    b.Navigation("OrderItems");
-
-                    b.Navigation("ProductReviews");
-                });
-
-            modelBuilder.Entity("eCommerce.Services.Database.Product", b =>
+            modelBuilder.Entity("eCommerce.Services.Database.Movie", b =>
                 {
                     b.Navigation("Assets");
 
-                    b.Navigation("CartItems");
-
-                    b.Navigation("OrderItems");
-
-                    b.Navigation("ProductCategories");
-
                     b.Navigation("Reviews");
+
+                    b.Navigation("Screenings");
                 });
 
-            modelBuilder.Entity("eCommerce.Services.Database.ProductType", b =>
+            modelBuilder.Entity("eCommerce.Services.Database.Reservation", b =>
                 {
-                    b.Navigation("Products");
+                    b.Navigation("ReservationSeats");
                 });
 
             modelBuilder.Entity("eCommerce.Services.Database.Role", b =>
@@ -1492,14 +1704,23 @@ namespace eCommerce.Services.Migrations
                     b.Navigation("UserRoles");
                 });
 
-            modelBuilder.Entity("eCommerce.Services.Database.UnitOfMeasure", b =>
+            modelBuilder.Entity("eCommerce.Services.Database.Screening", b =>
                 {
-                    b.Navigation("Products");
+                    b.Navigation("ReservationSeats");
+
+                    b.Navigation("Reservations");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.Seat", b =>
+                {
+                    b.Navigation("ReservationSeats");
                 });
 
             modelBuilder.Entity("eCommerce.Services.Database.User", b =>
                 {
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("Reviews");
 
                     b.Navigation("UserRoles");
                 });

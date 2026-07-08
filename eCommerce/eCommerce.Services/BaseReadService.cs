@@ -37,25 +37,28 @@ namespace eCommerce.Services
 
             int? totalCount = null;
 
-            if (search.IncludeTotalCount ?? false)
+            if (search != null)
             {
-                totalCount = query.Count();
-            }
+                if (search.IncludeTotalCount ?? false)
+                {
+                    totalCount = query.Count();
+                }
 
-            if (!string.IsNullOrWhiteSpace(search.SortBy))
-            {
-                //TODO: parametrize sortBy to prevent SQL injection
-                query = query.AsQueryable().OrderBy(search.SortBy);
-            }
+                if (!string.IsNullOrWhiteSpace(search.SortBy))
+                {
+                    //TODO: parametrize sortBy to prevent SQL injection
+                    query = query.AsQueryable().OrderBy(search.SortBy);
+                }
 
-            if (search.Page.HasValue)
-            {
-                query = query.Skip((search.Page.Value - 1) * search.PageSize.Value);
-            }
+                if (search.Page.HasValue && search.PageSize.HasValue)
+                {
+                    query = query.Skip((search.Page.Value - 1) * search.PageSize.Value);
+                }
 
-            if (search.PageSize.HasValue)
-            {
-                query = query.Take(search.PageSize.Value);
+                if (search.PageSize.HasValue)
+                {
+                    query = query.Take(search.PageSize.Value);
+                }
             }
 
             var list = query.Select(item => _mapper.Map<TResponse>(item)).ToList();
@@ -69,7 +72,7 @@ namespace eCommerce.Services
             return await Task.FromResult(pageResult);
         }
 
-        protected virtual async Task<IQueryable<TEntity>> IncludeRelatedEntitiesAsync(TSearch? search, IQueryable<TEntity> query = null)
+        protected virtual async Task<IQueryable<TEntity>> IncludeRelatedEntitiesAsync(TSearch? search, IQueryable<TEntity> query = null!)
         {
             // Override in derived classes to include related entities if necessary
             return query;

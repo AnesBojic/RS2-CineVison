@@ -1,6 +1,13 @@
-namespace eCommerce.Model.Requests;
+using System.ComponentModel.DataAnnotations;
 
-public class CreatePaymentIntentRequest
+namespace eCommerce.Model.Requests
 {
-    public List<CheckoutLineRequest> Items { get; set; } = new();
+    public class CreatePaymentIntentRequest
+    {
+        [Required]
+        public int ScreeningId { get; set; }
+
+        [Required]
+        public List<int> SeatIds { get; set; } = new();
+    }
 }

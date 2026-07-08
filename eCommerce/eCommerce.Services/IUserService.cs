@@ -10,5 +10,7 @@ namespace eCommerce.Services
         Task<UserSensitveResponse?> GetByUsernameAsync(string username);
         Task<UserResponse?> GetWithRoleByIdAsync(int id);
         Task ChangePasswordAsync(UserPasswordChangeRequest request);
+        Task<UserResponse> GetProfileAsync(int userId);
+        Task<UserResponse> UpdateProfileAsync(int userId, UserProfileUpdateRequest request);
     }
 }

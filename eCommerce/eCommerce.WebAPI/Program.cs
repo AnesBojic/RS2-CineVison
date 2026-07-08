@@ -3,8 +3,7 @@ using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Services;
 using eCommerce.Services.Database;
-using eCommerce.Services.ProductStateMachine;
-using eCommerce.Services.QueryOptimization;
+using eCommerce.Services.MovieStateMachine;
 using eCommerce.Services.Validators;
 using eCommerce.WebAPI.Filters;
 using eCommerce.WebAPI.Services;
@@ -12,7 +11,6 @@ using eCommerce.WebAPI.Services.AccessManager;
 using FluentValidation;
 using Mapster;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -39,82 +37,88 @@ builder.Services.AddDbContext<ECommerceDbContext>(options =>
 // register Mapster for object mapping
 builder.Services.AddMapster();
 
-// configure a few mappings explicitly if needed (optional)
-// Mapster will automatically map same-named properties, but configuration
-// ensures any custom rules or future needs can be added here.
-TypeAdapterConfig<Product, ProductResponse>.NewConfig().IgnoreNullValues(true);
-TypeAdapterConfig<Category, CategoryResponse>.NewConfig().IgnoreNullValues(true);
+// Mapster configuration for the cinema domain.
+TypeAdapterConfig<Genre, GenreResponse>.NewConfig().IgnoreNullValues(true);
+TypeAdapterConfig<Movie, MovieResponse>.NewConfig().IgnoreNullValues(true);
+TypeAdapterConfig<MovieUpdateRequest, Movie>.NewConfig().IgnoreNullValues(true).Ignore(dest => dest.Assets);
+TypeAdapterConfig<Hall, HallResponse>.NewConfig().IgnoreNullValues(true);
+TypeAdapterConfig<Seat, SeatResponse>.NewConfig().IgnoreNullValues(true);
+TypeAdapterConfig<Screening, ScreeningResponse>.NewConfig()
+    .IgnoreNullValues(true)
+    .Ignore(dest => dest.Movie)
+    .Ignore(dest => dest.Hall);
+TypeAdapterConfig<Asset, AssetResponse>.NewConfig().IgnoreNullValues(true);
 TypeAdapterConfig<User, UserResponse>.NewConfig().IgnoreNullValues(true);
 TypeAdapterConfig<UserUpdateRequest, User>.NewConfig().IgnoreNullValues(true);
-TypeAdapterConfig<ProductType, ProductTypeResponse>.NewConfig().IgnoreNullValues(true);
-TypeAdapterConfig<UnitOfMeasure, UnitOfMeasureResponse>.NewConfig().IgnoreNullValues(true);
-TypeAdapterConfig<Asset, AssetResponse>.NewConfig().IgnoreNullValues(true);
-TypeAdapterConfig<Cupon, CuponResponse>.NewConfig().IgnoreNullValues(true);
-TypeAdapterConfig<ProductReview, ProductReviewResponse>.NewConfig()
-    .Map(dest => dest.ReviewerDisplayName, src => $"{src.User.FirstName} {src.User.LastName}".Trim());
-TypeAdapterConfig<Order, OrderResponse>.NewConfig()
-    .Map(dest => dest.Status, src => (int)src.Status);
-TypeAdapterConfig<OrderItem, OrderItemResponse>.NewConfig()
-    .Map(dest => dest.ProductName, src => src.Product != null ? src.Product.Name : string.Empty);
-
 
 // register application services
-builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddScoped<BaseProductState>();
-builder.Services.AddScoped<InitialProductState>();
-builder.Services.AddScoped<DraftProductState>();
-builder.Services.AddScoped<ActiveProductState>();
+// movie service + state machine
+builder.Services.AddScoped<IMovieService, MovieService>();
+builder.Services.AddScoped<BaseMovieState>();
+builder.Services.AddScoped<InitialMovieState>();
+builder.Services.AddScoped<DraftMovieState>();
+builder.Services.AddScoped<ActiveMovieState>();
 
-// category service
-builder.Services.AddScoped<ICategoryService, CategoryService>();
-// cupon service
-builder.Services.AddScoped<ICuponService, CuponService>();
-// product type service
-builder.Services.AddScoped<IProductTypeService, ProductTypeService>();
-// unit of measure service
-builder.Services.AddScoped<IUnitOfMeasureService, UnitOfMeasureService>();
-// user service
-builder.Services.AddScoped<IUserService, UserService>();
+// cinema domain services
+builder.Services.AddScoped<IGenreService, GenreService>();
+builder.Services.AddScoped<IHallService, HallService>();
+builder.Services.AddScoped<ISeatService, SeatService>();
+builder.Services.AddScoped<IScreeningService, ScreeningService>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IRecommendationService, RecommendationService>();
+builder.Services.AddScoped<IChatBotService, ChatBotService>();
 
+builder.Services.AddHttpClient("OpenAI", client =>
+{
+    client.BaseAddress = new Uri("https://api.openai.com/v1/");
+    client.Timeout = TimeSpan.FromSeconds(90);
+});
+
+// shared services
 builder.Services.AddScoped<IAssetService, AssetService>();
-
-
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
-
 builder.Services.AddScoped<IAccessManager, AccessManager>();
-
 builder.Services.AddScoped<ICryptoService, CryptoService>();
 
-builder.Services.AddScoped<IQueryOptimizationService, QueryOptimizationService> ();
+// email: RabbitMQ producer + background consumer that delivers via SMTP (MailKit)
+builder.Services.AddScoped<IEmailService, RabbitMqEmailService>();
+builder.Services.AddHostedService<EmailConsumerBackgroundService>();
 
-builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<IProductReviewService, ProductReviewService>();
-
-builder.Services.AddScoped<IValidator<ProductTypeInsertRequest>, ProductTypeInsertValidator>();
-builder.Services.AddScoped<IValidator<ProductTypeUpdateRequest>, ProductTypeUpdateValidator>();
-builder.Services.AddScoped<IValidator<UnitOfMeasureInsertRequest>, UnitOfMeasureInsertValidator>();
-builder.Services.AddScoped<IValidator<UnitOfMeasureUpdateRequest>, UnitOfMeasureUpdateValidator>();
-builder.Services.AddScoped<IValidator<CategoriesInsertRequest>, CategoryInsertValidator>();
-builder.Services.AddScoped<IValidator<CategoriesUpdateRequest>, CategoryUpdateValidator>();
-builder.Services.AddScoped<IValidator<UserInsertRequest>, UserInsertValidator>();
-builder.Services.AddScoped<IValidator<UserUpdateRequest>, UserUpdateValidator>();
+// validators
+builder.Services.AddScoped<IValidator<GenreInsertRequest>, GenreInsertValidator>();
+builder.Services.AddScoped<IValidator<GenreUpdateRequest>, GenreUpdateValidator>();
+builder.Services.AddScoped<IValidator<MovieInsertRequest>, MovieInsertValidator>();
+builder.Services.AddScoped<IValidator<MovieUpdateRequest>, MovieUpdateValidator>();
+builder.Services.AddScoped<IValidator<HallInsertRequest>, HallInsertValidator>();
+builder.Services.AddScoped<IValidator<HallUpdateRequest>, HallUpdateValidator>();
+builder.Services.AddScoped<IValidator<SeatInsertRequest>, SeatInsertValidator>();
+builder.Services.AddScoped<IValidator<SeatUpdateRequest>, SeatUpdateValidator>();
+builder.Services.AddScoped<IValidator<ScreeningInsertRequest>, ScreeningInsertValidator>();
+builder.Services.AddScoped<IValidator<ScreeningUpdateRequest>, ScreeningUpdateValidator>();
 builder.Services.AddScoped<IValidator<AssetInsertRequest>, AssetInsertValidator>();
 builder.Services.AddScoped<IValidator<AssetUpdateRequest>, AssetUpdateValidator>();
-builder.Services.AddScoped<IValidator<ProductReviewInsertRequest>, ProductReviewInsertValidator>();
-builder.Services.AddScoped<IValidator<ProductReviewUpdateRequest>, ProductReviewUpdateValidator>();
-builder.Services.AddScoped<IValidator<CuponInsertRequest>, CuponInsertValidator>();
-builder.Services.AddScoped<IValidator<CuponUpdateRequest>, CuponUpdateValidator>();
+builder.Services.AddScoped<IValidator<UserInsertRequest>, UserInsertValidator>();
+builder.Services.AddScoped<IValidator<UserUpdateRequest>, UserUpdateValidator>();
+builder.Services.AddScoped<IValidator<UserProfileUpdateRequest>, UserProfileUpdateValidator>();
+builder.Services.AddScoped<IValidator<ReviewInsertRequest>, ReviewInsertValidator>();
+builder.Services.AddScoped<IValidator<ReviewUpdateRequest>, ReviewUpdateValidator>();
+builder.Services.AddScoped<IValidator<ChatRequest>, ChatRequestValidator>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-builder.Services.AddAuthentication(options => // dodavanje authentfikacije i autorizacije u projekat
+builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(o =>
 {
+    // Keep our custom claim names ("Id", "Role") instead of remapping them to long URIs.
+    o.MapInboundClaims = false;
     o.TokenValidationParameters = new TokenValidationParameters
     {
         ValidIssuer = builder.Configuration["JwtToken:Issuer"],
@@ -124,7 +128,11 @@ builder.Services.AddAuthentication(options => // dodavanje authentfikacije i aut
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ClockSkew = TimeSpan.Zero
+        ClockSkew = TimeSpan.Zero,
+        // Tell ASP.NET which JWT claims carry the user name and role so that
+        // User.IsInRole(...) and [Authorize(Roles = "Admin")] work off the token.
+        NameClaimType = "Id",
+        RoleClaimType = "Role"
     };
 });
 builder.Services.AddAuthorization();
@@ -137,12 +145,16 @@ builder.Services.AddSwaggerGen(
         options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
         {
             Version = "v1",
-            Title = "eCommerce API",
-            Description = "API for managing products and categories in the eCommerce application"
+            Title = "CineVision API",
+            Description = "API for managing movies, halls, screenings and seat reservations"
         });
 
         var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-        options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
+        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+        if (File.Exists(xmlPath))
+        {
+            options.IncludeXmlComments(xmlPath);
+        }
 
         var jwtSecurityScheme = new OpenApiSecurityScheme
         {
@@ -168,17 +180,38 @@ builder.Services.AddSwaggerGen(
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
 
-
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(options =>
+    {
+        // Automatically capture the JWT returned by POST /Access/Login and attach it as a
+        // Bearer header on every subsequent request, so there is no need to use the
+        // "Authorize" button or copy/paste tokens. Logging out clears the stored token.
+        options.UseRequestInterceptor(
+            "(request) => {" +
+            "  const token = window.localStorage.getItem('cinevision_token');" +
+            "  if (token && !request.headers['Authorization']) { request.headers['Authorization'] = 'Bearer ' + token; }" +
+            "  return request;" +
+            "}");
+        options.UseResponseInterceptor(
+            "(response) => {" +
+            "  try {" +
+            "    if (response.url && response.url.indexOf('/Access/Login') !== -1 && response.status === 200) {" +
+            "      const data = JSON.parse(response.text);" +
+            "      const token = data.accesstoken || data.accessToken || data.Accesstoken;" +
+            "      if (token) { window.localStorage.setItem('cinevision_token', token); }" +
+            "    }" +
+            "    if (response.url && response.url.indexOf('/Access/Logout') !== -1 && response.status === 200) {" +
+            "      window.localStorage.removeItem('cinevision_token');" +
+            "    }" +
+            "  } catch (e) {}" +
+            "  return response;" +
+            "}");
+    });
 }
-
-//app.UseHttpsRedirection();
 
 app.UseAuthentication();
 
