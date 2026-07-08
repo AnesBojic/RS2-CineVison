@@ -33,9 +33,9 @@ namespace eCommerce.Services
                     query = query.Where(a => a.ContentType.Contains(search.ContentType, StringComparison.OrdinalIgnoreCase));
                 }
 
-                if (search.ProductId.HasValue)
+                if (search.MovieId.HasValue)
                 {
-                    query = query.Where(a => a.ProductId == search.ProductId.Value);
+                    query = query.Where(a => a.MovieId == search.MovieId.Value);
                 }
             }
 

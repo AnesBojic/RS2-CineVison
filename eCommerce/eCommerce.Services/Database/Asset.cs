@@ -8,24 +8,24 @@ namespace eCommerce.Services.Database
     {
         [Key]
         public int Id { get; set; }
-        
+
         [Required]
         [MaxLength(100)]
         public string FileName { get; set; } = string.Empty;
-        
+
         [Required]
         public string ContentType { get; set; } = string.Empty;
-        
+
         [Required]
         public string Base64Content { get; set; } = string.Empty;
-        
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        
-        // Foreign key for Product
-        public int ProductId { get; set; }
-        
-        // Navigation property for Product
-        [ForeignKey("ProductId")]
-        public Product Product { get; set; } = null!;
+
+        // Foreign key for Movie
+        public int MovieId { get; set; }
+
+        // Navigation property for Movie
+        [ForeignKey("MovieId")]
+        public Movie Movie { get; set; } = null!;
     }
-} 
+}

@@ -26,8 +26,8 @@ namespace eCommerce.Services.Validators
             RuleFor(x => x.Base64Content)
                 .NotEmpty().WithMessage("Base64Content is required.");
 
-            RuleFor(x => x.ProductId)
-                .GreaterThan(0).WithMessage("ProductId is required and must be greater than 0.");
+            RuleFor(x => x.MovieId)
+                .GreaterThan(0).WithMessage("MovieId is required and must be greater than 0.");
         }
     }
 }
