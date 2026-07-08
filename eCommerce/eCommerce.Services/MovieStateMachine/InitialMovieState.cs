@@ -1,0 +1,30 @@
+using eCommerce.Model.Requests;
+using eCommerce.Model.Responses;
+using eCommerce.Services.Database;
+using MapsterMapper;
+
+namespace eCommerce.Services.MovieStateMachine
+{
+    public class InitialMovieState : BaseMovieState
+    {
+        public InitialMovieState(ECommerceDbContext dbContext, IMapper mapper, IServiceProvider serviceProvider)
+            : base(dbContext, mapper, serviceProvider)
+        {
+        }
+
+        public override async Task<MovieResponse> InsertAsync(MovieInsertRequest request)
+        {
+            var entity = Mapper.Map<Movie>(request);
+            entity.MovieState = nameof(DraftMovieState);
+            entity.CreatedAt = DateTime.UtcNow;
+            DbContext.Movies.Add(entity);
+            await DbContext.SaveChangesAsync();
+            return Mapper.Map<MovieResponse>(entity);
+        }
+
+        public override List<string> GetAllowedActions()
+        {
+            return base.GetAllowedActions().Append(nameof(InsertAsync)).ToList();
+        }
+    }
+}
