@@ -79,13 +79,22 @@ builder.Services.AddHttpClient("OpenAI", client =>
 // shared services
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<IAccessManager, AccessManager>();
 builder.Services.AddScoped<ICryptoService, CryptoService>();
 
-// email: RabbitMQ producer + background consumer that delivers via SMTP (MailKit)
-builder.Services.AddScoped<IEmailService, RabbitMqEmailService>();
-builder.Services.AddHostedService<EmailConsumerBackgroundService>();
+// email: RabbitMQ producer + background consumer (optional — disable in Development when RabbitMQ is not running)
+var rabbitMqEnabled = builder.Configuration.GetValue("RabbitMq:Enabled", false);
+if (rabbitMqEnabled)
+{
+    builder.Services.AddScoped<IEmailService, RabbitMqEmailService>();
+    builder.Services.AddHostedService<EmailConsumerBackgroundService>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailService, LoggingEmailService>();
+}
 
 // validators
 builder.Services.AddScoped<IValidator<GenreInsertRequest>, GenreInsertValidator>();

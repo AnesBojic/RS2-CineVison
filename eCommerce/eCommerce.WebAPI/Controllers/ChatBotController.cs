@@ -1,3 +1,4 @@
+using eCommerce.Model.Access;
 using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Services;
@@ -16,10 +17,17 @@ namespace eCommerce.WebAPI.Controllers;
 public class ChatBotController : ControllerBase
 {
     private readonly IChatBotService _chatBotService;
+    private readonly INotificationService _notificationService;
+    private readonly IAuthenticatedUserAccessor _userAccessor;
 
-    public ChatBotController(IChatBotService chatBotService)
+    public ChatBotController(
+        IChatBotService chatBotService,
+        INotificationService notificationService,
+        IAuthenticatedUserAccessor userAccessor)
     {
         _chatBotService = chatBotService;
+        _notificationService = notificationService;
+        _userAccessor = userAccessor;
     }
 
     /// <summary>
@@ -32,6 +40,18 @@ public class ChatBotController : ControllerBase
     {
         var role = User.FindFirst(ClaimNames.Role)?.Value ?? "Staff";
         var result = await _chatBotService.ChatAsync(request, role);
+
+        var userId = _userAccessor.GetUserId();
+        if (userId != null && !string.IsNullOrWhiteSpace(result.Reply))
+        {
+            var preview = result.Reply.Length > 180 ? result.Reply[..180] + "…" : result.Reply;
+            await _notificationService.CreateAsync(
+                userId.Value,
+                "Cinema Assistant replied",
+                preview,
+                "Message");
+        }
+
         return Ok(result);
     }
 }

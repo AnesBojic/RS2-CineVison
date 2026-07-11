@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Dynamic.Core;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -57,6 +58,95 @@ namespace eCommerce.Services
             return query;
         }
 
+        protected override async Task<IQueryable<User>> IncludeRelatedEntitiesAsync(UserSearch? search, IQueryable<User> query)
+        {
+            return query.Include(u => u.UserRoles).ThenInclude(ur => ur.Role);
+        }
+
+        private UserResponse MapUserResponse(User user)
+        {
+            var response = _mapper.Map<UserResponse>(user);
+            response.Role = user.UserRoles.FirstOrDefault()?.Role.Name ?? string.Empty;
+            response.ProfileImageBase64 = user.ProfileImageBase64;
+            return response;
+        }
+
+        private async Task AssignRoleAsync(int userId, string roleName)
+        {
+            var role = await _dbContext.Roles.FirstOrDefaultAsync(r => r.Name == roleName)
+                ?? throw new InvalidOperationException($"Role '{roleName}' was not found.");
+
+            var existingRoles = await _dbContext.UserRoles.Where(ur => ur.UserId == userId).ToListAsync();
+            if (existingRoles.Count == 1 && existingRoles[0].RoleId == role.Id)
+            {
+                return;
+            }
+
+            _dbContext.UserRoles.RemoveRange(existingRoles);
+            _dbContext.UserRoles.Add(new UserRole
+            {
+                UserId = userId,
+                RoleId = role.Id,
+                DateAssigned = DateTime.UtcNow
+            });
+        }
+
+        public override async Task<PageResult<UserResponse>> GetAllAsync(UserSearch? search = null)
+        {
+            IEnumerable<User> query = _dbContext.Users;
+
+            query = await IncludeRelatedEntitiesAsync(search, query.AsQueryable());
+            query = ApplyFilters(query, search);
+
+            int? totalCount = null;
+
+            if (search != null)
+            {
+                if (search.IncludeTotalCount ?? false)
+                {
+                    totalCount = query.Count();
+                }
+
+                if (!string.IsNullOrWhiteSpace(search.SortBy))
+                {
+                    query = query.AsQueryable().OrderBy(search.SortBy);
+                }
+
+                if (search.Page.HasValue && search.PageSize.HasValue)
+                {
+                    query = query.Skip((search.Page.Value - 1) * search.PageSize.Value);
+                }
+
+                if (search.PageSize.HasValue)
+                {
+                    query = query.Take(search.PageSize.Value);
+                }
+            }
+
+            var list = query.ToList().Select(MapUserResponse).ToList();
+
+            return new PageResult<UserResponse>
+            {
+                Items = list,
+                TotalCount = totalCount
+            };
+        }
+
+        public override async Task<UserResponse> GetByIdAsync(int id)
+        {
+            var user = await _dbContext.Users
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (user == null)
+            {
+                throw new KeyNotFoundException($"User with id {id} not found.");
+            }
+
+            return MapUserResponse(user);
+        }
+
         protected override User MapInsertRequestToEntity(UserInsertRequest request)
         {
             var entity = base.MapInsertRequestToEntity(request);
@@ -92,7 +182,11 @@ namespace eCommerce.Services
             _dbContext.Users.Add(entity);
             await _dbContext.SaveChangesAsync();
 
-            return _mapper.Map<UserResponse>(entity);
+            await AssignRoleAsync(entity.Id, request.Role);
+
+            await _dbContext.SaveChangesAsync();
+
+            return await GetByIdAsync(entity.Id);
         }
 
 
@@ -100,7 +194,10 @@ namespace eCommerce.Services
         {
             await _updateValidator.ValidateAndThrowAsync(request);
 
-            var entity = await _dbContext.Users.FindAsync(id);
+            var entity = await _dbContext.Users
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Id == id);
             if (entity == null)
             {
                 throw new KeyNotFoundException($"User with id {id} not found.");
@@ -120,10 +217,14 @@ namespace eCommerce.Services
             MapUpdateRequestToEntity(request, entity);
             entity.UpdatedAt = DateTime.UtcNow;
 
-            _dbContext.Users.Update(entity);
+            if (!string.IsNullOrWhiteSpace(request.Role))
+            {
+                await AssignRoleAsync(id, request.Role);
+            }
+
             await _dbContext.SaveChangesAsync();
 
-            return _mapper.Map<UserResponse>(entity);
+            return await GetByIdAsync(id);
         }
 
         public async Task<UserResponse> GetProfileAsync(int userId)
@@ -180,6 +281,7 @@ namespace eCommerce.Services
 
             var response = _mapper.Map<UserResponse>(entity);
             response.Role = entity.UserRoles.FirstOrDefault()?.Role.Name ?? string.Empty;
+            response.ProfileImageBase64 = entity.ProfileImageBase64;
             return response;
         }
 
@@ -226,8 +328,7 @@ namespace eCommerce.Services
 
             if (user != null)
             {
-                response = _mapper.Map<UserResponse>(user);
-                response.Role = user.UserRoles.First().Role.Name;
+                response = MapUserResponse(user);
             }
 
             return response;

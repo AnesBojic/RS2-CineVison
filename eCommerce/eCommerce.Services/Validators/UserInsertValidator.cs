@@ -30,6 +30,11 @@ namespace eCommerce.Services.Validators
                 .MinimumLength(6).WithMessage("Password must be at least 6 characters.")
                 .MaximumLength(100).WithMessage("Password cannot exceed 100 characters.");
 
+            RuleFor(x => x.Role)
+                .NotEmpty().WithMessage("Role is required.")
+                .Must(r => r is "Admin" or "Staff" or "Customer")
+                .WithMessage("Role must be Admin, Staff, or Customer.");
+
             RuleFor(x => x.PhoneNumber)
                 .MaximumLength(20).WithMessage("Phone number cannot exceed 20 characters.")
                 .When(x => !string.IsNullOrEmpty(x.PhoneNumber));

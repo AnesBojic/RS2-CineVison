@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using eCommerce.Model.Exceptions;
 using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Model.SearchObjects;
@@ -51,7 +52,19 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
             }
             if (!string.IsNullOrWhiteSpace(search.MovieState))
             {
-                query = query.Where(m => m.MovieState.Equals(search.MovieState, StringComparison.OrdinalIgnoreCase));
+                var stateFilter = search.MovieState.Trim();
+                if (stateFilter.Equals("Active", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(m => m.MovieState == nameof(ActiveMovieState));
+                }
+                else if (stateFilter.Equals("Draft", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(m => m.MovieState == nameof(DraftMovieState));
+                }
+                else
+                {
+                    query = query.Where(m => m.MovieState.Equals(stateFilter, StringComparison.OrdinalIgnoreCase));
+                }
             }
         }
 
@@ -110,6 +123,19 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
     {
         var entity = await _dbContext.Movies.FindAsync(id)
             ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
+
+        if (await _dbContext.Screenings.AnyAsync(s => s.MovieId == id))
+        {
+            throw new ClinetException(
+                "Cannot delete this movie because it has scheduled projections. Remove the projections first.");
+        }
+
+        if (entity.MovieState == nameof(ActiveMovieState))
+        {
+            await MovieState.GetMovieState(nameof(ActiveMovieState)).DeactivateAsync(id);
+            entity = await _dbContext.Movies.FindAsync(id)
+                ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
+        }
 
         var state = MovieState.GetMovieState(entity.MovieState);
         await state.DeleteAsync(id);
