@@ -1,4 +1,0 @@
-enum DiscountType{
-   percentage,
-  fixedAmount
-}
