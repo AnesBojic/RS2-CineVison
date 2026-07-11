@@ -1,9 +1,14 @@
-import 'package:ecommerce_desktop/layouts/master_screen.dart';
-import 'package:ecommerce_desktop/models/search_result.dart';
+import 'dart:convert';
+
+import 'package:ecommerce_desktop/core/theme/app_theme.dart';
+import 'package:ecommerce_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:ecommerce_desktop/models/user.dart';
+import 'package:ecommerce_desktop/providers/notification_provider.dart';
 import 'package:ecommerce_desktop/providers/user_provider.dart';
-import 'package:ecommerce_desktop/screens/user_details_screen.dart';
+import 'package:ecommerce_desktop/utils/api_client_exception.dart';
+import 'package:ecommerce_desktop/utils/image_utils.dart';
 import 'package:ecommerce_desktop/utils/utils_widgets.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,376 +21,368 @@ class UserList extends StatefulWidget {
 
 class _UserListState extends State<UserList> {
   late UserProvider _userProvider;
-  SearchResult<User>? result;
-  bool isLoading = true;
-
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _usernameController = TextEditingController();
+  List<User> _users = [];
+  bool _loading = true;
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _userProvider = context.read<UserProvider>();
-    initTable();
+    _load();
   }
 
-  Future<void> initTable() async {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
     try {
-      var data = await _userProvider.get(filter: {});
+      final filter = <String, dynamic>{'pageSize': 50};
+      if (_searchController.text.isNotEmpty) filter['name'] = _searchController.text;
+      final data = await _userProvider.get(filter: filter);
+      if (!mounted) return;
       setState(() {
-        result = data;
-        isLoading = false;
+        _users = data.items ?? [];
+        _loading = false;
       });
     } on Exception catch (e) {
-      alertBox(context, 'Error', e.toString());
+      if (mounted) {
+        setState(() => _loading = false);
+        alertBox(context, 'Error', e.toString());
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return MasterScreen(
-      title: "Users",
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildPageHeader(theme),
-            const SizedBox(height: 20),
-            _buildSearchCard(theme),
-            const SizedBox(height: 16),
-            if (isLoading)
-              const Expanded(
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else
-              _buildTable(theme),
+    return ManagePageLayout(
+      title: 'Manage Users',
+      isLoading: _loading,
+      toolbar: Row(
+        children: [
+          SearchField(
+            controller: _searchController,
+            hint: 'Search users...',
+            onSubmitted: (_) => _load(),
+          ),
+          const SizedBox(width: 10),
+          PrimaryButton(label: 'Add User', onPressed: () => _showUserDialog()),
+        ],
+      ),
+      child: DataCard(
+        emptyMessage: _users.isEmpty ? 'No users found' : null,
+        child: StyledDataTable(
+          columns: const [
+            DataColumn(label: Text('Name')),
+            DataColumn(label: Text('Email')),
+            DataColumn(label: Text('Role')),
+            DataColumn(label: Text('Date Created')),
+            DataColumn(label: Text('Date Modified')),
+            DataColumn(label: Text('Actions')),
           ],
+          rows: _users.map(_buildRow).toList(),
         ),
       ),
     );
   }
 
-  Widget _buildPageHeader(ThemeData theme) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(Icons.people_alt_outlined,
-                  color: theme.colorScheme.onPrimaryContainer, size: 28),
-            ),
-            const SizedBox(width: 14),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('User Management',
-                    style: theme.textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                Text('Manage system users and their access',
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.outline)),
-              ],
-            ),
-          ],
+  DataRow _buildRow(User u) {
+    final fullName = '${u.firstName ?? ''} ${u.lastName ?? ''}'.trim();
+    return DataRow(cells: [
+      DataCell(Row(children: [
+        CircleAvatar(
+          radius: 16,
+          backgroundColor: AppColors.inputFill,
+          child: Text(
+            _initials(u.firstName, u.lastName),
+            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+          ),
         ),
-        FilledButton.icon(
-          onPressed: () async {
-            final refresh = await Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const UserDetailsScreen(user: null),
-              ),
-            );
-            if (refresh == "reload") initTable();
-          },
-          icon: const Icon(Icons.person_add_outlined),
-          label: const Text("Add User"),
+        const SizedBox(width: 12),
+        Text(fullName.isEmpty ? '—' : fullName, style: const TextStyle(fontWeight: FontWeight.w500)),
+      ])),
+      DataCell(Text(u.email ?? '—')),
+      DataCell(RoleBadge(role: (u.role?.isNotEmpty == true) ? u.role! : 'Customer')),
+      DataCell(Text(formatDate(u.createdAt))),
+      DataCell(Text(formatDate(u.updatedAt))),
+      DataCell(Row(children: [
+        ActionIconButton(
+          icon: Icons.edit_outlined,
+          color: AppColors.blue,
+          onPressed: () => _showUserDialog(user: u),
         ),
-      ],
-    );
+        const SizedBox(width: 8),
+        ActionIconButton(
+          icon: Icons.mail_outline,
+          color: AppColors.green,
+          onPressed: () => _showEmailDialog(u),
+        ),
+        const SizedBox(width: 8),
+        ActionIconButton(
+          icon: Icons.delete_outline,
+          color: AppColors.primary,
+          onPressed: () => _delete(u),
+        ),
+      ])),
+    ]);
   }
 
-  Widget _buildSearchCard(ThemeData theme) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: "Search by name",
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                  isDense: true,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: _usernameController,
-                decoration: InputDecoration(
-                  labelText: "Search by username",
-                  prefixIcon: const Icon(Icons.alternate_email),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                  isDense: true,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton.icon(
-              onPressed: () async {
-                try {
-                  setState(() => isLoading = true);
-                  var data = await _userProvider.get(filter: {
-                    "name": _nameController.text,
-                    "username": _usernameController.text,
-                  });
-                  setState(() {
-                    result = data;
-                    isLoading = false;
-                  });
-                } on Exception catch (e) {
-                  setState(() => isLoading = false);
-                  alertBox(context, 'Error', e.toString());
-                }
-              },
-              icon: const Icon(Icons.search),
-              label: const Text("Search"),
-            ),
-          ],
-        ),
-      ),
-    );
+  Future<void> _delete(User u) async {
+    final ok = await confirmDelete(context, 'Delete ${u.firstName}?');
+    if (ok != true || !mounted) return;
+    try {
+      await _userProvider.remove(u.id!);
+      showAppSnackBar(context, 'User deleted');
+      _load();
+    } on Exception catch (e) {
+      if (mounted) alertBox(context, 'Error', e.toString());
+    }
   }
 
-  Expanded _buildTable(ThemeData theme) {
-    final users = result?.items ?? [];
-
-    if (users.isEmpty) {
-      return Expanded(
-        child: Center(
+  Future<void> _showEmailDialog(User u) async {
+    final subjectCtrl = TextEditingController();
+    final bodyCtrl = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.cardBorder),
+        ),
+        title: Text('Email ${u.firstName}', style: const TextStyle(color: AppColors.textPrimary)),
+        content: SizedBox(
+          width: 420,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.people_outline,
-                  size: 64, color: theme.colorScheme.outline),
+              TextField(controller: subjectCtrl, decoration: const InputDecoration(labelText: 'Subject')),
               const SizedBox(height: 12),
-              Text('No users found',
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(color: theme.colorScheme.outline)),
+              TextField(
+                controller: bodyCtrl,
+                maxLines: 4,
+                decoration: const InputDecoration(labelText: 'Message'),
+              ),
             ],
           ),
         ),
-      );
-    }
-
-    return Expanded(
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        clipBehavior: Clip.antiAlias,
-        child: SingleChildScrollView(
-          child: DataTable(
-            headingRowColor: WidgetStateProperty.all(
-                theme.colorScheme.primaryContainer.withValues(alpha: 0.5)),
-            headingTextStyle: theme.textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface),
-            dataRowMinHeight: 56,
-            dataRowMaxHeight: 56,
-            dividerThickness: 0.5,
-            columnSpacing: 24,
-            columns: const [
-              DataColumn(label: Text("User")),
-              DataColumn(label: Text("Username")),
-              DataColumn(label: Text("Email")),
-              DataColumn(label: Text("Role")),
-              DataColumn(label: Text("Status")),
-              DataColumn(label: Text("Actions")),
-            ],
-            rows: users.map((e) {
-              final fullName =
-                  '${e.firstName ?? ''} ${e.lastName ?? ''}'.trim();
-              final initials = _initials(e.firstName, e.lastName);
-              return DataRow(
-                onSelectChanged: (value) async {
-                  final refresh = await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => UserDetailsScreen(user: e),
-                    ),
-                  );
-                  if (refresh == "reload") initTable();
-                },
-                cells: [
-                  DataCell(
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor:
-                              theme.colorScheme.primaryContainer,
-                          child: Text(
-                            initials,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(fullName.isEmpty ? '—' : fullName),
-                      ],
-                    ),
-                  ),
-                  DataCell(Text(e.username ?? '—')),
-                  DataCell(Text(e.email ?? '—')),
-                  DataCell(_buildRoleChip(e.role, theme)),
-                  DataCell(_buildStatusChip(e.isActive, theme)),
-                  DataCell(
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: "Edit",
-                          icon: Icon(Icons.edit_outlined,
-                              color: theme.colorScheme.primary),
-                          onPressed: () async {
-                            final refresh =
-                                await Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    UserDetailsScreen(user: e),
-                              ),
-                            );
-                            if (refresh == "reload") initTable();
-                          },
-                        ),
-                        IconButton(
-                          tooltip: "Delete",
-                          icon: Icon(Icons.delete_outline,
-                              color: theme.colorScheme.error),
-                          onPressed: () => _confirmDelete(e, theme),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRoleChip(String? role, ThemeData theme) {
-    if (role == null || role.isEmpty) return const Text('—');
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        role,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: theme.colorScheme.onSecondaryContainer,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(bool? isActive, ThemeData theme) {
-    final active = isActive ?? false;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: active
-            ? Colors.green.shade100
-            : theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            active ? Icons.check_circle_outline : Icons.cancel_outlined,
-            size: 14,
-            color: active ? Colors.green.shade700 : theme.colorScheme.error,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            active ? 'Active' : 'Inactive',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: active
-                  ? Colors.green.shade700
-                  : theme.colorScheme.error,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _confirmDelete(User e, ThemeData theme) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded,
-                color: theme.colorScheme.error),
-            const SizedBox(width: 8),
-            const Text("Delete User"),
-          ],
-        ),
-        content: Text(
-            "Are you sure you want to delete ${e.firstName ?? 'this user'}? This action cannot be undone."),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: theme.colorScheme.error),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
             onPressed: () async {
               try {
-                await _userProvider.remove(e.id!);
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text("User deleted successfully")),
-                );
-                Navigator.pop(context);
-                initTable();
-              } on Exception catch (ex) {
-                alertBoxMoveBack(context, "Error", ex.toString());
+                await _userProvider.sendEmail(u.id!, subjectCtrl.text, bodyCtrl.text);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  showAppSnackBar(this.context, 'Email sent');
+                  context.read<NotificationProvider>().refresh();
+                }
+              } on Exception catch (e) {
+                if (context.mounted) alertBox(context, 'Error', e.toString());
               }
             },
-            child: const Text("Delete"),
+            child: const Text('Send'),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showUserDialog({User? user}) async {
+    User? fullUser = user;
+    if (user?.id != null) {
+      try {
+        fullUser = await _userProvider.getById(user!.id!);
+      } on Exception catch (e) {
+        if (mounted) alertBox(context, 'Error', 'Could not load user: $e');
+        return;
+      }
+    }
+
+    if (!mounted) return;
+
+    final firstCtrl = TextEditingController(text: fullUser?.firstName ?? '');
+    final lastCtrl = TextEditingController(text: fullUser?.lastName ?? '');
+    final emailCtrl = TextEditingController(text: fullUser?.email ?? '');
+    final usernameCtrl = TextEditingController(text: fullUser?.username ?? '');
+    final phoneCtrl = TextEditingController(text: fullUser?.phoneNumber ?? '');
+    final passwordCtrl = TextEditingController();
+    String selectedRole = (fullUser?.role?.isNotEmpty == true) ? fullUser!.role! : 'Customer';
+    bool isActive = fullUser?.isActive ?? true;
+    String? profileImageBase64 = fullUser?.profileImageBase64;
+    bool submitting = false;
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => FormDialogShell(
+          title: user == null ? 'Add New User' : 'Edit User',
+          submitLabel: user == null ? 'Add User' : 'Save',
+          isSubmitting: submitting,
+          maxWidth: 560,
+          onSubmit: () async {
+            if (firstCtrl.text.trim().isEmpty || lastCtrl.text.trim().isEmpty) {
+              alertBox(context, 'Validation', 'First and last name are required');
+              return;
+            }
+            if (emailCtrl.text.trim().isEmpty) {
+              alertBox(context, 'Validation', 'Email is required');
+              return;
+            }
+            if (user == null && passwordCtrl.text.length < 6) {
+              alertBox(context, 'Validation', 'Password must be at least 6 characters');
+              return;
+            }
+
+            setDialogState(() => submitting = true);
+            try {
+              if (user == null) {
+                await _userProvider.insert({
+                  'firstName': firstCtrl.text.trim(),
+                  'lastName': lastCtrl.text.trim(),
+                  'email': emailCtrl.text.trim(),
+                  'username': usernameCtrl.text.trim(),
+                  'password': passwordCtrl.text,
+                  'phoneNumber': phoneCtrl.text.trim(),
+                  'role': selectedRole,
+                  'isActive': isActive,
+                  'profileImageBase64': profileImageBase64,
+                });
+              } else {
+                await _userProvider.update(user.id!, {
+                  'firstName': firstCtrl.text.trim(),
+                  'lastName': lastCtrl.text.trim(),
+                  'email': emailCtrl.text.trim(),
+                  'username': usernameCtrl.text.trim(),
+                  'phoneNumber': phoneCtrl.text.trim(),
+                  'role': selectedRole,
+                  'isActive': isActive,
+                  'profileImageBase64': profileImageBase64,
+                });
+              }
+              if (context.mounted) {
+                Navigator.pop(context);
+                showAppSnackBar(this.context, user == null ? 'User added' : 'User updated');
+                _load();
+              }
+            } on ApiClientException catch (e) {
+              setDialogState(() => submitting = false);
+              if (context.mounted) showAppSnackBar(context, e.message, isError: true);
+            } on Exception catch (e) {
+              setDialogState(() => submitting = false);
+              if (context.mounted) alertBox(context, 'Error', e.toString());
+            }
+          },
+          child: Column(
+            children: [
+              Center(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () async {
+                        final result = await FilePicker.pickFiles(
+                          type: FileType.image,
+                          withData: true,
+                        );
+                        if (result != null && result.files.single.bytes != null) {
+                          final compressed =
+                              await preparePosterBase64(result.files.single.bytes!);
+                          setDialogState(() => profileImageBase64 = compressed);
+                        }
+                      },
+                      child: CircleAvatar(
+                        radius: 36,
+                        backgroundColor: AppColors.inputFill,
+                        backgroundImage: profileImageBase64 != null &&
+                                profileImageBase64!.isNotEmpty
+                            ? MemoryImage(base64Decode(profileImageBase64!))
+                            : null,
+                        child: profileImageBase64 == null || profileImageBase64!.isEmpty
+                            ? const Icon(Icons.person, size: 32, color: AppColors.textSecondary)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextButton(
+                      onPressed: () async {
+                        final result = await FilePicker.pickFiles(
+                          type: FileType.image,
+                          withData: true,
+                        );
+                        if (result != null && result.files.single.bytes != null) {
+                          final compressed =
+                              await preparePosterBase64(result.files.single.bytes!);
+                          setDialogState(() => profileImageBase64 = compressed);
+                        }
+                      },
+                      child: const Text('Upload profile photo'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: firstCtrl,
+                    decoration: const InputDecoration(labelText: 'First Name'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: lastCtrl,
+                    decoration: const InputDecoration(labelText: 'Last Name'),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailCtrl,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: usernameCtrl,
+                decoration: const InputDecoration(labelText: 'Username'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneCtrl,
+                decoration: const InputDecoration(labelText: 'Phone Number'),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: selectedRole,
+                dropdownColor: AppColors.card,
+                decoration: const InputDecoration(labelText: 'Role'),
+                items: userRoles
+                    .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                    .toList(),
+                onChanged: (v) => setDialogState(() => selectedRole = v ?? 'Customer'),
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active account'),
+                value: isActive,
+                onChanged: (v) => setDialogState(() => isActive = v),
+              ),
+              if (user == null) ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passwordCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

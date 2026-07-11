@@ -14,13 +14,14 @@ User _$UserFromJson(Map<String, dynamic> json) => User(
   username: json['username'] as String?,
   role: json['role'] as String?,
   isActive: json['isActive'] as bool?,
+  phoneNumber: json['phoneNumber'] as String?,
+  profileImageBase64: json['profileImageBase64'] as String?,
   createdAt: json['createdAt'] == null
       ? null
       : DateTime.parse(json['createdAt'] as String),
   lastLoginAt: json['lastLoginAt'] == null
       ? null
       : DateTime.parse(json['lastLoginAt'] as String),
-  phoneNumber: json['phoneNumber'] as String?,
   updatedAt: json['updatedAt'] == null
       ? null
       : DateTime.parse(json['updatedAt'] as String),
@@ -34,8 +35,9 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
   'username': instance.username,
   'role': instance.role,
   'isActive': instance.isActive,
+  'phoneNumber': instance.phoneNumber,
+  'profileImageBase64': instance.profileImageBase64,
   'createdAt': instance.createdAt?.toIso8601String(),
   'lastLoginAt': instance.lastLoginAt?.toIso8601String(),
-  'phoneNumber': instance.phoneNumber,
   'updatedAt': instance.updatedAt?.toIso8601String(),
 };

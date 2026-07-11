@@ -71,12 +71,9 @@ abstract class BaseProvider<T> with ChangeNotifier {
     var jsonRequest = jsonEncode(request);
     var response = await http.post(uri, headers: headers, body: jsonRequest);
 
-    if (isValidResponse(response)) {
-      var data = jsonDecode(response.body);
-      return fromJson(data);
-    } else {
-      throw new Exception("Unknown error");
-    }
+    validateResponse(response);
+    var data = jsonDecode(response.body);
+    return fromJson(data);
   }
 
   Future<T> update(int id, [dynamic request]) async {
@@ -87,12 +84,9 @@ abstract class BaseProvider<T> with ChangeNotifier {
     var jsonRequest = jsonEncode(request);
     var response = await http.put(uri, headers: headers, body: jsonRequest);
 
-    if (isValidResponse(response)) {
-      var data = jsonDecode(response.body);
-      return fromJson(data);
-    } else {
-      throw new Exception("Unknown error");
-    }
+    validateResponse(response);
+    var data = jsonDecode(response.body);
+    return fromJson(data);
   }
 
   Future remove(int id) async {
@@ -102,11 +96,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
     var response = await http.delete(uri, headers: headers);
 
-    if (isValidResponse(response)) {
-      return;
-    } else {
-      throw new Exception("Unknown error");
-    }
+    validateResponse(response);
   }
 
   T fromJson(data) {

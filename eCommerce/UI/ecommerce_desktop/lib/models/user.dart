@@ -11,9 +11,10 @@ class User {
   final String? username;
   final String? role;
   final bool? isActive;
+  final String? phoneNumber;
+  final String? profileImageBase64;
   final DateTime? createdAt;
   final DateTime? lastLoginAt;
-  final String? phoneNumber;
   final DateTime? updatedAt;
 
   User({
@@ -24,9 +25,10 @@ class User {
     this.username,
     this.role,
     this.isActive,
+    this.phoneNumber,
+    this.profileImageBase64,
     this.createdAt,
     this.lastLoginAt,
-    this.phoneNumber,
     this.updatedAt,
   });
 
@@ -34,3 +36,5 @@ class User {
 
   Map<String, dynamic> toJson() => _$UserToJson(this);
 }
+
+const userRoles = ['Admin', 'Staff', 'Customer'];
