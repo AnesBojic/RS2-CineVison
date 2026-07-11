@@ -434,6 +434,104 @@ namespace eCommerce.Services.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Reservations");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CustomerEmail = "customer1@gmail.com",
+                            CustomerName = "Dave Customer",
+                            PaymentDate = new DateTime(2026, 6, 15, 14, 31, 0, 0, DateTimeKind.Utc),
+                            PaymentTransactionId = "pi_seed_001",
+                            ReservationDate = new DateTime(2026, 6, 15, 14, 30, 0, 0, DateTimeKind.Utc),
+                            ReservationNumber = "R-SEED-001",
+                            ScreeningId = 1,
+                            Status = 2,
+                            TotalAmount = 25.50m,
+                            UserId = 4
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CustomerEmail = "customer2@gmail.com",
+                            CustomerName = "Eve Customer",
+                            PaymentDate = new DateTime(2026, 6, 20, 10, 16, 0, 0, DateTimeKind.Utc),
+                            PaymentTransactionId = "pi_seed_002",
+                            ReservationDate = new DateTime(2026, 6, 20, 10, 15, 0, 0, DateTimeKind.Utc),
+                            ReservationNumber = "R-SEED-002",
+                            ScreeningId = 1,
+                            Status = 2,
+                            TotalAmount = 17.00m,
+                            UserId = 5
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CustomerEmail = "customer1@gmail.com",
+                            CustomerName = "Dave Customer",
+                            PaymentDate = new DateTime(2026, 6, 22, 18, 46, 0, 0, DateTimeKind.Utc),
+                            PaymentTransactionId = "pi_seed_003",
+                            ReservationDate = new DateTime(2026, 6, 22, 18, 45, 0, 0, DateTimeKind.Utc),
+                            ReservationNumber = "R-SEED-003",
+                            ScreeningId = 3,
+                            Status = 2,
+                            TotalAmount = 21.00m,
+                            UserId = 4
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CustomerEmail = "customer2@gmail.com",
+                            CustomerName = "Eve Customer",
+                            PaymentDate = new DateTime(2026, 7, 1, 11, 1, 0, 0, DateTimeKind.Utc),
+                            PaymentTransactionId = "pi_seed_004",
+                            ReservationDate = new DateTime(2026, 7, 1, 11, 0, 0, 0, DateTimeKind.Utc),
+                            ReservationNumber = "R-SEED-004",
+                            ScreeningId = 4,
+                            Status = 2,
+                            TotalAmount = 36.00m,
+                            UserId = 5
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CustomerEmail = "customer1@gmail.com",
+                            CustomerName = "Dave Customer",
+                            PaymentDate = new DateTime(2026, 7, 3, 16, 21, 0, 0, DateTimeKind.Utc),
+                            PaymentTransactionId = "pi_seed_005",
+                            ReservationDate = new DateTime(2026, 7, 3, 16, 20, 0, 0, DateTimeKind.Utc),
+                            ReservationNumber = "R-SEED-005",
+                            ScreeningId = 5,
+                            Status = 2,
+                            TotalAmount = 40.00m,
+                            UserId = 4
+                        },
+                        new
+                        {
+                            Id = 6,
+                            CustomerEmail = "customer2@gmail.com",
+                            CustomerName = "Eve Customer",
+                            PaymentDate = new DateTime(2026, 6, 28, 20, 6, 0, 0, DateTimeKind.Utc),
+                            PaymentTransactionId = "pi_seed_006",
+                            ReservationDate = new DateTime(2026, 6, 28, 20, 5, 0, 0, DateTimeKind.Utc),
+                            ReservationNumber = "R-SEED-006",
+                            ScreeningId = 2,
+                            Status = 2,
+                            TotalAmount = 34.00m,
+                            UserId = 5
+                        },
+                        new
+                        {
+                            Id = 7,
+                            CustomerEmail = "customer1@gmail.com",
+                            CustomerName = "Dave Customer",
+                            ReservationDate = new DateTime(2026, 6, 30, 9, 40, 0, 0, DateTimeKind.Utc),
+                            ReservationNumber = "R-SEED-007",
+                            ScreeningId = 2,
+                            Status = 1,
+                            TotalAmount = 8.50m,
+                            UserId = 4
+                        });
                 });
 
             modelBuilder.Entity("eCommerce.Services.Database.ReservationSeat", b =>
@@ -466,6 +564,176 @@ namespace eCommerce.Services.Migrations
                         .IsUnique();
 
                     b.ToTable("ReservationSeats");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Price = 8.50m,
+                            ReservationId = 1,
+                            ScreeningId = 1,
+                            SeatId = 1
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Price = 8.50m,
+                            ReservationId = 1,
+                            ScreeningId = 1,
+                            SeatId = 2
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Price = 8.50m,
+                            ReservationId = 1,
+                            ScreeningId = 1,
+                            SeatId = 3
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Price = 8.50m,
+                            ReservationId = 2,
+                            ScreeningId = 1,
+                            SeatId = 4
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Price = 8.50m,
+                            ReservationId = 2,
+                            ScreeningId = 1,
+                            SeatId = 5
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Price = 7.00m,
+                            ReservationId = 3,
+                            ScreeningId = 3,
+                            SeatId = 20
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Price = 7.00m,
+                            ReservationId = 3,
+                            ScreeningId = 3,
+                            SeatId = 21
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Price = 7.00m,
+                            ReservationId = 3,
+                            ScreeningId = 3,
+                            SeatId = 22
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Price = 9.00m,
+                            ReservationId = 4,
+                            ScreeningId = 4,
+                            SeatId = 41
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Price = 9.00m,
+                            ReservationId = 4,
+                            ScreeningId = 4,
+                            SeatId = 42
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Price = 9.00m,
+                            ReservationId = 4,
+                            ScreeningId = 4,
+                            SeatId = 43
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Price = 9.00m,
+                            ReservationId = 4,
+                            ScreeningId = 4,
+                            SeatId = 44
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Price = 10.00m,
+                            ReservationId = 5,
+                            ScreeningId = 5,
+                            SeatId = 47
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Price = 10.00m,
+                            ReservationId = 5,
+                            ScreeningId = 5,
+                            SeatId = 48
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Price = 10.00m,
+                            ReservationId = 5,
+                            ScreeningId = 5,
+                            SeatId = 49
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Price = 10.00m,
+                            ReservationId = 5,
+                            ScreeningId = 5,
+                            SeatId = 50
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Price = 8.50m,
+                            ReservationId = 6,
+                            ScreeningId = 2,
+                            SeatId = 9
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Price = 8.50m,
+                            ReservationId = 6,
+                            ScreeningId = 2,
+                            SeatId = 10
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Price = 8.50m,
+                            ReservationId = 6,
+                            ScreeningId = 2,
+                            SeatId = 11
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Price = 8.50m,
+                            ReservationId = 6,
+                            ScreeningId = 2,
+                            SeatId = 12
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Price = 8.50m,
+                            ReservationId = 7,
+                            ScreeningId = 2,
+                            SeatId = 13
+                        });
                 });
 
             modelBuilder.Entity("eCommerce.Services.Database.Review", b =>
@@ -1464,6 +1732,45 @@ namespace eCommerce.Services.Migrations
                         });
                 });
 
+            modelBuilder.Entity("eCommerce.Services.Database.UserNotification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserNotifications");
+                });
+
             modelBuilder.Entity("eCommerce.Services.Database.UserRole", b =>
                 {
                     b.Property<int>("Id")
@@ -1652,6 +1959,17 @@ namespace eCommerce.Services.Migrations
                         .IsRequired();
 
                     b.Navigation("Hall");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.UserNotification", b =>
+                {
+                    b.HasOne("eCommerce.Services.Database.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("eCommerce.Services.Database.UserRole", b =>

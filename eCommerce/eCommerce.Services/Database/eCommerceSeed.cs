@@ -16,6 +16,8 @@ namespace eCommerce.Services.Database
             SeedUsers(modelBuilder);
             SeedUserRoles(modelBuilder);
             SeedReviews(modelBuilder);
+            SeedReservations(modelBuilder);
+            SeedReservationSeats(modelBuilder);
         }
 
         private static readonly DateTime SeedDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -148,6 +150,146 @@ namespace eCommerce.Services.Database
                 new { Id = 4, UserId = 4, MovieId = 2, Rating = 3, Comment = (string?)"A charming but slight comedy.", CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 5, UserId = 5, MovieId = 3, Rating = 3, Comment = (string?)"Creepy atmosphere, slow middle.", CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 6, UserId = 5, MovieId = 4, Rating = 5, Comment = (string?)"A heartfelt cross-country journey.", CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+            );
+        }
+
+        private void SeedReservations(ModelBuilder modelBuilder)
+        {
+            // customer1 (4) and customer2 (5) purchased tickets across screenings for analytics testing.
+            // Paid reservations drive revenue; Confirmed counts toward tickets/occupancy without revenue.
+            modelBuilder.Entity<Reservation>().HasData(
+                new
+                {
+                    Id = 1,
+                    ReservationNumber = "R-SEED-001",
+                    ReservationDate = new DateTime(2026, 6, 15, 14, 30, 0, DateTimeKind.Utc),
+                    Status = ReservationStatus.Paid,
+                    TotalAmount = 25.50m,
+                    UserId = 4,
+                    ScreeningId = 1,
+                    CustomerName = (string?)"Dave Customer",
+                    CustomerEmail = (string?)"customer1@gmail.com",
+                    PaymentTransactionId = (string?)"pi_seed_001",
+                    PaymentDate = (DateTime?)new DateTime(2026, 6, 15, 14, 31, 0, DateTimeKind.Utc)
+                },
+                new
+                {
+                    Id = 2,
+                    ReservationNumber = "R-SEED-002",
+                    ReservationDate = new DateTime(2026, 6, 20, 10, 15, 0, DateTimeKind.Utc),
+                    Status = ReservationStatus.Paid,
+                    TotalAmount = 17.00m,
+                    UserId = 5,
+                    ScreeningId = 1,
+                    CustomerName = (string?)"Eve Customer",
+                    CustomerEmail = (string?)"customer2@gmail.com",
+                    PaymentTransactionId = (string?)"pi_seed_002",
+                    PaymentDate = (DateTime?)new DateTime(2026, 6, 20, 10, 16, 0, DateTimeKind.Utc)
+                },
+                new
+                {
+                    Id = 3,
+                    ReservationNumber = "R-SEED-003",
+                    ReservationDate = new DateTime(2026, 6, 22, 18, 45, 0, DateTimeKind.Utc),
+                    Status = ReservationStatus.Paid,
+                    TotalAmount = 21.00m,
+                    UserId = 4,
+                    ScreeningId = 3,
+                    CustomerName = (string?)"Dave Customer",
+                    CustomerEmail = (string?)"customer1@gmail.com",
+                    PaymentTransactionId = (string?)"pi_seed_003",
+                    PaymentDate = (DateTime?)new DateTime(2026, 6, 22, 18, 46, 0, DateTimeKind.Utc)
+                },
+                new
+                {
+                    Id = 4,
+                    ReservationNumber = "R-SEED-004",
+                    ReservationDate = new DateTime(2026, 7, 1, 11, 0, 0, DateTimeKind.Utc),
+                    Status = ReservationStatus.Paid,
+                    TotalAmount = 36.00m,
+                    UserId = 5,
+                    ScreeningId = 4,
+                    CustomerName = (string?)"Eve Customer",
+                    CustomerEmail = (string?)"customer2@gmail.com",
+                    PaymentTransactionId = (string?)"pi_seed_004",
+                    PaymentDate = (DateTime?)new DateTime(2026, 7, 1, 11, 1, 0, DateTimeKind.Utc)
+                },
+                new
+                {
+                    Id = 5,
+                    ReservationNumber = "R-SEED-005",
+                    ReservationDate = new DateTime(2026, 7, 3, 16, 20, 0, DateTimeKind.Utc),
+                    Status = ReservationStatus.Paid,
+                    TotalAmount = 40.00m,
+                    UserId = 4,
+                    ScreeningId = 5,
+                    CustomerName = (string?)"Dave Customer",
+                    CustomerEmail = (string?)"customer1@gmail.com",
+                    PaymentTransactionId = (string?)"pi_seed_005",
+                    PaymentDate = (DateTime?)new DateTime(2026, 7, 3, 16, 21, 0, DateTimeKind.Utc)
+                },
+                new
+                {
+                    Id = 6,
+                    ReservationNumber = "R-SEED-006",
+                    ReservationDate = new DateTime(2026, 6, 28, 20, 5, 0, DateTimeKind.Utc),
+                    Status = ReservationStatus.Paid,
+                    TotalAmount = 34.00m,
+                    UserId = 5,
+                    ScreeningId = 2,
+                    CustomerName = (string?)"Eve Customer",
+                    CustomerEmail = (string?)"customer2@gmail.com",
+                    PaymentTransactionId = (string?)"pi_seed_006",
+                    PaymentDate = (DateTime?)new DateTime(2026, 6, 28, 20, 6, 0, DateTimeKind.Utc)
+                },
+                new
+                {
+                    Id = 7,
+                    ReservationNumber = "R-SEED-007",
+                    ReservationDate = new DateTime(2026, 6, 30, 9, 40, 0, DateTimeKind.Utc),
+                    Status = ReservationStatus.Confirmed,
+                    TotalAmount = 8.50m,
+                    UserId = 4,
+                    ScreeningId = 2,
+                    CustomerName = (string?)"Dave Customer",
+                    CustomerEmail = (string?)"customer1@gmail.com",
+                    PaymentTransactionId = (string?)null,
+                    PaymentDate = (DateTime?)null
+                }
+            );
+        }
+
+        private void SeedReservationSeats(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ReservationSeat>().HasData(
+                // R-SEED-001 — Edge of Tomorrow, 18:00 screening
+                new { Id = 1, ReservationId = 1, SeatId = 1, ScreeningId = 1, Price = 8.50m },
+                new { Id = 2, ReservationId = 1, SeatId = 2, ScreeningId = 1, Price = 8.50m },
+                new { Id = 3, ReservationId = 1, SeatId = 3, ScreeningId = 1, Price = 8.50m },
+                // R-SEED-002 — same screening, different seats
+                new { Id = 4, ReservationId = 2, SeatId = 4, ScreeningId = 1, Price = 8.50m },
+                new { Id = 5, ReservationId = 2, SeatId = 5, ScreeningId = 1, Price = 8.50m },
+                // R-SEED-003 — The Last Laugh, afternoon slot
+                new { Id = 6, ReservationId = 3, SeatId = 20, ScreeningId = 3, Price = 7.00m },
+                new { Id = 7, ReservationId = 3, SeatId = 21, ScreeningId = 3, Price = 7.00m },
+                new { Id = 8, ReservationId = 3, SeatId = 22, ScreeningId = 3, Price = 7.00m },
+                // R-SEED-004 — Silent Shadows, Hall B
+                new { Id = 9, ReservationId = 4, SeatId = 41, ScreeningId = 4, Price = 9.00m },
+                new { Id = 10, ReservationId = 4, SeatId = 42, ScreeningId = 4, Price = 9.00m },
+                new { Id = 11, ReservationId = 4, SeatId = 43, ScreeningId = 4, Price = 9.00m },
+                new { Id = 12, ReservationId = 4, SeatId = 44, ScreeningId = 4, Price = 9.00m },
+                // R-SEED-005 — Final Strike
+                new { Id = 13, ReservationId = 5, SeatId = 47, ScreeningId = 5, Price = 10.00m },
+                new { Id = 14, ReservationId = 5, SeatId = 48, ScreeningId = 5, Price = 10.00m },
+                new { Id = 15, ReservationId = 5, SeatId = 49, ScreeningId = 5, Price = 10.00m },
+                new { Id = 16, ReservationId = 5, SeatId = 50, ScreeningId = 5, Price = 10.00m },
+                // R-SEED-006 — Edge of Tomorrow, 21:00 screening (9 PM time slot)
+                new { Id = 17, ReservationId = 6, SeatId = 9, ScreeningId = 2, Price = 8.50m },
+                new { Id = 18, ReservationId = 6, SeatId = 10, ScreeningId = 2, Price = 8.50m },
+                new { Id = 19, ReservationId = 6, SeatId = 11, ScreeningId = 2, Price = 8.50m },
+                new { Id = 20, ReservationId = 6, SeatId = 12, ScreeningId = 2, Price = 8.50m },
+                // R-SEED-007 — unpaid hold on late screening
+                new { Id = 21, ReservationId = 7, SeatId = 13, ScreeningId = 2, Price = 8.50m }
             );
         }
     }
