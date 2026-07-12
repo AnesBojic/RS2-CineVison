@@ -32,6 +32,12 @@ namespace eCommerce.Services.Database
                 .HasIndex(s => new { s.HallId, s.RowLabel, s.SeatNumber })
                 .IsUnique();
 
+            modelBuilder.Entity<Seat>()
+                .HasOne(s => s.PartnerSeat)
+                .WithMany()
+                .HasForeignKey(s => s.PartnerSeatId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             // Screening relationships. Restrict deletes to avoid multiple cascade paths.
             modelBuilder.Entity<Screening>()
                 .HasOne(s => s.Movie)

@@ -15,7 +15,7 @@ namespace eCommerce.Services.Validators
                 .GreaterThan(0).WithMessage("Seat number must be greater than 0.");
 
             RuleFor(x => x.SeatType)
-                .InclusiveBetween(0, 1).WithMessage("Seat type must be 0 (Regular) or 1 (VIP).");
+                .Must(t => t is 0 or 2).WithMessage("Seat type must be 0 (Regular) or 2 (Couple).");
         }
     }
 }

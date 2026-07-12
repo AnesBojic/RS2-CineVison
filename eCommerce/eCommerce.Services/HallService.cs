@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using eCommerce.Model.Exceptions;
 using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Model.SearchObjects;
@@ -165,21 +166,127 @@ namespace eCommerce.Services
             return BuildResponse(hall, includeSeats: true);
         }
 
+        public async Task<HallResponse> UpdateSeatLayoutAsync(int hallId, HallSeatLayoutUpdateRequest request)
+        {
+            if (request.Seats == null || request.Seats.Count == 0)
+            {
+                throw new ClinetException("No seat layout was provided.");
+            }
+
+            var hall = await _dbContext.Halls
+                .Include(h => h.Seats)
+                .FirstOrDefaultAsync(h => h.Id == hallId)
+                ?? throw new KeyNotFoundException($"Hall with id {hallId} not found.");
+
+            var seats = hall.Seats.OrderBy(s => s.RowLabel).ThenBy(s => s.SeatNumber).ToList();
+            var byId = seats.ToDictionary(s => s.Id);
+            var rows = seats.GroupBy(s => s.RowLabel).ToDictionary(g => g.Key, g => g.OrderBy(s => s.SeatNumber).ToList());
+
+            // Clear existing couple links and reactivate partner seats.
+            foreach (var seat in seats)
+            {
+                seat.PartnerSeatId = null;
+                seat.IsActive = true;
+            }
+
+            var couplePrimaryIds = request.Seats
+                .Where(x => x.SeatType == (int)SeatType.Couple)
+                .Select(x => x.SeatId)
+                .ToHashSet();
+
+            foreach (var item in request.Seats)
+            {
+                if (!byId.TryGetValue(item.SeatId, out var seat))
+                {
+                    throw new ClinetException($"Seat {item.SeatId} does not belong to this hall.");
+                }
+
+                if (item.SeatType != 0 && item.SeatType != (int)SeatType.Couple)
+                {
+                    throw new ClinetException($"Invalid seat type for seat {seat.RowLabel}{seat.SeatNumber}. Use Regular or Couple only.");
+                }
+
+                if (item.SeatType == 1)
+                {
+                    item.SeatType = 0;
+                }
+
+                seat.SeatType = (SeatType)item.SeatType;
+                seat.PartnerSeatId = null;
+                seat.IsActive = true;
+            }
+
+            foreach (var item in request.Seats.Where(x => x.SeatType == (int)SeatType.Couple))
+            {
+                if (!byId.TryGetValue(item.SeatId, out var seat))
+                {
+                    continue;
+                }
+
+                if (!rows.TryGetValue(seat.RowLabel, out var rowSeats))
+                {
+                    throw new ClinetException($"Row {seat.RowLabel} was not found.");
+                }
+
+                var index = rowSeats.FindIndex(s => s.Id == seat.Id);
+                if (index < 0 || index >= rowSeats.Count - 1)
+                {
+                    throw new ClinetException(
+                        $"Seat {seat.RowLabel}{seat.SeatNumber} cannot be a couple seat — there is no seat to the right.");
+                }
+
+                var partner = rowSeats[index + 1];
+                if (couplePrimaryIds.Contains(partner.Id))
+                {
+                    throw new ClinetException(
+                        $"Seat {partner.RowLabel}{partner.SeatNumber} is already marked as a couple seat.");
+                }
+
+                seat.PartnerSeatId = partner.Id;
+                partner.IsActive = false;
+                partner.SeatType = SeatType.Regular;
+                partner.PartnerSeatId = null;
+            }
+
+            hall.UpdatedAt = DateTime.UtcNow;
+            await _dbContext.SaveChangesAsync();
+
+            return BuildResponse(hall, includeSeats: true);
+        }
+
         private HallResponse BuildResponse(Hall hall, bool includeSeats)
         {
             var response = _mapper.Map<HallResponse>(hall);
             response.ScreenTypeName = ScreenTypeDisplayName(hall.ScreenType);
             response.StatusName = hall.Status.ToString();
-            response.SeatCount = hall.Seats.Count;
-            response.Capacity = hall.Seats.Count;
+            response.SeatCount = hall.Seats.Count(s => s.IsActive);
+            response.Capacity = hall.Seats.Count(s => s.IsActive);
+            var rowGroups = hall.Seats.GroupBy(s => s.RowLabel).ToList();
+            response.RowCount = rowGroups.Count;
+            response.SeatsPerRow = rowGroups.Count > 0 ? rowGroups.Max(g => g.Count()) : 0;
             response.Seats = includeSeats
                 ? hall.Seats
                     .OrderBy(s => s.RowLabel)
                     .ThenBy(s => s.SeatNumber)
-                    .Select(s => _mapper.Map<SeatResponse>(s))
+                    .Select(MapSeatResponse)
                     .ToList()
                 : new List<SeatResponse>();
             return response;
+        }
+
+        private static SeatResponse MapSeatResponse(Seat s)
+        {
+            return new SeatResponse
+            {
+                Id = s.Id,
+                HallId = s.HallId,
+                RowLabel = s.RowLabel,
+                SeatNumber = s.SeatNumber,
+                SeatType = (int)s.SeatType,
+                PartnerSeatId = s.PartnerSeatId,
+                SpotsOccupied = s.SeatType == SeatType.Couple ? 2 : 1,
+                IsActive = s.IsActive,
+            };
         }
 
         private static string ScreenTypeDisplayName(ScreenType screenType) => screenType switch

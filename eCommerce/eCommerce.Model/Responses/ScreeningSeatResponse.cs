@@ -10,9 +10,17 @@ namespace eCommerce.Model.Responses
         public int HallId { get; set; }
         public string RowLabel { get; set; } = string.Empty;
         public int SeatNumber { get; set; }
-        /// <summary>0 = Regular, 1 = VIP.</summary>
+        /// <summary>0 = Regular, 2 = Couple.</summary>
         public int SeatType { get; set; }
+
+        public int? PartnerSeatId { get; set; }
+
+        /// <summary>How many grid spots this seat uses (2 for couple).</summary>
+        public int SpotsOccupied { get; set; } = 1;
+
         public bool IsTaken { get; set; }
+
+        /// <summary>Total price for this selection (2× base price for couple seats).</summary>
         public decimal Price { get; set; }
     }
 }

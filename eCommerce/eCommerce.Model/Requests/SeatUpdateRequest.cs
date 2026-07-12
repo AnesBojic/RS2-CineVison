@@ -10,7 +10,7 @@ namespace eCommerce.Model.Requests
 
         public int SeatNumber { get; set; }
 
-        /// <summary>0 = Regular, 1 = VIP.</summary>
+        /// <summary>0 = Regular, 2 = Couple.</summary>
         public int SeatType { get; set; } = 0;
 
         public bool IsActive { get; set; } = true;

@@ -17,6 +17,14 @@ namespace eCommerce.Services.Database
 
         public SeatType SeatType { get; set; } = SeatType.Regular;
 
+        /// <summary>
+        /// When <see cref="SeatType"/> is Couple, the adjacent seat blocked by this loveseat.
+        /// </summary>
+        public int? PartnerSeatId { get; set; }
+
+        [ForeignKey("PartnerSeatId")]
+        public Seat? PartnerSeat { get; set; }
+
         public bool IsActive { get; set; } = true;
 
         // Hall relationship

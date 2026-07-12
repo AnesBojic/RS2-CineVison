@@ -294,7 +294,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: StyledDataTable(
             columns: const [
               DataColumn(label: Text('Hall Name')),
-              DataColumn(label: Text('Capacity')),
+              DataColumn(label: Text('Layout')),
               DataColumn(label: Text('Screen Type')),
               DataColumn(label: Text('Status')),
               DataColumn(label: Text('Actions')),
@@ -314,7 +314,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(width: 10),
                   Text(h.name ?? '—', style: const TextStyle(fontWeight: FontWeight.w500)),
                 ])),
-                DataCell(Text('${h.capacity ?? h.seatCount ?? 0} seats')),
+                DataCell(Text(hallLayoutLabel(h))),
                 DataCell(Text(h.screenTypeName ?? '—')),
                 DataCell(StatusBadge(
                   label: h.statusName ?? 'Active',

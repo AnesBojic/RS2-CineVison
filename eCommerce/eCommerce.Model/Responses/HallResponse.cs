@@ -17,8 +17,14 @@ namespace eCommerce.Model.Responses
         public DateTime? UpdatedAt { get; set; }
         public int SeatCount { get; set; }
 
-        /// <summary>Total seating capacity of the hall (equal to <see cref="SeatCount"/>).</summary>
+        /// <summary>Total bookable seats in the hall.</summary>
         public int Capacity { get; set; }
+
+        /// <summary>Number of seat rows (A, B, C…).</summary>
+        public int RowCount { get; set; }
+
+        /// <summary>Number of seat columns per row.</summary>
+        public int SeatsPerRow { get; set; }
 
         public List<SeatResponse> Seats { get; set; } = new List<SeatResponse>();
     }

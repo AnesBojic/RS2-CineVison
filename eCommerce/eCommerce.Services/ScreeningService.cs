@@ -186,20 +186,44 @@ namespace eCommerce.Services
                 .ToListAsync();
 
             var taken = new HashSet<int>(takenSeatIds);
+            var seatsById = screening.Hall.Seats.ToDictionary(s => s.Id);
+
+            foreach (var takenId in takenSeatIds.ToList())
+            {
+                if (seatsById.TryGetValue(takenId, out var takenSeat) && takenSeat.PartnerSeatId.HasValue)
+                {
+                    taken.Add(takenSeat.PartnerSeatId.Value);
+                }
+
+                foreach (var seat in screening.Hall.Seats)
+                {
+                    if (seat.PartnerSeatId == takenId)
+                    {
+                        taken.Add(seat.Id);
+                    }
+                }
+            }
 
             return screening.Hall.Seats
                 .Where(s => s.IsActive)
                 .OrderBy(s => s.RowLabel)
                 .ThenBy(s => s.SeatNumber)
-                .Select(s => new ScreeningSeatResponse
+                .Select(s =>
                 {
-                    SeatId = s.Id,
-                    HallId = s.HallId,
-                    RowLabel = s.RowLabel,
-                    SeatNumber = s.SeatNumber,
-                    SeatType = (int)s.SeatType,
-                    IsTaken = taken.Contains(s.Id),
-                    Price = screening.BasePrice
+                    var spots = s.SeatType == SeatType.Couple ? 2 : 1;
+                    return new ScreeningSeatResponse
+                    {
+                        SeatId = s.Id,
+                        HallId = s.HallId,
+                        RowLabel = s.RowLabel,
+                        SeatNumber = s.SeatNumber,
+                        SeatType = (int)s.SeatType,
+                        PartnerSeatId = s.PartnerSeatId,
+                        SpotsOccupied = spots,
+                        IsTaken = taken.Contains(s.Id) ||
+                                  (s.PartnerSeatId.HasValue && taken.Contains(s.PartnerSeatId.Value)),
+                        Price = screening.BasePrice * spots
+                    };
                 })
                 .ToList();
         }

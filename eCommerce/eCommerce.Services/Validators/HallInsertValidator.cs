@@ -15,10 +15,12 @@ namespace eCommerce.Services.Validators
                 .MaximumLength(500).WithMessage("Description cannot exceed 500 characters.");
 
             RuleFor(x => x.RowsCount)
-                .InclusiveBetween(0, 100).WithMessage("Rows count must be between 0 and 100.");
+                .GreaterThan(0).WithMessage("Number of rows must be at least 1.")
+                .LessThanOrEqualTo(26).WithMessage("Number of rows cannot exceed 26.");
 
             RuleFor(x => x.SeatsPerRow)
-                .InclusiveBetween(0, 100).WithMessage("Seats per row must be between 0 and 100.");
+                .GreaterThan(0).WithMessage("Number of columns must be at least 1.")
+                .LessThanOrEqualTo(50).WithMessage("Number of columns cannot exceed 50.");
         }
     }
 }

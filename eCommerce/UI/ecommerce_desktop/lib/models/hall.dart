@@ -1,3 +1,4 @@
+import 'package:ecommerce_desktop/models/seat.dart';
 import 'package:flutter/material.dart';
 
 class Hall {
@@ -11,6 +12,9 @@ class Hall {
   final bool? isActive;
   final int? seatCount;
   final int? capacity;
+  final int? rowCount;
+  final int? seatsPerRow;
+  final List<Seat> seats;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -25,11 +29,15 @@ class Hall {
     this.isActive,
     this.seatCount,
     this.capacity,
+    this.rowCount,
+    this.seatsPerRow,
+    this.seats = const [],
     this.createdAt,
     this.updatedAt,
   });
 
   factory Hall.fromJson(Map<String, dynamic> json) {
+    final seatsJson = json['seats'] as List<dynamic>?;
     return Hall(
       id: json['id'] as int?,
       name: json['name'] as String?,
@@ -41,6 +49,9 @@ class Hall {
       isActive: json['isActive'] as bool?,
       seatCount: json['seatCount'] as int?,
       capacity: json['capacity'] as int?,
+      rowCount: json['rowCount'] as int?,
+      seatsPerRow: json['seatsPerRow'] as int?,
+      seats: seatsJson?.map((e) => Seat.fromJson(e as Map<String, dynamic>)).toList() ?? const [],
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
           : null,
@@ -71,6 +82,28 @@ class Hall {
         'status': status ?? 0,
         'isActive': isActive ?? true,
       };
+}
+
+String hallLayoutLabel(Hall hall) {
+  final rows = hall.rowCount ?? derivedRowCount(hall);
+  final cols = hall.seatsPerRow ?? derivedSeatsPerRow(hall);
+  if (rows > 0 && cols > 0) return '$rows × $cols';
+  return '${hall.capacity ?? hall.seatCount ?? 0} seats';
+}
+
+int derivedRowCount(Hall hall) {
+  if (hall.seats.isEmpty) return 0;
+  return hall.seats.map((s) => s.rowLabel).toSet().length;
+}
+
+int derivedSeatsPerRow(Hall hall) {
+  if (hall.seats.isEmpty) return 0;
+  final byRow = <String, int>{};
+  for (final seat in hall.seats) {
+    final row = seat.rowLabel ?? '?';
+    byRow[row] = (byRow[row] ?? 0) + 1;
+  }
+  return byRow.values.fold(0, (a, b) => a > b ? a : b);
 }
 
 const hallScreenTypes = ['Standard', 'IMAX', '3D'];

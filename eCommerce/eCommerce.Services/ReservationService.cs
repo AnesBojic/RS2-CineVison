@@ -136,16 +136,30 @@ namespace eCommerce.Services
                 }
 
                 var hallSeats = screening.Hall.Seats.ToDictionary(s => s.Id);
+                var expandedSeatIds = new HashSet<int>();
                 foreach (var seatId in seatIds)
                 {
                     if (!hallSeats.TryGetValue(seatId, out var seat) || !seat.IsActive)
                     {
-                        throw new ClinetException($"Seat {seatId} does not belong to this screening's hall.");
+                        throw new ClinetException($"Seat {seatId} does not belong to this screening's hall or is not available.");
+                    }
+
+                    expandedSeatIds.Add(seatId);
+                    if (seat.SeatType == SeatType.Couple)
+                    {
+                        if (!seat.PartnerSeatId.HasValue)
+                        {
+                            throw new ClinetException($"Couple seat {seat.RowLabel}{seat.SeatNumber} is not configured correctly.");
+                        }
+
+                        expandedSeatIds.Add(seat.PartnerSeatId.Value);
                     }
                 }
 
+                var expandedList = expandedSeatIds.ToList();
+
                 var alreadyTaken = await _dbContext.ReservationSeats
-                    .Where(rs => rs.ScreeningId == screening.Id && seatIds.Contains(rs.SeatId))
+                    .Where(rs => rs.ScreeningId == screening.Id && expandedList.Contains(rs.SeatId))
                     .AnyAsync();
 
                 if (alreadyTaken)
@@ -153,7 +167,7 @@ namespace eCommerce.Services
                     throw new ClinetException("One or more of the selected seats are already reserved.");
                 }
 
-                var total = screening.BasePrice * seatIds.Count;
+                var total = screening.BasePrice * expandedList.Count;
 
                 var reservation = new Reservation
                 {
@@ -171,7 +185,7 @@ namespace eCommerce.Services
                     PaymentDate = string.IsNullOrWhiteSpace(request.PaymentIntentId) ? (DateTime?)null : DateTime.UtcNow
                 };
 
-                foreach (var seatId in seatIds)
+                foreach (var seatId in expandedList)
                 {
                     reservation.ReservationSeats.Add(new ReservationSeat
                     {

@@ -46,7 +46,7 @@ namespace eCommerce.Services.Database
             var seats = new List<object>();
             int seatId = 1;
 
-            // Hall A: rows A-E, 8 seats per row (last row VIP)
+            // Hall A: rows A-E, 8 seats per row
             foreach (var row in new[] { "A", "B", "C", "D", "E" })
             {
                 for (int n = 1; n <= 8; n++)
@@ -57,13 +57,13 @@ namespace eCommerce.Services.Database
                         HallId = 1,
                         RowLabel = row,
                         SeatNumber = n,
-                        SeatType = row == "E" ? SeatType.VIP : SeatType.Regular,
+                        SeatType = SeatType.Regular,
                         IsActive = true
                     });
                 }
             }
 
-            // Hall B: rows A-D, 6 seats per row (last row VIP)
+            // Hall B: rows A-D, 6 seats per row
             foreach (var row in new[] { "A", "B", "C", "D" })
             {
                 for (int n = 1; n <= 6; n++)
@@ -74,7 +74,7 @@ namespace eCommerce.Services.Database
                         HallId = 2,
                         RowLabel = row,
                         SeatNumber = n,
-                        SeatType = row == "D" ? SeatType.VIP : SeatType.Regular,
+                        SeatType = SeatType.Regular,
                         IsActive = true
                     });
                 }
