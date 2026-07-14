@@ -57,4 +57,12 @@ public class ReviewsController : BaseReadController<ReviewResponse, ReviewSearch
         await _service.DeleteAsync(id);
         return NoContent();
     }
+
+    [HttpGet("MyEligibility")]
+    [ProducesResponseType(typeof(List<ReviewEligibilityResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<ReviewEligibilityResponse>>> GetMyEligibility()
+    {
+        var result = await _service.GetMyEligibilityAsync();
+        return Ok(result);
+    }
 }

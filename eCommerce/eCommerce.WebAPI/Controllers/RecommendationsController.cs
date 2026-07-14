@@ -21,10 +21,10 @@ public class RecommendationsController : ControllerBase
         _recommendationService = recommendationService;
     }
 
-    /// <summary>Top personalized recommendations for the current user (popularity + content based).</summary>
+    /// <summary>Personalized scores for active movies. Pass take=0 to rank the full catalog.</summary>
     [HttpGet("Recommendations")]
     [ProducesResponseType(typeof(List<RecommendationResponse>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<RecommendationResponse>>> GetRecommendations([FromQuery] int take = 10)
+    public async Task<ActionResult<List<RecommendationResponse>>> GetRecommendations([FromQuery] int take = 0)
     {
         var result = await _recommendationService.GetRecommendationsAsync(take);
         return Ok(result);

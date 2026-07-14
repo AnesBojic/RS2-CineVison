@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:ecommerce_mobile/core/constants/api_config.dart';
 import 'package:ecommerce_mobile/models/search_result.dart';
 import 'package:ecommerce_mobile/utils/api_client_exception.dart';
 import 'package:flutter/material.dart';
@@ -16,10 +17,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
   final String endpoint;
 
   BaseProvider(this.endpoint) {
-    _baseUrl ??= const String.fromEnvironment(
-      "baseUrl",
-      defaultValue: "http://10.0.2.2:5126/",
-    );
+    _baseUrl ??= resolveApiBaseUrl();
   }
 
   Future<SearchResult<T>> get({dynamic filter}) async {

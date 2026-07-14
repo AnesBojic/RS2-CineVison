@@ -1,4 +1,4 @@
-﻿using eCommerce.Model.Requests;
+using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Model.SearchObjects;
 using eCommerce.Services.Database;

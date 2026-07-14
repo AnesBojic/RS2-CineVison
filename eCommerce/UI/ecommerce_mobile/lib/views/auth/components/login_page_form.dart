@@ -42,7 +42,16 @@ class _LoginPageFormState extends State<LoginPageForm> {
           _passwordController.text,
         );
 
-        Navigator.pushNamed(context, AppRoutes.entryPoint);
+        if (!context.mounted) return;
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        } else {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.entryPoint,
+            (_) => false,
+          );
+        }
       } on Exception catch (e) {
         alertBox(context, "Error", e.toString());
       }

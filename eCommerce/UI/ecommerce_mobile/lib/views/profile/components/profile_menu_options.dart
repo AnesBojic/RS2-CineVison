@@ -20,9 +20,9 @@ class _ProfileMenuOptionsState extends State<ProfileMenuOptions> {
       margin: const EdgeInsets.all(AppDefaults.padding),
       padding: const EdgeInsets.all(AppDefaults.padding),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: AppDefaults.boxShadow,
+        color: AppColors.cardColor,
         borderRadius: AppDefaults.borderRadius,
+        border: Border.all(color: AppColors.separator),
       ),
       child: Column(
         children: [

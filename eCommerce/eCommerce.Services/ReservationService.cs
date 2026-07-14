@@ -289,10 +289,24 @@ namespace eCommerce.Services
                 throw new ClinetException("No seats were selected.");
             }
 
-            var screening = await _dbContext.Screenings.FindAsync(request.ScreeningId)
+            var screening = await _dbContext.Screenings
+                .Include(s => s.Hall).ThenInclude(h => h.Seats)
+                .FirstOrDefaultAsync(s => s.Id == request.ScreeningId)
                 ?? throw new ClinetException($"Screening {request.ScreeningId} was not found.");
 
-            var total = screening.BasePrice * seatIds.Count;
+            var hallSeats = screening.Hall.Seats.ToDictionary(s => s.Id);
+            var expandedCount = 0;
+            foreach (var seatId in seatIds)
+            {
+                if (!hallSeats.TryGetValue(seatId, out var seat) || !seat.IsActive)
+                {
+                    throw new ClinetException($"Seat {seatId} does not belong to this screening's hall or is not available.");
+                }
+
+                expandedCount += seat.SeatType == SeatType.Couple ? 2 : 1;
+            }
+
+            var total = screening.BasePrice * expandedCount;
 
             var secretKey = _configuration["Stripe:SecretKey"]
                             ?? throw new InvalidOperationException("Stripe secret key is not configured.");
@@ -333,9 +347,11 @@ namespace eCommerce.Services
                 CustomerName = r.CustomerName,
                 CustomerEmail = r.CustomerEmail,
                 ScreeningId = r.ScreeningId,
+                MovieId = r.Screening?.MovieId ?? 0,
                 MovieTitle = r.Screening?.Movie?.Title ?? string.Empty,
                 HallName = r.Screening?.Hall?.Name ?? string.Empty,
                 ScreeningStartTime = r.Screening?.StartTime ?? default,
+                ScreeningEndTime = r.Screening?.EndTime ?? default,
                 PaymentTransactionId = r.PaymentTransactionId,
                 PaymentDate = r.PaymentDate,
                 Seats = r.ReservationSeats

@@ -1,4 +1,4 @@
-﻿using eCommerce.Model.Requests;
+using eCommerce.Model.Requests;
 using FluentValidation;
 using System;
 using System.Collections.Generic;

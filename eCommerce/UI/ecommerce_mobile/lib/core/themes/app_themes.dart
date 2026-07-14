@@ -6,112 +6,127 @@ import '../constants/app_defaults.dart';
 
 class AppTheme {
   static ThemeData get defaultTheme {
+    const colorScheme = ColorScheme.dark(
+      primary: AppColors.primary,
+      onPrimary: Colors.white,
+      surface: AppColors.cardColor,
+      onSurface: AppColors.textPrimary,
+      outline: AppColors.separator,
+      outlineVariant: AppColors.gray,
+    );
+
     return ThemeData(
-      colorSchemeSeed: AppColors.primary,
-      fontFamily: "Gilroy",
+      useMaterial3: true,
+      colorScheme: colorScheme,
+      fontFamily: 'Gilroy',
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: AppColors.scaffoldBackground,
       textTheme: const TextTheme(
-        bodyLarge: TextStyle(color: AppColors.placeholder),
-        bodyMedium: TextStyle(color: AppColors.placeholder),
-      ),
-      scaffoldBackgroundColor: Colors.white,
-      brightness: Brightness.light,
-      appBarTheme: const AppBarTheme(
-        elevation: 0.3,
-        backgroundColor: Colors.white,
-        iconTheme: IconThemeData(color: Colors.black),
-        titleTextStyle: TextStyle(
-          color: Colors.black,
+        bodyLarge: TextStyle(color: AppColors.textPrimary),
+        bodyMedium: TextStyle(color: AppColors.textSecondary),
+        titleLarge: TextStyle(
+          color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,
-          fontFamily: "Gilroy",
+        ),
+        titleMedium: TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      appBarTheme: const AppBarTheme(
+        elevation: 0,
+        backgroundColor: AppColors.scaffoldBackground,
+        foregroundColor: AppColors.textPrimary,
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
+        titleTextStyle: TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+          fontFamily: 'Gilroy',
         ),
         systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          statusBarIconBrightness: Brightness.light,
         ),
+      ),
+      cardTheme: CardThemeData(
+        color: AppColors.cardColor,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: AppDefaults.borderRadius),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.all(AppDefaults.padding),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppDefaults.borderRadius,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDefaults.padding,
+            vertical: 14,
           ),
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: AppDefaults.borderRadius),
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textPrimary,
+          side: const BorderSide(color: AppColors.separator),
           padding: const EdgeInsets.all(AppDefaults.padding),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppDefaults.borderRadius,
-          ),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Gilroy',
-          ),
+          shape: RoundedRectangleBorder(borderRadius: AppDefaults.borderRadius),
         ),
       ),
       inputDecorationTheme: defaultInputDecorationTheme,
-      sliderTheme: const SliderThemeData(
-        showValueIndicator: ShowValueIndicator.alwaysVisible,
-        thumbColor: Colors.white,
+      dividerTheme: const DividerThemeData(
+        color: AppColors.separator,
+        thickness: 1,
       ),
-      tabBarTheme: const TabBarThemeData(
-        labelColor: AppColors.primary,
-        unselectedLabelColor: AppColors.placeholder,
-        labelPadding: EdgeInsets.all(AppDefaults.padding),
-        indicatorSize: TabBarIndicatorSize.label,
-        labelStyle: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: AppColors.primary,
+      dropdownMenuTheme: DropdownMenuThemeData(
+        inputDecorationTheme: defaultInputDecorationTheme,
+      ),
+      scrollbarTheme: ScrollbarThemeData(
+        thumbVisibility: WidgetStateProperty.all(true),
+        trackVisibility: WidgetStateProperty.all(true),
+        thickness: WidgetStateProperty.all(6),
+        radius: const Radius.circular(4),
+        thumbColor: WidgetStateProperty.all(
+          AppColors.primary.withValues(alpha: 0.85),
         ),
-        unselectedLabelStyle: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: AppColors.placeholder,
+        trackColor: WidgetStateProperty.all(
+          AppColors.gray.withValues(alpha: 0.45),
         ),
-        indicator: UnderlineTabIndicator(
-          borderSide: BorderSide(
-            color: AppColors.primary,
-            width: 2,
-          ),
-        ),
+        crossAxisMargin: 2,
+        mainAxisMargin: 2,
       ),
     );
   }
 
-  /* <---- Input Decorations Theme -----> */
   static const defaultInputDecorationTheme = InputDecorationTheme(
-    fillColor: AppColors.textInputBackground,
+    filled: true,
+    fillColor: AppColors.inputBackground,
+    labelStyle: TextStyle(color: AppColors.textSecondary),
+    hintStyle: TextStyle(color: AppColors.placeholder),
     floatingLabelBehavior: FloatingLabelBehavior.never,
     border: OutlineInputBorder(
-      borderSide: BorderSide(width: 0.1),
-      borderRadius: BorderRadius.all(Radius.circular(8)),
+      borderSide: BorderSide(color: AppColors.separator),
+      borderRadius: BorderRadius.all(Radius.circular(12)),
     ),
     enabledBorder: OutlineInputBorder(
-      borderSide: BorderSide(width: 0.1),
-      borderRadius: BorderRadius.all(Radius.circular(8)),
+      borderSide: BorderSide(color: AppColors.separator),
+      borderRadius: BorderRadius.all(Radius.circular(12)),
     ),
     focusedBorder: OutlineInputBorder(
-      borderSide: BorderSide(width: 0.1),
-      borderRadius: BorderRadius.all(Radius.circular(8)),
+      borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+      borderRadius: BorderRadius.all(Radius.circular(12)),
     ),
-    suffixIconColor: AppColors.placeholder,
   );
 
   static const secondaryInputDecorationTheme = InputDecorationTheme(
-    fillColor: AppColors.textInputBackground,
+    fillColor: AppColors.inputBackground,
     filled: true,
     floatingLabelBehavior: FloatingLabelBehavior.never,
     border: OutlineInputBorder(
       borderSide: BorderSide.none,
-      borderRadius: BorderRadius.all(Radius.circular(8)),
+      borderRadius: BorderRadius.all(Radius.circular(12)),
     ),
     enabledBorder: OutlineInputBorder(borderSide: BorderSide.none),
     focusedBorder: OutlineInputBorder(borderSide: BorderSide.none),
@@ -120,15 +135,15 @@ class AppTheme {
   static final otpInputDecorationTheme = InputDecorationTheme(
     floatingLabelBehavior: FloatingLabelBehavior.never,
     border: OutlineInputBorder(
-      borderSide: const BorderSide(width: 0.1),
+      borderSide: const BorderSide(color: AppColors.separator),
       borderRadius: BorderRadius.circular(25),
     ),
     enabledBorder: OutlineInputBorder(
-      borderSide: const BorderSide(width: 0.1),
+      borderSide: const BorderSide(color: AppColors.separator),
       borderRadius: BorderRadius.circular(25),
     ),
     focusedBorder: OutlineInputBorder(
-      borderSide: const BorderSide(width: 0.1),
+      borderSide: const BorderSide(color: AppColors.primary),
       borderRadius: BorderRadius.circular(25),
     ),
   );

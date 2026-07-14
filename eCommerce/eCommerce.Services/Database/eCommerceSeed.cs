@@ -85,6 +85,7 @@ namespace eCommerce.Services.Database
 
         private void SeedMovies(ModelBuilder modelBuilder)
         {
+            // PosterImageBase64 is filled on first API startup by MoviePosterSeed (SeedAssets/poster-{id}.jpg).
             modelBuilder.Entity<Movie>().HasData(
                 new { Id = 1, Title = "Edge of Tomorrow", Description = "A soldier relives the same brutal battle in a loop against an alien invasion.", DurationMinutes = 113, Director = "Doug Liman", ReleaseDate = (DateTime?)new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc), Language = "English", AgeRating = "PG-13", TrailerUrl = (string?)null, IsActive = true, ViewCount = 320, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(ActiveMovieState), GenreId = (int?)4 },
                 new { Id = 2, Title = "The Last Laugh", Description = "An ageing comedian gets one final shot at the spotlight.", DurationMinutes = 98, Director = "Greta Park", ReleaseDate = (DateTime?)new DateTime(2026, 2, 10, 0, 0, 0, DateTimeKind.Utc), Language = "English", AgeRating = "PG", TrailerUrl = (string?)null, IsActive = true, ViewCount = 140, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(ActiveMovieState), GenreId = (int?)3 },

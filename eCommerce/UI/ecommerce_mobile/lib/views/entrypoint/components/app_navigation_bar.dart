@@ -16,41 +16,27 @@ class AppBottomNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: AppDefaults.margin,
-      color: AppColors.scaffoldBackground,
+      color: AppColors.cardColor,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           BottomAppBarItem(
-            name: 'Home',
+            name: 'Movies',
             iconLocation: AppIcons.home,
             isActive: currentIndex == 0,
             onTap: () => onNavTap(0),
           ),
           BottomAppBarItem(
-            name: 'Menu',
-            iconLocation: AppIcons.menu,
+            name: 'Bookings',
+            iconLocation: AppIcons.save,
             isActive: currentIndex == 1,
             onTap: () => onNavTap(1),
-          ),
-          const Padding(
-            padding: EdgeInsets.all(AppDefaults.padding * 2),
-            child: SizedBox(width: AppDefaults.margin),
-          ),
-          /* <---- We have to leave this 3rd index (2) for the cart item -----> */
-
-          BottomAppBarItem(
-            name: 'Save',
-            iconLocation: AppIcons.save,
-            isActive: currentIndex == 3,
-            onTap: () => onNavTap(3),
           ),
           BottomAppBarItem(
             name: 'Profile',
             iconLocation: AppIcons.profile,
-            isActive: currentIndex == 4,
-            onTap: () => onNavTap(4),
+            isActive: currentIndex == 2,
+            onTap: () => onNavTap(2),
           ),
         ],
       ),

@@ -1,4 +1,4 @@
-﻿namespace eCommerce.Model.SearchObjects
+namespace eCommerce.Model.SearchObjects
 {
     public class AssetSearch : BaseSearchObject
     {

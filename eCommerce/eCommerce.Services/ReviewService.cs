@@ -123,6 +123,12 @@ namespace eCommerce.Services
                 throw new ClinetException("You have already reviewed this movie.");
             }
 
+            if (!await UserCanReviewMovieAsync(userId, request.MovieId))
+            {
+                throw new ClinetException(
+                    "You can only review a movie after attending a paid or confirmed screening.");
+            }
+
             var review = new Review
             {
                 UserId = userId,
@@ -182,6 +188,61 @@ namespace eCommerce.Services
 
             _dbContext.Reviews.Remove(review);
             await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task<List<ReviewEligibilityResponse>> GetMyEligibilityAsync()
+        {
+            var userId = _userAccessor.GetUserId()
+                ?? throw new InvalidOperationException("User id claim is missing.");
+
+            var now = DateTime.UtcNow;
+
+            var attendedMovies = await _dbContext.Reservations
+                .AsNoTracking()
+                .Where(r =>
+                    r.UserId == userId
+                    && (r.Status == ReservationStatus.Paid || r.Status == ReservationStatus.Confirmed)
+                    && r.Screening.EndTime <= now)
+                .Select(r => new
+                {
+                    r.Screening.MovieId,
+                    MovieTitle = r.Screening.Movie != null ? r.Screening.Movie.Title : string.Empty
+                })
+                .Distinct()
+                .ToListAsync();
+
+            var reviewedByMovie = await _dbContext.Reviews
+                .AsNoTracking()
+                .Where(r => r.UserId == userId)
+                .ToDictionaryAsync(r => r.MovieId, r => r.Id);
+
+            return attendedMovies
+                .Select(m =>
+                {
+                    reviewedByMovie.TryGetValue(m.MovieId, out var reviewId);
+                    var hasReview = reviewedByMovie.ContainsKey(m.MovieId);
+                    return new ReviewEligibilityResponse
+                    {
+                        MovieId = m.MovieId,
+                        MovieTitle = m.MovieTitle,
+                        HasReview = hasReview,
+                        ExistingReviewId = hasReview ? reviewId : null,
+                        CanReview = !hasReview
+                    };
+                })
+                .OrderBy(e => e.MovieTitle)
+                .ToList();
+        }
+
+        private async Task<bool> UserCanReviewMovieAsync(int userId, int movieId)
+        {
+            var now = DateTime.UtcNow;
+            return await _dbContext.Reservations
+                .AnyAsync(r =>
+                    r.UserId == userId
+                    && (r.Status == ReservationStatus.Paid || r.Status == ReservationStatus.Confirmed)
+                    && r.Screening.MovieId == movieId
+                    && r.Screening.EndTime <= now);
         }
 
         private static ReviewResponse MapToResponse(Review r)

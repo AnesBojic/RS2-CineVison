@@ -1,4 +1,4 @@
-﻿namespace eCommerce.Model.Responses
+namespace eCommerce.Model.Responses
 {
     public class AssetResponse
     {

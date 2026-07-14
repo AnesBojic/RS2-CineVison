@@ -1,7 +1,16 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
+import '../../models/movie.dart';
 import '../../models/order.dart';
 import '../../models/product.dart';
+import '../../models/reservation.dart';
+import '../../views/booking/booking_confirmed_page.dart';
+import '../../views/booking/booking_page.dart';
+import '../../views/bookings/my_bookings_page.dart';
+import '../../views/checkout/checkout_page.dart';
+import '../../views/profile/cine_profile_page.dart';
+import '../../views/auth/auth_landing_page.dart';
 import '../../views/auth/forget_password_page.dart';
 import '../../views/auth/intro_login_page.dart';
 import '../../views/auth/login_or_signup_page.dart';
@@ -10,7 +19,7 @@ import '../../views/auth/number_verification_page.dart';
 import '../../views/auth/password_reset_page.dart';
 import '../../views/auth/sign_up_page.dart';
 import '../../views/cart/cart_page.dart';
-import '../../views/cart/checkout_page.dart';
+import '../../views/cart/checkout_page.dart' as grocery;
 import '../../views/drawer/about_us_page.dart';
 import '../../views/drawer/contact_us_page.dart';
 import '../../views/drawer/drawer_page.dart';
@@ -45,6 +54,7 @@ import '../../views/profile/settings/change_phone_number_page.dart';
 import '../../views/profile/settings/language_settings_page.dart';
 import '../../views/profile/settings/notifications_settings_page.dart';
 import '../../views/profile/settings/settings_page.dart';
+import '../../views/review/movie_review_page.dart';
 import '../../views/review/review_page.dart';
 import '../../views/review/submit_review_page.dart';
 import '../../views/save/save_page.dart';
@@ -63,7 +73,46 @@ class RouteGenerator {
         return CupertinoPageRoute(builder: (_) => const OnboardingPage());
 
       case AppRoutes.entryPoint:
-        return CupertinoPageRoute(builder: (_) => const EntryPointUI());
+        return MaterialPageRoute(builder: (_) => const EntryPointUI());
+
+      case AppRoutes.booking:
+        final movie = settings.arguments as Movie;
+        return MaterialPageRoute(
+          builder: (_) => BookingPage(movie: movie),
+        );
+
+      case AppRoutes.checkout:
+        return MaterialPageRoute(builder: (_) => const CheckoutPage());
+
+      case AppRoutes.bookingConfirmed:
+        final args = settings.arguments;
+        if (args is Reservation) {
+          return MaterialPageRoute(
+            builder: (_) => BookingConfirmedPage(reservation: args),
+          );
+        }
+        final map = args as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (_) => BookingConfirmedPage(
+            reservation: map['reservation'] as Reservation,
+            genreLine: map['genreLine'] as String?,
+          ),
+        );
+
+      case AppRoutes.myBookings:
+        return MaterialPageRoute(builder: (_) => const MyBookingsPage());
+
+      case AppRoutes.myProfile:
+        return MaterialPageRoute(builder: (_) => const CineProfilePage());
+
+      case AppRoutes.authLanding:
+        return MaterialPageRoute(builder: (_) => const AuthLandingPage());
+
+      case AppRoutes.login:
+        return MaterialPageRoute(builder: (_) => const LoginPage());
+
+      case AppRoutes.signup:
+        return MaterialPageRoute(builder: (_) => const SignUpPage());
 
       case AppRoutes.search:
         return CupertinoPageRoute(builder: (_) => const SearchPage());
@@ -78,16 +127,11 @@ class RouteGenerator {
         return CupertinoPageRoute(builder: (_) => const SavePage());
 
       case AppRoutes.checkoutPage:
-        return CupertinoPageRoute(builder: (_) => const CheckoutPage());
+        return CupertinoPageRoute(builder: (_) => const grocery.CheckoutPage());
 
       case AppRoutes.categoryDetails:
         return CupertinoPageRoute(builder: (_) => const CategoryProductPage());
 
-      case AppRoutes.login:
-        return CupertinoPageRoute(builder: (_) => const LoginPage());
-
-      case AppRoutes.signup:
-        return CupertinoPageRoute(builder: (_) => const SignUpPage());
 
       case AppRoutes.loginOrSignup:
         return CupertinoPageRoute(builder: (_) => const LoginOrSignUpPage());
@@ -184,6 +228,18 @@ class RouteGenerator {
         return CupertinoPageRoute(builder: (_) => const ReviewPage());
 
       case AppRoutes.submitReview:
+        final args = settings.arguments;
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder: (_) => MovieReviewPage(
+              movieId: args['movieId'] as int,
+              movieTitle: args['movieTitle'] as String? ?? '',
+              reviewId: args['reviewId'] as int?,
+              initialRating: args['initialRating'] as int?,
+              initialComment: args['initialComment'] as String?,
+            ),
+          );
+        }
         return CupertinoPageRoute(builder: (_) => const SubmitReviewPage());
 
       case AppRoutes.drawerPage:

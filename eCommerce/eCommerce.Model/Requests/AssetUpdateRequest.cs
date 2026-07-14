@@ -1,4 +1,4 @@
-﻿namespace eCommerce.Model.Requests
+namespace eCommerce.Model.Requests
 {
     public class AssetUpdateRequest
     {

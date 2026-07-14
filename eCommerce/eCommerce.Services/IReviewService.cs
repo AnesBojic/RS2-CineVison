@@ -11,5 +11,7 @@ namespace eCommerce.Services
         Task<ReviewResponse> UpdateAsync(int id, ReviewUpdateRequest request);
 
         Task DeleteAsync(int id);
+
+        Task<List<ReviewEligibilityResponse>> GetMyEligibilityAsync();
     }
 }

@@ -139,9 +139,8 @@ namespace eCommerce.Services
             int maxGenreWeight = genreWeights.Count > 0 ? genreWeights.Values.Max() : 0;
 
             // ---- per-candidate raw signals ---------------------------------------
-            // Exclude movies the user already reserved (they don't need re-recommending).
+            // Score every active movie; preferences boost ranking instead of hiding titles.
             var candidates = movies
-                .Where(m => !reservedMovieIds.Contains(m.Id))
                 .Select(m =>
                 {
                     reservationCounts.TryGetValue(m.Id, out var resv);
@@ -208,24 +207,32 @@ namespace eCommerce.Services
                     : _popularityWeight * c.PopularityScore + _contentWeight * c.ContentScore;
             }
 
-            return candidates
+            var ordered = candidates
                 .OrderByDescending(c => c.FinalScore)
-                .ThenByDescending(c => c.PopularityScore)
-                .Take(take)
+                .ThenByDescending(c => c.PopularityScore);
+
+            IEnumerable<Candidate> result = take > 0 ? ordered.Take(take) : ordered;
+
+            return result
                 .Select(c => new RecommendationResponse
                 {
                     Movie = _mapper.Map<MovieResponse>(c.Movie),
                     Score = Math.Round(c.FinalScore, 4),
                     PopularityScore = Math.Round(c.PopularityScore, 4),
                     ContentScore = Math.Round(c.ContentScore, 4),
-                    Reason = BuildReason(c, coldStart)
+                    Reason = BuildReason(c, coldStart, reservedMovieIds.Contains(c.Movie.Id))
                 })
                 .ToList();
         }
 
-        private static string BuildReason(Candidate c, bool coldStart)
+        private static string BuildReason(Candidate c, bool coldStart, bool alreadyBooked)
         {
             var parts = new List<string>();
+
+            if (alreadyBooked)
+            {
+                parts.Add("already in your bookings");
+            }
 
             if (coldStart)
             {

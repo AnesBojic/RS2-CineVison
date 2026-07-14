@@ -1,4 +1,4 @@
-﻿using eCommerce.Common.Services.CryptoService;
+using eCommerce.Common.Services.CryptoService;
 using eCommerce.Model.Access;
 using eCommerce.Model.Exceptions;
 using eCommerce.Model.Responses;

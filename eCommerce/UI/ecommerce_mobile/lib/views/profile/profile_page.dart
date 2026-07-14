@@ -10,7 +10,7 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.cardColor,
+      color: AppColors.scaffoldBackground,
       child: const Column(
         children: [
           ProfileHeader(),

@@ -1,4 +1,4 @@
-﻿using eCommerce.Model.Access;
+using eCommerce.Model.Access;
 
 namespace eCommerce.WebAPI.Services.AccessManager
 {

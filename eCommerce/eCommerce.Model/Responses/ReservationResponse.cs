@@ -14,9 +14,11 @@ namespace eCommerce.Model.Responses
         public string? CustomerEmail { get; set; }
 
         public int ScreeningId { get; set; }
+        public int MovieId { get; set; }
         public string MovieTitle { get; set; } = string.Empty;
         public string HallName { get; set; } = string.Empty;
         public DateTime ScreeningStartTime { get; set; }
+        public DateTime ScreeningEndTime { get; set; }
 
         public string? PaymentTransactionId { get; set; }
         public DateTime? PaymentDate { get; set; }
