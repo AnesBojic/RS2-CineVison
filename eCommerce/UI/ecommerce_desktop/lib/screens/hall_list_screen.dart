@@ -3,6 +3,7 @@ import 'package:ecommerce_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:ecommerce_desktop/core/widgets/seat_layout_editor.dart';
 import 'package:ecommerce_desktop/models/hall.dart';
 import 'package:ecommerce_desktop/providers/hall_provider.dart';
+import 'package:ecommerce_desktop/utils/api_client_exception.dart';
 import 'package:ecommerce_desktop/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -157,8 +158,10 @@ class _HallListScreenState extends State<HallListScreen> {
       await _provider.remove(h.id!);
       showAppSnackBar(context, 'Hall deleted');
       _load();
+    } on ApiClientException catch (e) {
+      if (mounted) showAppSnackBar(context, e.message, isError: true);
     } on Exception catch (e) {
-      if (mounted) alertBox(context, 'Error', e.toString());
+      if (mounted) showAppSnackBar(context, e.toString(), isError: true);
     }
   }
 

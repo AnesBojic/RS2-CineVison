@@ -166,6 +166,22 @@ namespace eCommerce.Services
             return BuildResponse(hall, includeSeats: true);
         }
 
+        public override async Task DeleteAsync(int id)
+        {
+            var hall = await _dbContext.Halls.FindAsync(id)
+                ?? throw new KeyNotFoundException($"Hall with id {id} not found.");
+
+            var hasScreenings = await _dbContext.Screenings.AnyAsync(s => s.HallId == id);
+            if (hasScreenings)
+            {
+                throw new ClinetException(
+                    "Cannot delete this hall because it is used in projections. Remove the projections first.");
+            }
+
+            _dbContext.Halls.Remove(hall);
+            await _dbContext.SaveChangesAsync();
+        }
+
         public async Task<HallResponse> UpdateSeatLayoutAsync(int hallId, HallSeatLayoutUpdateRequest request)
         {
             if (request.Seats == null || request.Seats.Count == 0)
