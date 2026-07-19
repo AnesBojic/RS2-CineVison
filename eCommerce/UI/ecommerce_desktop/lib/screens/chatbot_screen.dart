@@ -1,11 +1,15 @@
+import 'dart:convert';
+
 import 'package:ecommerce_desktop/core/theme/app_theme.dart';
 import 'package:ecommerce_desktop/models/chat_message.dart';
+import 'package:ecommerce_desktop/providers/auth_provider.dart';
 import 'package:ecommerce_desktop/providers/chatbot_provider.dart';
 import 'package:ecommerce_desktop/providers/notification_provider.dart';
 import 'package:ecommerce_desktop/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatBotScreen extends StatefulWidget {
   const ChatBotScreen({super.key});
@@ -17,14 +21,23 @@ class ChatBotScreen extends StatefulWidget {
 class _ChatBotScreenState extends State<ChatBotScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  final List<_ChatBubble> _messages = [
-    _ChatBubble(
-      isBot: true,
-      text: "Hello! I'm your cinema assistant. How can I help you today?",
-      time: DateTime.now(),
-    ),
-  ];
+  final List<_ChatBubble> _messages = [];
   bool _sending = false;
+  bool _historyLoaded = false;
+
+  String get _historyKey {
+    final userId = context.read<AuthProvider>().userId;
+    return 'chatbot_history_${userId ?? 'unknown'}';
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_historyLoaded) {
+      _historyLoaded = true;
+      _loadHistory();
+    }
+  }
 
   @override
   void dispose() {
@@ -40,13 +53,24 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Cinema Assistant Chatbot',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Cinema Assistant Chatbot',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _messages.isEmpty ? null : _clearHistory,
+                icon: const Icon(Icons.delete_outline, size: 18),
+                label: const Text('Clear history'),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           const Text(
@@ -183,12 +207,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    final chatbot = context.read<ChatBotProvider>();
 
     setState(() {
       _messages.add(_ChatBubble(isBot: false, text: text, time: DateTime.now()));
       _controller.clear();
       _sending = true;
     });
+    await _saveHistory();
     _scrollToBottom();
 
     try {
@@ -197,7 +223,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           .map((m) => ChatMessage(role: m.isBot ? 'assistant' : 'user', content: m.text))
           .toList();
 
-      final response = await context.read<ChatBotProvider>().sendMessage(text, history);
+      final response = await chatbot.sendMessage(text, history);
 
       if (!mounted) return;
       setState(() {
@@ -208,6 +234,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         ));
         _sending = false;
       });
+      await _saveHistory();
       _scrollToBottom();
       if (mounted) {
         context.read<NotificationProvider>().markAllRead(type: 'Message');
@@ -231,6 +258,70 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       }
     });
   }
+
+  Future<void> _loadHistory() async {
+    final historyKey = _historyKey;
+    final preferences = await SharedPreferences.getInstance();
+    final stored = preferences.getString(historyKey);
+    final restored = <_ChatBubble>[];
+
+    if (stored != null) {
+      try {
+        final decoded = jsonDecode(stored);
+        if (decoded is List) {
+          restored.addAll(
+            decoded
+                .whereType<Map>()
+                .map((item) => _ChatBubble.fromJson(
+                      Map<String, dynamic>.from(item),
+                    )),
+          );
+        }
+      } catch (_) {
+        await preferences.remove(historyKey);
+      }
+    }
+
+    if (restored.isEmpty) {
+      restored.add(_welcomeMessage());
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _messages
+        ..clear()
+        ..addAll(restored);
+    });
+    _scrollToBottom();
+  }
+
+  Future<void> _saveHistory() async {
+    final historyKey = _historyKey;
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      historyKey,
+      jsonEncode(_messages.map((message) => message.toJson()).toList()),
+    );
+  }
+
+  Future<void> _clearHistory() async {
+    final historyKey = _historyKey;
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(historyKey);
+    if (!mounted) return;
+    setState(() {
+      _messages
+        ..clear()
+        ..add(_welcomeMessage());
+    });
+    _scrollToBottom();
+  }
+
+  _ChatBubble _welcomeMessage() => _ChatBubble(
+        isBot: true,
+        text: "Hello! I'm your cinema assistant. How can I help you today?",
+        time: DateTime.now(),
+      );
 }
 
 class _ChatBubble {
@@ -238,4 +329,18 @@ class _ChatBubble {
   final bool isBot;
   final String text;
   final DateTime time;
+
+  factory _ChatBubble.fromJson(Map<String, dynamic> json) {
+    return _ChatBubble(
+      isBot: json['isBot'] as bool? ?? false,
+      text: json['text'] as String? ?? '',
+      time: DateTime.tryParse(json['time']?.toString() ?? '') ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'isBot': isBot,
+        'text': text,
+        'time': time.toIso8601String(),
+      };
 }
