@@ -208,8 +208,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       await context.read<HallProvider>().remove(h.id!);
       showAppSnackBar(context, 'Hall deleted');
       _load();
+    } on ApiClientException catch (e) {
+      if (mounted) showAppSnackBar(context, e.message, isError: true);
     } on Exception catch (e) {
-      if (mounted) alertBox(context, 'Error', e.toString());
+      if (mounted) showAppSnackBar(context, e.toString(), isError: true);
     }
   }
 

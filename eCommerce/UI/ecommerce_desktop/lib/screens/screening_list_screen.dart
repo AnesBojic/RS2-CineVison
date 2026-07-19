@@ -27,7 +27,13 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
   List<Movie> _movies = [];
   List<Hall> _halls = [];
   bool _loading = true;
+  static const int _pageSize = 10;
+  int _page = 1;
+  int _totalCount = 0;
   final _searchController = TextEditingController();
+
+  int get _totalPages =>
+      _totalCount == 0 ? 1 : (_totalCount / _pageSize).ceil();
 
   @override
   void initState() {
@@ -47,21 +53,31 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
     try {
       final movieProvider = context.read<MovieProvider>();
       final hallProvider = context.read<HallProvider>();
-      final movies = await movieProvider.get(
+
+      // Start all independent requests together instead of waiting for each one.
+      final moviesFuture = movieProvider.get(
         filter: {'pageSize': 100},
         includePoster: true,
       );
-      final halls = await hallProvider.get(filter: {'pageSize': 100});
-      final data = await _provider.get(filter: {
-        'pageSize': 50,
+      final hallsFuture = hallProvider.get(filter: {'pageSize': 100});
+      final screeningsFuture = _provider.get(filter: {
+        'page': _page,
+        'pageSize': _pageSize,
+        'includeTotalCount': true,
         'includeMovie': true,
         'includeHall': true,
       });
+
+      final movies = await moviesFuture;
+      final halls = await hallsFuture;
+      final data = await screeningsFuture;
+
       if (!mounted) return;
       setState(() {
         _movies = movies.items ?? [];
         _halls = halls.items ?? [];
         _items = data.items ?? [];
+        _totalCount = data.totalCount ?? _items.length;
         _loading = false;
       });
       _maybeOpenEdit();
@@ -139,19 +155,57 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
           PrimaryButton(label: 'Add Projection', onPressed: () => _showDialog()),
         ],
       ),
-      child: DataCard(
-        emptyMessage: _filtered.isEmpty ? 'No projections found' : null,
-        child: StyledDataTable(
-          columns: const [
-            DataColumn(label: Text('Movie')),
-            DataColumn(label: Text('Hall')),
-            DataColumn(label: Text('Date')),
-            DataColumn(label: Text('Time')),
-            DataColumn(label: Text('Price')),
-            DataColumn(label: Text('Actions')),
-          ],
-          rows: _filtered.map(_buildRow).toList(),
-        ),
+      child: Column(
+        children: [
+          Expanded(
+            child: DataCard(
+              emptyMessage:
+                  _filtered.isEmpty ? 'No projections found' : null,
+              child: StyledDataTable(
+                columns: const [
+                  DataColumn(label: Text('Movie')),
+                  DataColumn(label: Text('Hall')),
+                  DataColumn(label: Text('Date')),
+                  DataColumn(label: Text('Time')),
+                  DataColumn(label: Text('Price')),
+                  DataColumn(label: Text('Actions')),
+                ],
+                rows: _filtered.map(_buildRow).toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                'Page $_page of $_totalPages · $_totalCount projections',
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                tooltip: 'Previous page',
+                onPressed: _page > 1 && !_loading
+                    ? () {
+                        setState(() => _page--);
+                        _load();
+                      }
+                    : null,
+                icon: const Icon(Icons.chevron_left),
+              ),
+              IconButton(
+                tooltip: 'Next page',
+                onPressed: _page < _totalPages && !_loading
+                    ? () {
+                        setState(() => _page++);
+                        _load();
+                      }
+                    : null,
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -189,6 +243,9 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
     try {
       await _provider.remove(s.id!);
       showAppSnackBar(context, 'Projection deleted');
+      if (_items.length == 1 && _page > 1) {
+        _page--;
+      }
       _load();
     } on Exception catch (e) {
       if (mounted) alertBox(context, 'Error', e.toString());
