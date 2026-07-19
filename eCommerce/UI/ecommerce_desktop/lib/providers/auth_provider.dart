@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart';
 import 'package:http/http.dart' as http;
 
 class AuthProvider extends ChangeNotifier {
@@ -59,6 +58,14 @@ class AuthProvider extends ChangeNotifier {
     _accesstoken = data['accesstoken'] as String?;
     _refreshtoken = data['refreshtoken'] as String?;
     _applyTokenClaims(_accesstoken);
+
+    if (!isAdmin && !isStaff) {
+      _clearSession();
+      throw Exception(
+        'You do not have authorization to access the desktop application.',
+      );
+    }
+
     _isAuthenticated = true;
     notifyListeners();
   }
@@ -121,6 +128,11 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void logout() {
+    _clearSession();
+    notifyListeners();
+  }
+
+  void _clearSession() {
     _isAuthenticated = false;
     _accesstoken = null;
     _refreshtoken = null;
@@ -130,7 +142,6 @@ class AuthProvider extends ChangeNotifier {
     _userId = null;
     _email = null;
     _profileImageBase64 = null;
-    notifyListeners();
   }
 
   Map<String, String> createHeaders() => {'Content-Type': 'application/json'};
