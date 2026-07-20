@@ -13,8 +13,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController(text: 'admin1');
-  final _passwordController = TextEditingController(text: 'Test123');
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _loading = false;
   bool _obscure = true;
 
@@ -150,12 +150,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               )
                             : const Text('Sign In'),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Demo: admin1 / Test123',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                     ),
                   ],
                 ),

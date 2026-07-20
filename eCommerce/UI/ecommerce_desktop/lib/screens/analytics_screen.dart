@@ -38,14 +38,16 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     setState(() => _loading = true);
     try {
       final provider = context.read<AnalyticsProvider>();
-      final movies = await provider.getMoviePerformance();
-      final slots = await provider.getTimeSlotPerformance();
-      final halls = await provider.getHallUtilization();
+      final results = await Future.wait([
+        provider.getMoviePerformance(),
+        provider.getTimeSlotPerformance(),
+        provider.getHallUtilization(),
+      ]);
       if (!mounted) return;
       setState(() {
-        _movies = movies;
-        _timeSlots = slots;
-        _halls = halls;
+        _movies = results[0] as List<MoviePerformance>;
+        _timeSlots = results[1] as List<TimeSlotPerformance>;
+        _halls = results[2] as List<HallUtilization>;
         _loading = false;
       });
     } on Exception catch (e) {

@@ -4,6 +4,7 @@ import 'package:ecommerce_desktop/models/analytics.dart';
 import 'package:ecommerce_desktop/models/hall.dart';
 import 'package:ecommerce_desktop/models/movie.dart';
 import 'package:ecommerce_desktop/models/screening.dart';
+import 'package:ecommerce_desktop/models/search_result.dart';
 import 'package:ecommerce_desktop/providers/analytics_provider.dart';
 import 'package:ecommerce_desktop/providers/hall_provider.dart';
 import 'package:ecommerce_desktop/providers/movie_provider.dart';
@@ -43,34 +44,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _load() async {
-    try {
-      final analyticsProvider = context.read<AnalyticsProvider>();
-      final movieProvider = context.read<MovieProvider>();
-      final hallProvider = context.read<HallProvider>();
-      final screeningProvider = context.read<ScreeningProvider>();
+    setState(() => _loading = true);
 
-      final dashboard = await analyticsProvider.getDashboard();
-      final movies = await movieProvider.get(
-        filter: {'pageSize': 100, 'includeGenre': true},
-        includePoster: true,
-      );
-      final halls = await hallProvider.get(filter: {'pageSize': 5});
-      final screenings = await screeningProvider.get(
-        filter: {'pageSize': 6, 'includeMovie': true, 'includeHall': true},
-      );
-      if (!mounted) return;
-      setState(() {
-        _dashboard = dashboard;
-        _movies = movies.items ?? [];
-        _halls = halls.items ?? [];
-        _screenings = screenings.items ?? [];
-        _loading = false;
-      });
+    final movieProvider = context.read<MovieProvider>();
+    final hallProvider = context.read<HallProvider>();
+    final screeningProvider = context.read<ScreeningProvider>();
+    final analyticsProvider = context.read<AnalyticsProvider>();
+
+    DashboardStats? dashboard;
+    List<Movie> movies = [];
+    List<Hall> halls = [];
+    List<Screening> screenings = [];
+    String? analyticsError;
+
+    try {
+      final catalog = await Future.wait([
+        movieProvider.get(
+          filter: {'pageSize': 100, 'includeGenre': true},
+          includePoster: true,
+        ),
+        hallProvider.get(filter: {'pageSize': 5}),
+        screeningProvider.get(
+          filter: {
+            'pageSize': 6,
+            'includeSeatStats': false,
+          },
+        ),
+      ]);
+      movies = (catalog[0] as SearchResult<Movie>).items ?? [];
+      halls = (catalog[1] as SearchResult<Hall>).items ?? [];
+      screenings = (catalog[2] as SearchResult<Screening>).items ?? [];
     } on Exception catch (e) {
       if (mounted) {
-        setState(() => _loading = false);
         alertBox(context, 'Error', e.toString());
       }
+    }
+
+    try {
+      dashboard = await analyticsProvider.getDashboard();
+    } on Exception {
+      analyticsError = 'Analytics could not be loaded.';
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _dashboard = dashboard;
+      _movies = movies;
+      _halls = halls;
+      _screenings = screenings;
+      _loading = false;
+    });
+
+    if (analyticsError != null && mounted) {
+      showAppSnackBar(context, analyticsError!, isError: true);
     }
   }
 
@@ -155,9 +181,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         StatCard(
           icon: Icons.people,
           iconColor: AppColors.orange,
-          value: _formatCount(d?.totalReservations ?? 0),
+          value: _formatCount(d?.totalCustomers ?? 0),
           label: 'Total Customers',
-          subtitle: 'Active',
+          subtitle: 'Registered',
         ),
       ],
     );

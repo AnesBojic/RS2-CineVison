@@ -37,6 +37,9 @@ namespace eCommerce.Services
                 TotalRevenue = seatSales.Where(s => s.Status == ReservationStatus.Paid).Sum(s => s.Price),
                 TotalTicketsSold = seatSales.Count,
                 TotalReservations = await _dbContext.Reservations.CountAsync(r => r.Status != ReservationStatus.Cancelled),
+                TotalCustomers = await _dbContext.Users.CountAsync(u =>
+                    u.IsActive &&
+                    u.UserRoles.Any(ur => ur.Role != null && ur.Role.Name == "Customer")),
                 TotalMovies = await _dbContext.Movies.CountAsync(),
                 ActiveMovies = await _dbContext.Movies.CountAsync(m => m.IsActive),
                 TotalScreenings = screenings.Count,

@@ -5,6 +5,7 @@ namespace eCommerce.Model.Responses
         public int Id { get; set; }
         public int MovieId { get; set; }
         public string MovieTitle { get; set; } = string.Empty;
+        public string? MoviePosterBase64 { get; set; }
         public int HallId { get; set; }
         public string HallName { get; set; } = string.Empty;
         public DateTime StartTime { get; set; }

@@ -30,5 +30,11 @@ namespace eCommerce.Model.SearchObjects
         public bool? IncludeMovie { get; set; }
 
         public bool? IncludeHall { get; set; }
+
+        /// <summary>
+        /// When true, loads hall seats and reservation seats to compute availability.
+        /// Leave false for admin list views to keep queries fast.
+        /// </summary>
+        public bool? IncludeSeatStats { get; set; }
     }
 }

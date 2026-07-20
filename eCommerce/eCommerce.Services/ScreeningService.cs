@@ -29,11 +29,22 @@ namespace eCommerce.Services
         {
             search ??= new ScreeningSearchObject();
 
+            var includeSeatStats = search.IncludeSeatStats == true;
+
             IQueryable<Screening> query = _dbContext.Screenings
                 .AsNoTracking()
-                .Include(s => s.Movie)
-                .Include(s => s.Hall).ThenInclude(h => h.Seats)
-                .Include(s => s.ReservationSeats);
+                .Include(s => s.Movie);
+
+            if (includeSeatStats)
+            {
+                query = query
+                    .Include(s => s.Hall).ThenInclude(h => h.Seats)
+                    .Include(s => s.ReservationSeats);
+            }
+            else
+            {
+                query = query.Include(s => s.Hall);
+            }
 
             if (search.MovieId.HasValue)
             {
@@ -75,7 +86,11 @@ namespace eCommerce.Services
             }
 
             var entities = await query.ToListAsync();
-            var items = entities.Select(s => MapToResponse(s, search.IncludeMovie == true, search.IncludeHall == true)).ToList();
+            var items = entities.Select(s => MapToResponse(
+                s,
+                search.IncludeMovie == true,
+                search.IncludeHall == true,
+                includeSeatStats)).ToList();
 
             return new PageResult<ScreeningResponse>
             {
@@ -94,7 +109,7 @@ namespace eCommerce.Services
                 .FirstOrDefaultAsync(s => s.Id == id)
                 ?? throw new KeyNotFoundException($"Screening with id {id} not found.");
 
-            return MapToResponse(entity, includeMovie: true, includeHall: true);
+            return MapToResponse(entity, includeMovie: true, includeHall: true, includeSeatStats: true);
         }
 
         public override async Task<ScreeningResponse> InsertAsync(ScreeningInsertRequest request)
@@ -228,15 +243,23 @@ namespace eCommerce.Services
                 .ToList();
         }
 
-        private ScreeningResponse MapToResponse(Screening s, bool includeMovie, bool includeHall)
+        private ScreeningResponse MapToResponse(
+            Screening s,
+            bool includeMovie,
+            bool includeHall,
+            bool includeSeatStats)
         {
             var response = _mapper.Map<ScreeningResponse>(s);
             response.MovieTitle = s.Movie?.Title ?? string.Empty;
+            response.MoviePosterBase64 = s.Movie?.PosterImageBase64;
             response.HallName = s.Hall?.Name ?? string.Empty;
 
-            var totalSeats = s.Hall?.Seats.Count(x => x.IsActive) ?? 0;
-            response.TotalSeats = totalSeats;
-            response.AvailableSeats = Math.Max(0, totalSeats - (s.ReservationSeats?.Count ?? 0));
+            if (includeSeatStats)
+            {
+                var totalSeats = s.Hall?.Seats.Count(x => x.IsActive) ?? 0;
+                response.TotalSeats = totalSeats;
+                response.AvailableSeats = Math.Max(0, totalSeats - (s.ReservationSeats?.Count ?? 0));
+            }
 
             if (includeMovie && s.Movie != null)
             {
@@ -245,7 +268,9 @@ namespace eCommerce.Services
             if (includeHall && s.Hall != null)
             {
                 response.Hall = _mapper.Map<HallResponse>(s.Hall);
-                response.Hall.SeatCount = s.Hall.Seats.Count;
+                response.Hall.SeatCount = includeSeatStats
+                    ? s.Hall.Seats.Count
+                    : 0;
             }
 
             return response;

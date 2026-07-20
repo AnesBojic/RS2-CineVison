@@ -7,7 +7,11 @@ namespace eCommerce.Model.Responses
     {
         public decimal TotalRevenue { get; set; }
         public int TotalTicketsSold { get; set; }
+        /// <summary>Non-cancelled reservation records (bookings), not user accounts.</summary>
         public int TotalReservations { get; set; }
+
+        /// <summary>Active user accounts with the Customer role.</summary>
+        public int TotalCustomers { get; set; }
 
         public int TotalMovies { get; set; }
         public int ActiveMovies { get; set; }

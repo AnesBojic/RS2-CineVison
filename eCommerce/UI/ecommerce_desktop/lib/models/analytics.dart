@@ -2,6 +2,7 @@ class DashboardStats {
   final num totalRevenue;
   final int totalTicketsSold;
   final int totalReservations;
+  final int totalCustomers;
   final int totalMovies;
   final int activeMovies;
   final int totalScreenings;
@@ -13,6 +14,7 @@ class DashboardStats {
     required this.totalRevenue,
     required this.totalTicketsSold,
     required this.totalReservations,
+    required this.totalCustomers,
     required this.totalMovies,
     required this.activeMovies,
     required this.totalScreenings,
@@ -26,6 +28,7 @@ class DashboardStats {
       totalRevenue: json['totalRevenue'] as num? ?? 0,
       totalTicketsSold: json['totalTicketsSold'] as int? ?? 0,
       totalReservations: json['totalReservations'] as int? ?? 0,
+      totalCustomers: json['totalCustomers'] as int? ?? 0,
       totalMovies: json['totalMovies'] as int? ?? 0,
       activeMovies: json['activeMovies'] as int? ?? 0,
       totalScreenings: json['totalScreenings'] as int? ?? 0,

@@ -3,6 +3,7 @@ import 'package:ecommerce_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:ecommerce_desktop/models/hall.dart';
 import 'package:ecommerce_desktop/models/movie.dart';
 import 'package:ecommerce_desktop/models/screening.dart';
+import 'package:ecommerce_desktop/models/search_result.dart';
 import 'package:ecommerce_desktop/providers/hall_provider.dart';
 import 'package:ecommerce_desktop/providers/movie_provider.dart';
 import 'package:ecommerce_desktop/providers/screening_provider.dart';
@@ -51,31 +52,15 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final movieProvider = context.read<MovieProvider>();
-      final hallProvider = context.read<HallProvider>();
-
-      // Start all independent requests together instead of waiting for each one.
-      final moviesFuture = movieProvider.get(
-        filter: {'pageSize': 100},
-        includePoster: true,
-      );
-      final hallsFuture = hallProvider.get(filter: {'pageSize': 100});
-      final screeningsFuture = _provider.get(filter: {
+      final data = await _provider.get(filter: {
         'page': _page,
         'pageSize': _pageSize,
         'includeTotalCount': true,
-        'includeMovie': true,
-        'includeHall': true,
+        'includeSeatStats': false,
       });
-
-      final movies = await moviesFuture;
-      final halls = await hallsFuture;
-      final data = await screeningsFuture;
 
       if (!mounted) return;
       setState(() {
-        _movies = movies.items ?? [];
-        _halls = halls.items ?? [];
         _items = data.items ?? [];
         _totalCount = data.totalCount ?? _items.length;
         _loading = false;
@@ -87,6 +72,24 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
         alertBox(context, 'Error', e.toString());
       }
     }
+  }
+
+  Future<void> _ensurePickerData() async {
+    if (_movies.isNotEmpty && _halls.isNotEmpty) return;
+
+    final movieProvider = context.read<MovieProvider>();
+    final hallProvider = context.read<HallProvider>();
+
+    final results = await Future.wait([
+      movieProvider.get(filter: {'pageSize': 500}),
+      hallProvider.get(filter: {'pageSize': 500}),
+    ]);
+
+    if (!mounted) return;
+    setState(() {
+      _movies = (results[0] as SearchResult<Movie>).items ?? [];
+      _halls = (results[1] as SearchResult<Hall>).items ?? [];
+    });
   }
 
   Hall? _hallById(int? id) {
@@ -253,6 +256,9 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
   }
 
   Future<void> _showDialog({Screening? screening}) async {
+    await _ensurePickerData();
+    if (!mounted) return;
+
     int? movieId = screening?.movieId;
     int? hallId = screening?.hallId;
     DateTime? date = screening?.startTime;

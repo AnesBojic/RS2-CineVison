@@ -33,13 +33,13 @@ class Screening {
 
   factory Screening.fromJson(Map<String, dynamic> json) {
     final movie = json['movie'];
+    final nestedPoster =
+        movie is Map ? movie['posterImageBase64'] as String? : null;
     return Screening(
       id: json['id'] as int?,
       movieId: json['movieId'] as int?,
       movieTitle: json['movieTitle'] as String?,
-      moviePosterBase64: movie is Map
-          ? movie['posterImageBase64'] as String?
-          : null,
+      moviePosterBase64: (json['moviePosterBase64'] as String?) ?? nestedPoster,
       hallId: json['hallId'] as int?,
       hallName: json['hallName'] as String?,
       startTime: json['startTime'] != null
