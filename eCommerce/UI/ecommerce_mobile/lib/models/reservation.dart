@@ -108,6 +108,17 @@ class Reservation {
 
   bool get isPaidOrConfirmed => status == 1 || status == 2;
 
+  bool get isCancelled => status == 3;
+
+  bool get isPaid => status == 2;
+
   bool get isScreeningPast =>
       screeningEndTime.toUtc().isBefore(DateTime.now().toUtc());
+
+  /// Refund/cancel only until 4 hours before the screening starts.
+  bool get canRefund {
+    if (!isPaidOrConfirmed || isCancelled) return false;
+    final deadline = screeningStartTime.toUtc().subtract(const Duration(hours: 4));
+    return DateTime.now().toUtc().isBefore(deadline);
+  }
 }

@@ -265,6 +265,7 @@ namespace eCommerce.Services
 
             var reservation = await _dbContext.Reservations
                 .Include(r => r.ReservationSeats)
+                .Include(r => r.Screening)
                 .FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId)
                 ?? throw new KeyNotFoundException($"Reservation with id {id} not found.");
 
@@ -273,12 +274,55 @@ namespace eCommerce.Services
                 throw new ClinetException("This reservation is already cancelled.");
             }
 
+            if (reservation.Status != ReservationStatus.Paid &&
+                reservation.Status != ReservationStatus.Confirmed)
+            {
+                throw new ClinetException("Only confirmed or paid bookings can be refunded.");
+            }
+
+            if (reservation.Screening.StartTime <= DateTime.UtcNow.AddHours(4))
+            {
+                throw new ClinetException(
+                    "Tickets can only be refunded at least 4 hours before the screening starts.");
+            }
+
+            // Paid Stripe bookings: refund money before freeing seats.
+            if (reservation.Status == ReservationStatus.Paid &&
+                !string.IsNullOrWhiteSpace(reservation.PaymentTransactionId))
+            {
+                await RefundStripePaymentAsync(reservation.PaymentTransactionId);
+            }
+
             reservation.Status = ReservationStatus.Cancelled;
             // Free the seats so they become available again for the screening.
+            // Analytics read from ReservationSeats, so occupancy/revenue update automatically.
             _dbContext.ReservationSeats.RemoveRange(reservation.ReservationSeats);
             await _dbContext.SaveChangesAsync();
 
             return await GetByIdAsync(reservation.Id);
+        }
+
+        private async Task RefundStripePaymentAsync(string paymentIntentId)
+        {
+            var secretKey = _configuration["Stripe:SecretKey"]
+                            ?? throw new InvalidOperationException("Stripe secret key is not configured.");
+
+            StripeConfiguration.ApiKey = secretKey;
+
+            try
+            {
+                var refundService = new RefundService();
+                await refundService.CreateAsync(new RefundCreateOptions
+                {
+                    PaymentIntent = paymentIntentId,
+                });
+            }
+            catch (StripeException ex)
+            {
+                _logger.LogError(ex, "Stripe refund failed for PaymentIntent {PaymentIntentId}.", paymentIntentId);
+                throw new ClinetException(
+                    ex.StripeError?.Message ?? "Payment refund failed. Please try again or contact support.");
+            }
         }
 
         public async Task<PaymentIntentResponse> CreatePaymentIntentAsync(CreatePaymentIntentRequest request)

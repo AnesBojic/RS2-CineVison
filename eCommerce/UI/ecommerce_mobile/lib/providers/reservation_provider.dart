@@ -56,4 +56,12 @@ class ReservationProvider extends BaseProvider<Reservation> {
     validateResponse(response);
     return Reservation.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
+
+  Future<Reservation> cancel(int reservationId) async {
+    final uri =
+        Uri.parse('${BaseProvider.baseUrl}Reservations/$reservationId/Cancel');
+    final response = await http.post(uri, headers: createHeaders());
+    validateResponse(response);
+    return Reservation.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
 }
