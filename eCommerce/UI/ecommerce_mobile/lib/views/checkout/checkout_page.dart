@@ -27,9 +27,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _cardController = TextEditingController(text: '4242 4242 4242 4242');
-  final _expiryController = TextEditingController(text: '12/28');
-  final _cvvController = TextEditingController(text: '123');
+  final _cardController = TextEditingController();
+  final _expiryController = TextEditingController();
+  final _cvvController = TextEditingController();
   bool _busy = false;
 
   @override
@@ -328,49 +328,48 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _FormCard(
-                    title: 'Payment Information',
-                    icon: Icons.credit_card_outlined,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TextFormField(
-                          controller: _cardController,
-                          decoration: const InputDecoration(
-                            hintText: '1234 5678 9012 3456',
+                  if (!supportsStripePaymentSheet)
+                    _FormCard(
+                      title: 'Payment Information',
+                      icon: Icons.credit_card_outlined,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextFormField(
+                            controller: _cardController,
+                            decoration: const InputDecoration(
+                              labelText: 'Card number',
+                              hintText: '1234 5678 9012 3456',
+                            ),
+                            keyboardType: TextInputType.number,
                           ),
-                          keyboardType: TextInputType.number,
-                          readOnly: !supportsStripePaymentSheet,
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _expiryController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Expiry Date',
-                                  hintText: 'MM/YY',
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _expiryController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Expiry Date',
+                                    hintText: 'MM/YY',
+                                  ),
                                 ),
-                                readOnly: !supportsStripePaymentSheet,
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _cvvController,
-                                decoration: const InputDecoration(
-                                  labelText: 'CVV',
-                                  hintText: '123',
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _cvvController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'CVV',
+                                    hintText: '123',
+                                  ),
                                 ),
-                                readOnly: !supportsStripePaymentSheet,
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
