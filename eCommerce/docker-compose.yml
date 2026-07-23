@@ -15,25 +15,62 @@ services:
       - sqlserver_data:/var/opt/mssql
     networks:
       - ecomm-2026
+
+  # RabbitMQ + management UI (http://localhost:15672 — guest / guest)
+  ecomm-fit-2026-rabbitmq:
+    image: rabbitmq:3-management
+    container_name: ecomm-fit-2026-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - ecomm-2026
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   ecomm-fit-2026-api:
     build:
       context: .
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=ecomm-fit-2026;Database=eCommerce;User Id=sa;Password=qweasd123!;TrustServerCertificate=True;
+      # Inside Docker, Host must be the service name (not localhost).
+      - RabbitMq__Enabled=true
+      - RabbitMq__Host=ecomm-fit-2026-rabbitmq
+      - RabbitMq__Port=5672
+      - RabbitMq__Username=guest
+      - RabbitMq__Password=guest
+      - RabbitMq__Queue=cinevision-emails
+      # SMTP values still come from appsettings.json baked into the image,
+      # or override here later if needed:
+      # - Smtp__Host=smtp.gmail.com
+      # - Smtp__Port=587
+      # - Smtp__User=yourgmail@gmail.com
+      # - Smtp__Password=your-app-password
+      # - Smtp__FromEmail=yourgmail@gmail.com
+      # - Smtp__FromName=CineVision
+      # - Smtp__UseSsl=false
     ports:
       - "5121:5121"
     expose:
-       - "5121"
+      - "5121"
     depends_on:
       - ecomm-fit-2026
+      - ecomm-fit-2026-rabbitmq
     networks:
       - ecomm-2026
 
-
-
 volumes:
   sqlserver_data:
+  rabbitmq_data:
 
 networks:
   ecomm-2026:
