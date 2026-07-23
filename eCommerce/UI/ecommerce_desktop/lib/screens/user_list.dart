@@ -138,6 +138,8 @@ class _UserListState extends State<UserList> {
       await _userProvider.remove(u.id!);
       showAppSnackBar(context, 'User deleted');
       _load();
+    } on ApiClientException catch (e) {
+      if (mounted) showAppSnackBar(context, e.message, isError: true);
     } on Exception catch (e) {
       if (mounted) alertBox(context, 'Error', e.toString());
     }
@@ -181,6 +183,8 @@ class _UserListState extends State<UserList> {
                   showAppSnackBar(this.context, 'Email sent');
                   context.read<NotificationProvider>().refresh();
                 }
+              } on ApiClientException catch (e) {
+                if (context.mounted) showAppSnackBar(context, e.message, isError: true);
               } on Exception catch (e) {
                 if (context.mounted) alertBox(context, 'Error', e.toString());
               }

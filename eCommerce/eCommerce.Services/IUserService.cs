@@ -12,5 +12,9 @@ namespace eCommerce.Services
         Task ChangePasswordAsync(UserPasswordChangeRequest request);
         Task<UserResponse> GetProfileAsync(int userId);
         Task<UserResponse> UpdateProfileAsync(int userId, UserProfileUpdateRequest request);
+        /// <summary>Lightweight email lookup for admin SendEmail (avoids loading profile images).</summary>
+        Task<string> GetEmailByIdAsync(int id);
+        Task ForgotPasswordAsync(ForgotPasswordRequest request);
+        Task ResetPasswordAsync(ResetPasswordRequest request);
     }
 }

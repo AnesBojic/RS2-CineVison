@@ -124,7 +124,70 @@ class AuthProvider extends ChangeNotifier {
     if (response.statusCode == 401) {
       throw Exception('Unauthorized');
     }
-    throw Exception('Something went wrong. Please try again.');
+    throw Exception(_messageFromBody(response.body) ?? 'Something went wrong. Please try again.');
+  }
+
+  Future<String> forgotPassword(String emailOrUsername) async {
+    final uri = Uri.parse('$_baseUrl/ForgotPassword');
+    final response = await http.post(
+      uri,
+      headers: createHeaders(),
+      body: jsonEncode({'emailOrUsername': emailOrUsername.trim()}),
+    );
+    if (response.statusCode >= 299) {
+      throw Exception(
+        _messageFromBody(response.body) ?? 'Could not send reset code',
+      );
+    }
+    try {
+      final data = jsonDecode(response.body);
+      if (data is Map && data['message'] != null) {
+        return data['message'].toString();
+      }
+    } catch (_) {}
+    return 'If an account exists, a reset code has been sent.';
+  }
+
+  Future<String> resetPassword({
+    required String emailOrUsername,
+    required String code,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/ResetPassword');
+    final response = await http.post(
+      uri,
+      headers: createHeaders(),
+      body: jsonEncode({
+        'emailOrUsername': emailOrUsername.trim(),
+        'code': code.trim(),
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      }),
+    );
+    if (response.statusCode >= 299) {
+      throw Exception(
+        _messageFromBody(response.body) ?? 'Could not reset password',
+      );
+    }
+    try {
+      final data = jsonDecode(response.body);
+      if (data is Map && data['message'] != null) {
+        return data['message'].toString();
+      }
+    } catch (_) {}
+    return 'Password has been reset.';
+  }
+
+  String? _messageFromBody(String body) {
+    try {
+      final parsed = jsonDecode(body);
+      if (parsed is Map && parsed['message'] != null) {
+        return parsed['message'].toString();
+      }
+    } catch (_) {}
+    if (body.isNotEmpty && body.length < 200) return body;
+    return null;
   }
 
   void logout() {

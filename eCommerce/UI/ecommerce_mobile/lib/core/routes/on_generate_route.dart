@@ -145,7 +145,12 @@ class RouteGenerator {
         return CupertinoPageRoute(builder: (_) => const ForgetPasswordPage());
 
       case AppRoutes.passwordReset:
-        return CupertinoPageRoute(builder: (_) => const PasswordResetPage());
+        final account = settings.arguments is String
+            ? settings.arguments as String
+            : null;
+        return CupertinoPageRoute(
+          builder: (_) => PasswordResetPage(emailOrUsername: account),
+        );
 
       case AppRoutes.newItems:
         return CupertinoPageRoute(builder: (_) => const NewItemsPage());

@@ -121,7 +121,16 @@ class _LoginPageState extends State<LoginPage> {
                         validator: (v) =>
                             (v == null || v.isEmpty) ? 'Password is required' : null,
                       ),
-                      const SizedBox(height: 28),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.pushNamed(context, AppRoutes.forgotPassword);
+                          },
+                          child: const Text('Forgot password?'),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       SizedBox(
                         height: 48,
                         child: ElevatedButton(

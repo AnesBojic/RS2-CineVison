@@ -37,11 +37,11 @@ public class UsersController : BaseCRUDController<UserResponse, UserSearch, User
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SendEmail(int id, [FromBody] EmailSendRequest request)
     {
-        var user = await _service.GetByIdAsync(id);
+        var email = await _service.GetEmailByIdAsync(id);
 
         await _emailService.QueueEmailAsync(new EmailMessage
         {
-            To = user.Email,
+            To = email,
             Subject = request.Subject,
             Body = request.Body,
             IsHtml = request.IsHtml

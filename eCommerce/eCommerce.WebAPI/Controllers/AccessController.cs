@@ -43,6 +43,30 @@ namespace eCommerce.WebAPI.Controllers
             return Ok("You have registered successfully");
         }
 
+        /// <summary>
+        /// Sends a 6-digit reset code to the account email (when the account exists).
+        /// Always returns the same message so callers cannot probe which accounts exist.
+        /// </summary>
+        [HttpPost("ForgotPassword")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            await _userService.ForgotPasswordAsync(request);
+            return Ok(new
+            {
+                message = "If an account exists for that email or username, a reset code has been sent."
+            });
+        }
+
+        /// <summary>Sets a new password using the emailed reset code.</summary>
+        [HttpPost("ResetPassword")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            await _userService.ResetPasswordAsync(request);
+            return Ok(new { message = "Password has been reset. You can sign in with your new password." });
+        }
+
         [Authorize]
         [HttpPost("Logout")]
         public async Task<IActionResult> Logout()

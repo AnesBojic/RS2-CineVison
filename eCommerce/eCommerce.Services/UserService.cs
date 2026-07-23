@@ -1,3 +1,4 @@
+using eCommerce.Model.Messages;
 using eCommerce.Common.Services.CryptoService;
 using eCommerce.Model.Access;
 using eCommerce.Model.Exceptions;
@@ -19,13 +20,32 @@ namespace eCommerce.Services
 {
     public class UserService : BaseCRUDService<User, UserResponse, UserSearch, UserInsertRequest, UserUpdateRequest>, IUserService
     {
+        /// <summary>~300KB of base64; keeps API/list/edit payloads usable.</summary>
+        private const int MaxProfileImageBase64Length = 400_000;
+
         private readonly ICryptoService _cryptoService;
         private readonly IValidator<UserProfileUpdateRequest> _profileValidator;
-        public UserService(ECommerceDbContext dbContext, MapsterMapper.IMapper mapper, IValidator<UserInsertRequest> insertValidator, IValidator<UserUpdateRequest> updateValidator, ICryptoService cryptoService, IValidator<UserProfileUpdateRequest> profileValidator)
+        private readonly IValidator<ForgotPasswordRequest> _forgotPasswordValidator;
+        private readonly IValidator<ResetPasswordRequest> _resetPasswordValidator;
+        private readonly IEmailService _emailService;
+
+        public UserService(
+            ECommerceDbContext dbContext,
+            MapsterMapper.IMapper mapper,
+            IValidator<UserInsertRequest> insertValidator,
+            IValidator<UserUpdateRequest> updateValidator,
+            ICryptoService cryptoService,
+            IValidator<UserProfileUpdateRequest> profileValidator,
+            IValidator<ForgotPasswordRequest> forgotPasswordValidator,
+            IValidator<ResetPasswordRequest> resetPasswordValidator,
+            IEmailService emailService)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
             _cryptoService = cryptoService;
             _profileValidator = profileValidator;
+            _forgotPasswordValidator = forgotPasswordValidator;
+            _resetPasswordValidator = resetPasswordValidator;
+            _emailService = emailService;
         }
 
 
@@ -63,18 +83,41 @@ namespace eCommerce.Services
             return query.Include(u => u.UserRoles).ThenInclude(ur => ur.Role);
         }
 
-        private UserResponse MapUserResponse(User user)
+        private UserResponse MapUserResponse(User user, bool includeProfileImage = true)
         {
             var response = _mapper.Map<UserResponse>(user);
             response.Role = user.UserRoles.FirstOrDefault()?.Role.Name ?? string.Empty;
-            response.ProfileImageBase64 = user.ProfileImageBase64;
+            response.ProfileImageBase64 = includeProfileImage ? user.ProfileImageBase64 : null;
             return response;
+        }
+
+        private static void EnsureProfileImageSize(string? profileImageBase64)
+        {
+            if (!string.IsNullOrEmpty(profileImageBase64) &&
+                profileImageBase64.Length > MaxProfileImageBase64Length)
+            {
+                throw new ClinetException(
+                    "Profile photo is too large. Please upload a smaller image (under ~300 KB).");
+            }
+        }
+
+        private async Task ClearOversizedProfileImageIfNeededAsync(User user)
+        {
+            if (string.IsNullOrEmpty(user.ProfileImageBase64) ||
+                user.ProfileImageBase64.Length <= MaxProfileImageBase64Length)
+            {
+                return;
+            }
+
+            user.ProfileImageBase64 = null;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _dbContext.SaveChangesAsync();
         }
 
         private async Task AssignRoleAsync(int userId, string roleName)
         {
             var role = await _dbContext.Roles.FirstOrDefaultAsync(r => r.Name == roleName)
-                ?? throw new InvalidOperationException($"Role '{roleName}' was not found.");
+                ?? throw new ClinetException($"Role '{roleName}' was not found.");
 
             var existingRoles = await _dbContext.UserRoles.Where(ur => ur.UserId == userId).ToListAsync();
             if (existingRoles.Count == 1 && existingRoles[0].RoleId == role.Id)
@@ -123,7 +166,7 @@ namespace eCommerce.Services
                 }
             }
 
-            var list = query.ToList().Select(MapUserResponse).ToList();
+            var list = query.ToList().Select(u => MapUserResponse(u, includeProfileImage: false)).ToList();
 
             return new PageResult<UserResponse>
             {
@@ -144,7 +187,26 @@ namespace eCommerce.Services
                 throw new KeyNotFoundException($"User with id {id} not found.");
             }
 
+            // Oversized photos break desktop edit/email payloads — drop them so the user stays manageable.
+            await ClearOversizedProfileImageIfNeededAsync(user);
+
             return MapUserResponse(user);
+        }
+
+        public async Task<string> GetEmailByIdAsync(int id)
+        {
+            var email = await _dbContext.Users
+                .AsNoTracking()
+                .Where(u => u.Id == id)
+                .Select(u => u.Email)
+                .FirstOrDefaultAsync();
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                throw new KeyNotFoundException($"User with id {id} not found.");
+            }
+
+            return email;
         }
 
         protected override User MapInsertRequestToEntity(UserInsertRequest request)
@@ -168,13 +230,15 @@ namespace eCommerce.Services
             // Check if email or username already exists
             if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email))
             {
-                throw new InvalidOperationException($"Email '{request.Email}' is already in use.");
+                throw new ClinetException($"Email '{request.Email}' is already in use.");
             }
 
             if (await _dbContext.Users.AnyAsync(u => u.Username == request.Username))
             {
-                throw new InvalidOperationException($"Username '{request.Username}' is already in use.");
+                throw new ClinetException($"Username '{request.Username}' is already in use.");
             }
+
+            EnsureProfileImageSize(request.ProfileImageBase64);
 
             var entity = MapInsertRequestToEntity(request);
             entity.CreatedAt = DateTime.UtcNow;
@@ -206,13 +270,15 @@ namespace eCommerce.Services
             // Check if email or username already exists
             if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email && u.Id != id))
             {
-                throw new InvalidOperationException($"Email '{request.Email}' is already in use.");
+                throw new ClinetException($"Email '{request.Email}' is already in use.");
             }
 
             if (await _dbContext.Users.AnyAsync(u => u.Username == request.Username && u.Id != id))
             {
-                throw new InvalidOperationException($"Username '{request.Username}' is already in use.");
+                throw new ClinetException($"Username '{request.Username}' is already in use.");
             }
+
+            EnsureProfileImageSize(request.ProfileImageBase64);
 
             MapUpdateRequestToEntity(request, entity);
             entity.UpdatedAt = DateTime.UtcNow;
@@ -252,7 +318,7 @@ namespace eCommerce.Services
             {
                 if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId))
                 {
-                    throw new InvalidOperationException($"Email '{request.Email}' is already in use.");
+                    throw new ClinetException($"Email '{request.Email}' is already in use.");
                 }
                 entity.Email = request.Email;
             }
@@ -272,6 +338,7 @@ namespace eCommerce.Services
             }
             if (request.ProfileImageBase64 != null)
             {
+                EnsureProfileImageSize(request.ProfileImageBase64);
                 entity.ProfileImageBase64 = request.ProfileImageBase64;
             }
 
@@ -287,10 +354,33 @@ namespace eCommerce.Services
 
         public override async Task DeleteAsync(int id)
         {
-            var entity = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
+            var entity = await _dbContext.Users
+                .Include(u => u.RefreshTokens)
+                .FirstOrDefaultAsync(u => u.Id == id);
             if (entity == null)
             {
                 throw new KeyNotFoundException($"User with id {id} not found.");
+            }
+
+            // Reservations / reviews use Restrict — remove them so admin delete can succeed.
+            var reservations = await _dbContext.Reservations
+                .Include(r => r.ReservationSeats)
+                .Where(r => r.UserId == id)
+                .ToListAsync();
+            if (reservations.Count > 0)
+            {
+                _dbContext.Reservations.RemoveRange(reservations);
+            }
+
+            var reviews = await _dbContext.Reviews.Where(r => r.UserId == id).ToListAsync();
+            if (reviews.Count > 0)
+            {
+                _dbContext.Reviews.RemoveRange(reviews);
+            }
+
+            if (entity.RefreshTokens.Count > 0)
+            {
+                _dbContext.RefreshTokens.RemoveRange(entity.RefreshTokens);
             }
 
             _dbContext.Users.Remove(entity);
@@ -319,19 +409,17 @@ namespace eCommerce.Services
         public async Task<UserResponse?> GetWithRoleByIdAsync(int id)
         {
             var user = await _dbContext.Users
-               .AsNoTracking()
                .Include(u => u.UserRoles)
                .ThenInclude(ur => ur.Role)
                .FirstOrDefaultAsync(u => u.Id == id);
 
-            UserResponse? response = null;
-
-            if (user != null)
+            if (user == null)
             {
-                response = MapUserResponse(user);
+                return null;
             }
 
-            return response;
+            await ClearOversizedProfileImageIfNeededAsync(user);
+            return MapUserResponse(user);
         }
 
         public async Task ChangePasswordAsync(UserPasswordChangeRequest request)
@@ -352,6 +440,75 @@ namespace eCommerce.Services
 
 
             _dbContext.Users.Update(user);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task ForgotPasswordAsync(ForgotPasswordRequest request)
+        {
+            await _forgotPasswordValidator.ValidateAndThrowAsync(request);
+
+            var key = request.EmailOrUsername.Trim();
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u =>
+                u.Email == key || u.Username == key);
+
+            // Always succeed from the caller's perspective to avoid account enumeration.
+            if (user == null || !user.IsActive)
+            {
+                return;
+            }
+
+            var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+            user.PasswordResetCode = code;
+            user.PasswordResetExpiresAt = DateTime.UtcNow.AddMinutes(15);
+            user.UpdatedAt = DateTime.UtcNow;
+            await _dbContext.SaveChangesAsync();
+
+            await _emailService.QueueEmailAsync(new EmailMessage
+            {
+                To = user.Email,
+                Subject = "CineVision password reset code",
+                Body =
+                    $"Hello {user.FirstName},\n\n" +
+                    $"Your password reset code is: {code}\n\n" +
+                    "This code expires in 15 minutes.\n" +
+                    "If you did not request a reset, you can ignore this email.\n\n" +
+                    "CineVision",
+                IsHtml = false
+            });
+        }
+
+        public async Task ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            await _resetPasswordValidator.ValidateAndThrowAsync(request);
+
+            var key = request.EmailOrUsername.Trim();
+            var code = request.Code.Trim();
+
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u =>
+                u.Email == key || u.Username == key);
+
+            if (user == null ||
+                string.IsNullOrWhiteSpace(user.PasswordResetCode) ||
+                user.PasswordResetCode != code ||
+                !user.PasswordResetExpiresAt.HasValue ||
+                user.PasswordResetExpiresAt.Value < DateTime.UtcNow)
+            {
+                throw new ClinetException("Invalid or expired reset code.");
+            }
+
+            user.PasswordSalt = _cryptoService.GenerateSlat();
+            user.PasswordHash = _cryptoService.GenerateHash(request.NewPassword, user.PasswordSalt);
+            user.PasswordResetCode = null;
+            user.PasswordResetExpiresAt = null;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            // Invalidate existing refresh sessions after a password change.
+            var tokens = await _dbContext.RefreshTokens.Where(t => t.UserId == user.Id).ToListAsync();
+            if (tokens.Count > 0)
+            {
+                _dbContext.RefreshTokens.RemoveRange(tokens);
+            }
+
             await _dbContext.SaveChangesAsync();
         }
     }

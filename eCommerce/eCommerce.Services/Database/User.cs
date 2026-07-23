@@ -44,6 +44,12 @@ namespace eCommerce.Services.Database
 
         public string? ProfileImageBase64 { get; set; }
 
+        /// <summary>One-time code emailed for password recovery (cleared after use).</summary>
+        [MaxLength(10)]
+        public string? PasswordResetCode { get; set; }
+
+        public DateTime? PasswordResetExpiresAt { get; set; }
+
         // Navigation property for the many-to-many relationship with Role
         public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
