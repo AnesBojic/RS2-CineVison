@@ -31,6 +31,7 @@ class _MoviesPageState extends State<MoviesPage> {
   List<Genre> _genres = [];
   bool _isLoading = true;
   bool _usingRecommendations = false;
+  bool _coldStartRecommendations = false;
   bool? _wasUsingRecommendations;
   int? _selectedGenreId;
 
@@ -76,6 +77,7 @@ class _MoviesPageState extends State<MoviesPage> {
       SearchResult<Movie> movies;
       Map<int, String> reasons = {};
       var usingRecommendations = false;
+      var coldStart = false;
 
       if (_canUseRecommendations(auth)) {
         try {
@@ -83,6 +85,7 @@ class _MoviesPageState extends State<MoviesPage> {
           movies = personalized.movies;
           reasons = personalized.reasons;
           usingRecommendations = true;
+          coldStart = personalized.coldStart;
         } on Exception {
           movies = await _loadPopularCatalog();
         }
@@ -96,6 +99,7 @@ class _MoviesPageState extends State<MoviesPage> {
         _movieResult = movies;
         _recommendationReasons = reasons;
         _usingRecommendations = usingRecommendations;
+        _coldStartRecommendations = coldStart;
         _isLoading = false;
       });
     } on Exception catch (e) {
@@ -105,7 +109,7 @@ class _MoviesPageState extends State<MoviesPage> {
     }
   }
 
-  Future<({SearchResult<Movie> movies, Map<int, String> reasons})>
+  Future<({SearchResult<Movie> movies, Map<int, String> reasons, bool coldStart})>
       _loadPersonalizedCatalog() async {
     final catalog = await _loadCatalogMovies();
     final items = List<Movie>.from(catalog.items ?? []);
@@ -124,10 +128,18 @@ class _MoviesPageState extends State<MoviesPage> {
       return (a.title ?? '').compareTo(b.title ?? '');
     });
 
-    final reasons = <int, String>{
-      for (final r in recommendations)
-        if (r.movie.id != null && r.contentScore > 0) r.movie.id!: r.reason,
-    };
+    // No bookings/reviews yet → API scores are popularity-only (contentScore stays 0).
+    final coldStart = recommendations.isEmpty ||
+        recommendations.every((r) => r.contentScore <= 0);
+
+    final reasons = <int, String>{};
+    for (final r in recommendations) {
+      final id = r.movie.id;
+      if (id == null || r.reason.trim().isEmpty) continue;
+      // Cold start: banner explains popularity; skip repeating it on every card.
+      if (coldStart) continue;
+      reasons[id] = r.reason;
+    }
 
     final filtered = _applyClientFilters(items);
 
@@ -136,6 +148,7 @@ class _MoviesPageState extends State<MoviesPage> {
         ..items = filtered
         ..totalCount = filtered.length,
       reasons: reasons,
+      coldStart: coldStart,
     );
   }
 
@@ -160,10 +173,18 @@ class _MoviesPageState extends State<MoviesPage> {
     setState(() {
       _recommendationReasons = {};
       _usingRecommendations = false;
+      _coldStartRecommendations = false;
       _movieResult = null;
       _isLoading = true;
     });
     _loadData();
+  }
+
+  String get _recommendationBannerText {
+    if (_coldStartRecommendations) {
+      return 'New account — movies are ranked by popularity. After you book or review, the list adapts to your taste.';
+    }
+    return 'All movies shown — titles matching your bookings and preferences are ranked higher.';
   }
 
   Future<SearchResult<Movie>> _loadCatalogMovies() {
@@ -247,7 +268,7 @@ class _MoviesPageState extends State<MoviesPage> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'All movies shown — your preferences boost matching titles to the top',
+                                    _recommendationBannerText,
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodySmall
