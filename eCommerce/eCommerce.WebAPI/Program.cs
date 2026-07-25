@@ -228,12 +228,38 @@ app.UseAuthentication();
 
 app.UseAuthorization();
 
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ECommerceDbContext>();
-    await MoviePosterSeed.EnsureSeededAsync(db);
-}
+await EnsureDatabaseReadyAsync(app);
 
 app.Run();
+
+static async Task EnsureDatabaseReadyAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ECommerceDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+
+    const int maxAttempts = 40;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            await db.Database.MigrateAsync();
+            await MoviePosterSeed.EnsureSeededAsync(db);
+            logger.LogInformation("Database migrated and poster seed ensured.");
+            return;
+        }
+        catch (Exception ex) when (attempt < maxAttempts)
+        {
+            logger.LogWarning(
+                ex,
+                "Database not ready (attempt {Attempt}/{Max}). Retrying in 3s...",
+                attempt,
+                maxAttempts);
+            await Task.Delay(TimeSpan.FromSeconds(3));
+        }
+    }
+}

@@ -356,13 +356,14 @@ namespace eCommerce.Services
         {
             var entity = await _dbContext.Users
                 .Include(u => u.RefreshTokens)
+                .Include(u => u.UserRoles)
                 .FirstOrDefaultAsync(u => u.Id == id);
             if (entity == null)
             {
                 throw new KeyNotFoundException($"User with id {id} not found.");
             }
 
-            // Reservations / reviews use Restrict — remove them so admin delete can succeed.
+            // Reservations / reviews use Restrict — remove related details so admin delete succeeds.
             var reservations = await _dbContext.Reservations
                 .Include(r => r.ReservationSeats)
                 .Where(r => r.UserId == id)
@@ -378,13 +379,39 @@ namespace eCommerce.Services
                 _dbContext.Reviews.RemoveRange(reviews);
             }
 
+            var notifications = await _dbContext.UserNotifications.Where(n => n.UserId == id).ToListAsync();
+            if (notifications.Count > 0)
+            {
+                _dbContext.UserNotifications.RemoveRange(notifications);
+            }
+
             if (entity.RefreshTokens.Count > 0)
             {
                 _dbContext.RefreshTokens.RemoveRange(entity.RefreshTokens);
             }
 
+            if (entity.UserRoles.Count > 0)
+            {
+                _dbContext.UserRoles.RemoveRange(entity.UserRoles);
+            }
+
             _dbContext.Users.Remove(entity);
             await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task<UserDeleteImpactResponse> GetDeleteImpactAsync(int id)
+        {
+            var user = await _dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id)
+                ?? throw new KeyNotFoundException($"User with id {id} not found.");
+
+            return new UserDeleteImpactResponse
+            {
+                UserId = user.Id,
+                DisplayName = $"{user.FirstName} {user.LastName}".Trim(),
+                ReservationCount = await _dbContext.Reservations.CountAsync(r => r.UserId == id),
+                ReviewCount = await _dbContext.Reviews.CountAsync(r => r.UserId == id),
+                NotificationCount = await _dbContext.UserNotifications.CountAsync(n => n.UserId == id),
+            };
         }
 
         public async Task<UserSensitveResponse?> GetByUsernameAsync(string username)

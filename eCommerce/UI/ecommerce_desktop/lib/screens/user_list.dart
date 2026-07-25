@@ -132,11 +132,50 @@ class _UserListState extends State<UserList> {
   }
 
   Future<void> _delete(User u) async {
-    final ok = await confirmDelete(context, 'Delete ${u.firstName}?');
+    if (u.id == null) return;
+
+    Map<String, dynamic>? impact;
+    try {
+      impact = await _userProvider.getDeleteImpact(u.id!);
+    } on Exception catch (_) {
+      // Still allow delete with a generic warning if preview fails.
+    }
+
+    if (!mounted) return;
+
+    final name = '${u.firstName ?? ''} ${u.lastName ?? ''}'.trim();
+    final reservationCount = impact?['reservationCount'] as int? ?? 0;
+    final reviewCount = impact?['reviewCount'] as int? ?? 0;
+
+    final warning = StringBuffer();
+    warning.writeln(
+      'Delete ${name.isEmpty ? 'this user' : name}?',
+    );
+    warning.writeln();
+    if (reservationCount > 0 || reviewCount > 0) {
+      warning.writeln(
+        'Warning: this will permanently delete all related data, including:',
+      );
+      if (reservationCount > 0) {
+        warning.writeln(
+          '• $reservationCount reservation(s) and their reserved seats',
+        );
+      }
+      if (reviewCount > 0) {
+        warning.writeln('• $reviewCount review(s)');
+      }
+      warning.writeln('• notifications and login sessions for this account');
+    } else {
+      warning.writeln(
+        'This account has no bookings. The user profile will still be removed permanently.',
+      );
+    }
+
+    final ok = await confirmDelete(context, warning.toString().trim());
     if (ok != true || !mounted) return;
     try {
       await _userProvider.remove(u.id!);
-      showAppSnackBar(context, 'User deleted');
+      showAppSnackBar(context, 'User and related data deleted');
       _load();
     } on ApiClientException catch (e) {
       if (mounted) showAppSnackBar(context, e.message, isError: true);

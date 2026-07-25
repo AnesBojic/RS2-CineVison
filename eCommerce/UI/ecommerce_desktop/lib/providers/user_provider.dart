@@ -63,4 +63,12 @@ class UserProvider extends BaseProvider<User> {
     );
     validateResponse(response);
   }
+
+  Future<Map<String, dynamic>> getDeleteImpact(int userId) async {
+    final baseUrl = BaseProvider.baseUrl ?? 'http://localhost:5126/';
+    final uri = Uri.parse('${baseUrl}Users/$userId/DeleteImpact');
+    final response = await http.get(uri, headers: createHeaders());
+    validateResponse(response);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
 }

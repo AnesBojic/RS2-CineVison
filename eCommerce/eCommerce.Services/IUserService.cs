@@ -14,6 +14,7 @@ namespace eCommerce.Services
         Task<UserResponse> UpdateProfileAsync(int userId, UserProfileUpdateRequest request);
         /// <summary>Lightweight email lookup for admin SendEmail (avoids loading profile images).</summary>
         Task<string> GetEmailByIdAsync(int id);
+        Task<UserDeleteImpactResponse> GetDeleteImpactAsync(int id);
         Task ForgotPasswordAsync(ForgotPasswordRequest request);
         Task ResetPasswordAsync(ResetPasswordRequest request);
     }

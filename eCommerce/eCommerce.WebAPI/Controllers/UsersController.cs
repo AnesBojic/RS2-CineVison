@@ -31,6 +31,18 @@ public class UsersController : BaseCRUDController<UserResponse, UserSearch, User
         _userAccessor = userAccessor;
     }
 
+    /// <summary>
+    /// Preview of related records that will be removed if this user is deleted.
+    /// </summary>
+    [HttpGet("{id}/DeleteImpact")]
+    [ProducesResponseType(typeof(UserDeleteImpactResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserDeleteImpactResponse>> GetDeleteImpact(int id)
+    {
+        var result = await _service.GetDeleteImpactAsync(id);
+        return Ok(result);
+    }
+
     /// <summary>Queues an email to the given user's address (asynchronous delivery via RabbitMQ).</summary>
     [HttpPost("{id}/SendEmail")]
     [ProducesResponseType(StatusCodes.Status200OK)]
