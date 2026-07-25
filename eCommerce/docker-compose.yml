@@ -1,22 +1,29 @@
-version: '3.8'
-
 services:
+  # SQL Server
   ecomm-fit-2026:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: ecomm-fit-2026
     environment:
-      ACCEPT_EULA: Y
-      SA_PASSWORD: qweasd123!
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-qweasd123!}
     ports:
       - "1435:1433"
-    expose:
-      - "1433"
     volumes:
       - sqlserver_data:/var/opt/mssql
     networks:
       - ecomm-2026
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
 
-  # RabbitMQ + management UI (http://localhost:15672 — guest / guest)
+  # RabbitMQ + management UI (http://localhost:15672 — guest/guest)
   ecomm-fit-2026-rabbitmq:
     image: rabbitmq:3-management
     container_name: ecomm-fit-2026-rabbitmq
@@ -24,8 +31,8 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
@@ -34,39 +41,46 @@ services:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 20s
 
+  # CineVision Web API — http://localhost:5126 (matches Flutter defaults)
   ecomm-fit-2026-api:
     build:
       context: .
+      dockerfile: Dockerfile
+    container_name: ecomm-fit-2026-api
+    # Optional overrides for Stripe/SMTP/OpenAI. Copy .env.example → .env
+    env_file:
+      - path: .env
+        required: false
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=ecomm-fit-2026;Database=eCommerce;User Id=sa;Password=qweasd123!;TrustServerCertificate=True;
-      # Inside Docker, Host must be the service name (not localhost).
-      - RabbitMq__Enabled=true
-      - RabbitMq__Host=ecomm-fit-2026-rabbitmq
-      - RabbitMq__Port=5672
-      - RabbitMq__Username=guest
-      - RabbitMq__Password=guest
-      - RabbitMq__Queue=cinevision-emails
-      # SMTP values still come from appsettings.json baked into the image,
-      # or override here later if needed:
-      # - Smtp__Host=smtp.gmail.com
-      # - Smtp__Port=587
-      # - Smtp__User=yourgmail@gmail.com
-      # - Smtp__Password=your-app-password
-      # - Smtp__FromEmail=yourgmail@gmail.com
-      # - Smtp__FromName=CineVision
-      # - Smtp__UseSsl=false
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5121
+      # Docker service names (not localhost)
+      ConnectionStrings__DefaultConnection: Server=ecomm-fit-2026,1433;Database=CineVision;User Id=sa;Password=${MSSQL_SA_PASSWORD:-qweasd123!};TrustServerCertificate=True;MultipleActiveResultSets=True
+      RabbitMq__Enabled: "true"
+      RabbitMq__Host: ecomm-fit-2026-rabbitmq
+      RabbitMq__Port: "5672"
+      RabbitMq__Username: ${RABBITMQ_USER:-guest}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD:-guest}
+      RabbitMq__Queue: cinevision-emails
     ports:
-      - "5121:5121"
-    expose:
-      - "5121"
+      - "5126:5121"
     depends_on:
-      - ecomm-fit-2026
-      - ecomm-fit-2026-rabbitmq
+      ecomm-fit-2026:
+        condition: service_healthy
+      ecomm-fit-2026-rabbitmq:
+        condition: service_healthy
     networks:
       - ecomm-2026
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5121/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+    restart: unless-stopped
 
 volumes:
   sqlserver_data:
