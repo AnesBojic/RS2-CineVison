@@ -403,3 +403,4 @@ eCommerce/eCommerce.WebAPI/appsettings.Development.json
 eCommerce/eCommerce.WebAPI/appsettings.json
 eCommerce/.env.example
 /eCommerce/.idea
+eCommerce/.idea/caches/deviceStreaming.xml
