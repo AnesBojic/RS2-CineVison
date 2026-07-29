@@ -57,6 +57,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5121
+      # Cinema local time (BiH). Screening StartTime is stored as wall-clock local.
+      TZ: Europe/Sarajevo
       # Docker service names (not localhost)
       ConnectionStrings__DefaultConnection: Server=ecomm-fit-2026,1433;Database=CineVision;User Id=sa;Password=${MSSQL_SA_PASSWORD:-qweasd123!};TrustServerCertificate=True;MultipleActiveResultSets=True
       RabbitMq__Enabled: "true"
