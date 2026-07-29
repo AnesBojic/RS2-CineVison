@@ -10,5 +10,6 @@ namespace eCommerce.Services
         Task<List<RevenueByPeriodResponse>> GetRevenueByPeriodAsync(ReportSearchObject? search);
         Task<List<HallUtilizationResponse>> GetHallUtilizationAsync(ReportSearchObject? search);
         Task<List<TimeSlotPerformanceResponse>> GetPerformanceByTimeSlotAsync(ReportSearchObject? search);
+        Task<AnalyticsLiveSnapshotResponse> GetLiveSnapshotAsync();
     }
 }

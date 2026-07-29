@@ -30,7 +30,7 @@ namespace eCommerce.Services
             var seatSales = await GetSeatSalesAsync();
             var avgRatings = await GetAvgRatingsAsync();
 
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
 
             var response = new DashboardResponse
             {
@@ -165,7 +165,19 @@ namespace eCommerce.Services
             return result;
         }
 
-        // Fixed daily time slots shown on the analytics screen. StartHour is inclusive, EndHour exclusive
+        public async Task<AnalyticsLiveSnapshotResponse> GetLiveSnapshotAsync()
+        {
+            return new AnalyticsLiveSnapshotResponse
+            {
+                Dashboard = await GetDashboardAsync(),
+                MoviePerformance = await GetMoviePerformanceAsync(null),
+                TimeSlotPerformance = await GetPerformanceByTimeSlotAsync(null),
+                HallUtilization = await GetHallUtilizationAsync(null),
+                UpdatedAt = DateTime.UtcNow
+            };
+        }
+
+        // Fixed daily time slots shown on the analytics screen.
         // (based on the local hour component of a screening's StartTime).
         private static readonly (string Label, int StartHour, int EndHour)[] TimeSlots =
         {
