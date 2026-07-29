@@ -1,11 +1,15 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:ecommerce_desktop/core/theme/app_theme.dart';
 import 'package:ecommerce_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:ecommerce_desktop/models/analytics.dart';
 import 'package:ecommerce_desktop/providers/analytics_provider.dart';
+import 'package:ecommerce_desktop/utils/analytics_pdf_reports.dart';
 import 'package:ecommerce_desktop/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class AnalyticsScreen extends StatefulWidget {
@@ -17,6 +21,7 @@ class AnalyticsScreen extends StatefulWidget {
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
   bool _loading = true;
+  bool _exportingPdf = false;
   final _scrollController = ScrollController();
   List<MoviePerformance> _movies = [];
   List<TimeSlotPerformance> _timeSlots = [];
@@ -25,13 +30,36 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    context.read<AnalyticsProvider>().addListener(_onLiveAnalytics);
+    final snapshot = context.read<AnalyticsProvider>().liveSnapshot;
+    if (snapshot != null) {
+      _applySnapshot(snapshot);
+    } else {
+      _load();
+    }
   }
 
   @override
   void dispose() {
+    context.read<AnalyticsProvider>().removeListener(_onLiveAnalytics);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onLiveAnalytics() {
+    final snapshot = context.read<AnalyticsProvider>().liveSnapshot;
+    if (snapshot != null) {
+      _applySnapshot(snapshot);
+    }
+  }
+
+  void _applySnapshot(AnalyticsLiveSnapshot snapshot) {
+    setState(() {
+      _movies = snapshot.moviePerformance;
+      _timeSlots = snapshot.timeSlotPerformance;
+      _halls = snapshot.hallUtilization;
+      _loading = false;
+    });
   }
 
   Future<void> _load() async {
@@ -78,15 +106,59 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Analytics Dashboard',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-              ),
+            Row(
+              children: [
+                const Text(
+                  'Analytics Dashboard',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Consumer<AnalyticsProvider>(
+                  builder: (context, analytics, _) {
+                    if (!analytics.isLiveConnected) {
+                      return const SizedBox.shrink();
+                    }
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.green.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.green.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.green,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Live',
+                            style: TextStyle(
+                              color: AppColors.green,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+            _buildPdfReportsCard(),
+            const SizedBox(height: 28),
             const SectionHeader(title: 'Most Popular Movies'),
             DataCard(
               emptyMessage: _movies.isEmpty ? 'No performance data yet' : null,
@@ -181,6 +253,181 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     const colors = [AppColors.primary, AppColors.purple, AppColors.blue, AppColors.green];
     return colors[index % colors.length];
   }
+
+  Widget _buildPdfReportsCard() {
+    return DataCard(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'PDF reports',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Download or print analytics reports in PDF format.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            if (_exportingPdf)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: LinearProgressIndicator(color: AppColors.primary),
+              ),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _PdfReportActions(
+                  title: 'Movie Performance',
+                  subtitle: 'Tickets, revenue, occupancy, ratings',
+                  enabled: !_exportingPdf,
+                  onPrint: () => _exportMovieReport(print: true),
+                  onDownload: () => _exportMovieReport(print: false),
+                ),
+                _PdfReportActions(
+                  title: 'Hall Utilization',
+                  subtitle: 'Hall usage and time-slot performance',
+                  enabled: !_exportingPdf,
+                  onPrint: () => _exportHallReport(print: true),
+                  onDownload: () => _exportHallReport(print: false),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _stamp() => DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+
+  Future<void> _exportMovieReport({required bool print}) async {
+    await _runPdfExport(() async {
+      final bytes = await AnalyticsPdfReports.buildMoviePerformanceReport(_movies);
+      final name = 'cinevision_movie_performance_${_stamp()}.pdf';
+      if (print) {
+        await AnalyticsPdfReports.printPdf(bytes, name: name);
+      } else {
+        await _savePdf(bytes, name);
+      }
+    });
+  }
+
+  Future<void> _exportHallReport({required bool print}) async {
+    await _runPdfExport(() async {
+      final bytes = await AnalyticsPdfReports.buildHallUtilizationReport(
+        _halls,
+        _timeSlots,
+      );
+      final name = 'cinevision_hall_utilization_${_stamp()}.pdf';
+      if (print) {
+        await AnalyticsPdfReports.printPdf(bytes, name: name);
+      } else {
+        await _savePdf(bytes, name);
+      }
+    });
+  }
+
+  Future<void> _savePdf(Uint8List bytes, String fileName) async {
+    final path = await AnalyticsPdfReports.downloadPdf(
+      bytes,
+      suggestedFileName: fileName,
+    );
+    if (!mounted) return;
+    if (path == null || path.isEmpty) {
+      showAppSnackBar(context, 'Save cancelled');
+      return;
+    }
+    showAppSnackBar(context, 'PDF saved: $path');
+  }
+
+  Future<void> _runPdfExport(Future<void> Function() action) async {
+    if (_exportingPdf) return;
+    setState(() => _exportingPdf = true);
+    try {
+      await action();
+    } on Exception catch (e) {
+      if (mounted) {
+        showAppSnackBar(context, 'PDF export failed: $e', isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _exportingPdf = false);
+    }
+  }
+}
+
+class _PdfReportActions extends StatelessWidget {
+  const _PdfReportActions({
+    required this.title,
+    required this.subtitle,
+    required this.enabled,
+    required this.onPrint,
+    required this.onDownload,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool enabled;
+  final VoidCallback onPrint;
+  final VoidCallback onDownload;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 320,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: enabled ? onDownload : null,
+                  icon: const Icon(Icons.download_outlined, size: 16),
+                  label: const Text('Download'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: enabled ? onPrint : null,
+                  icon: const Icon(Icons.print_outlined, size: 16),
+                  label: const Text('Print'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _HallLegendItem extends StatelessWidget {
@@ -259,7 +506,7 @@ class _PieChartPainter extends CustomPainter {
           text: '${halls[i].sharePercent.toStringAsFixed(0)}%',
           style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
         ),
-        textDirection: TextDirection.ltr,
+        textDirection: ui.TextDirection.ltr,
       )..layout();
       textPainter.paint(
         canvas,
