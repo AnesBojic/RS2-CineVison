@@ -23,18 +23,21 @@ namespace eCommerce.Services
         private readonly IAuthenticatedUserAccessor _userAccessor;
         private readonly IValidator<ReviewInsertRequest> _insertValidator;
         private readonly IValidator<ReviewUpdateRequest> _updateValidator;
+        private readonly IAnalyticsNotifier _analyticsNotifier;
 
         public ReviewService(
             ECommerceDbContext dbContext,
             IMapper mapper,
             IAuthenticatedUserAccessor userAccessor,
             IValidator<ReviewInsertRequest> insertValidator,
-            IValidator<ReviewUpdateRequest> updateValidator)
+            IValidator<ReviewUpdateRequest> updateValidator,
+            IAnalyticsNotifier analyticsNotifier)
             : base(mapper, dbContext)
         {
             _userAccessor = userAccessor;
             _insertValidator = insertValidator;
             _updateValidator = updateValidator;
+            _analyticsNotifier = analyticsNotifier;
         }
 
         protected override IEnumerable<Review> ApplyFilters(IEnumerable<Review> query, ReviewSearchObject? search)
@@ -141,6 +144,8 @@ namespace eCommerce.Services
             _dbContext.Reviews.Add(review);
             await _dbContext.SaveChangesAsync();
 
+            await _analyticsNotifier.NotifyAnalyticsChangedAsync();
+
             return await GetByIdAsync(review.Id);
         }
 
@@ -169,6 +174,8 @@ namespace eCommerce.Services
 
             await _dbContext.SaveChangesAsync();
 
+            await _analyticsNotifier.NotifyAnalyticsChangedAsync();
+
             return await GetByIdAsync(review.Id);
         }
 
@@ -188,6 +195,8 @@ namespace eCommerce.Services
 
             _dbContext.Reviews.Remove(review);
             await _dbContext.SaveChangesAsync();
+
+            await _analyticsNotifier.NotifyAnalyticsChangedAsync();
         }
 
         public async Task<List<ReviewEligibilityResponse>> GetMyEligibilityAsync()
@@ -195,7 +204,7 @@ namespace eCommerce.Services
             var userId = _userAccessor.GetUserId()
                 ?? throw new InvalidOperationException("User id claim is missing.");
 
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
 
             var attendedMovies = await _dbContext.Reservations
                 .AsNoTracking()
@@ -236,7 +245,7 @@ namespace eCommerce.Services
 
         private async Task<bool> UserCanReviewMovieAsync(int userId, int movieId)
         {
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
             return await _dbContext.Reservations
                 .AnyAsync(r =>
                     r.UserId == userId

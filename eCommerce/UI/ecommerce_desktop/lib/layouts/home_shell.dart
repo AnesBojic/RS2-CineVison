@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:ecommerce_desktop/core/theme/app_theme.dart';
 import 'package:ecommerce_desktop/core/widgets/cinevision_widgets.dart';
+import 'package:ecommerce_desktop/providers/analytics_provider.dart';
 import 'package:ecommerce_desktop/providers/auth_provider.dart';
 import 'package:ecommerce_desktop/providers/notification_provider.dart';
 import 'package:ecommerce_desktop/providers/user_provider.dart';
@@ -51,6 +52,7 @@ class _HomeShellState extends State<HomeShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadProfileSummary();
       context.read<NotificationProvider>().refresh();
+      context.read<AnalyticsProvider>().connectRealtime();
     });
   }
 
@@ -338,6 +340,7 @@ class _HomeShellState extends State<HomeShell> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () {
+              context.read<AnalyticsProvider>().disconnectRealtime();
               context.read<AuthProvider>().logout();
               Navigator.pushAndRemoveUntil(
                 context,

@@ -34,13 +34,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    context.read<AnalyticsProvider>().addListener(_onLiveAnalytics);
     _load();
   }
 
   @override
   void dispose() {
+    context.read<AnalyticsProvider>().removeListener(_onLiveAnalytics);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onLiveAnalytics() {
+    final live = context.read<AnalyticsProvider>().liveDashboard;
+    if (live != null && mounted) {
+      setState(() => _dashboard = live);
+    }
   }
 
   Future<void> _load() async {
@@ -82,6 +91,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       dashboard = await analyticsProvider.getDashboard();
+      final live = analyticsProvider.liveDashboard;
+      if (live != null) {
+        dashboard = live;
+      }
     } on Exception {
       analyticsError = 'Analytics could not be loaded.';
     }

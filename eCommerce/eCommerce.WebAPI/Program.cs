@@ -6,6 +6,7 @@ using eCommerce.Services.Database;
 using eCommerce.Services.MovieStateMachine;
 using eCommerce.Services.Validators;
 using eCommerce.WebAPI.Filters;
+using eCommerce.WebAPI.Hubs;
 using eCommerce.WebAPI.Services;
 using eCommerce.WebAPI.Services.AccessManager;
 using FluentValidation;
@@ -27,6 +28,8 @@ builder.Services.AddScoped<IAuthenticatedUserAccessor, HttpAuthenticatedUserAcce
 builder.Services.AddControllers(
    options => options.Filters.Add<ExceptionFilter>()
 );
+
+builder.Services.AddSignalR();
 
 // Add Entity Framework Core DbContext
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -66,6 +69,8 @@ builder.Services.AddScoped<ISeatService, SeatService>();
 builder.Services.AddScoped<IScreeningService, ScreeningService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IAnalyticsRealtimePublisher, AnalyticsRealtimePublisher>();
+builder.Services.AddScoped<IAnalyticsNotifier, AnalyticsNotifier>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<IChatBotService, ChatBotService>();
@@ -144,6 +149,20 @@ builder.Services.AddAuthentication(options =>
         // User.IsInRole(...) and [Authorize(Roles = "Admin")] work off the token.
         NameClaimType = "Id",
         RoleClaimType = "Role"
+    };
+    o.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) &&
+                path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
     };
 });
 builder.Services.AddAuthorization();
@@ -231,6 +250,7 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 app.MapControllers();
+app.MapHub<AnalyticsHub>("/hubs/analytics");
 
 await EnsureDatabaseReadyAsync(app);
 

@@ -9,14 +9,36 @@ using eCommerce.Model.SearchObjects;
 using eCommerce.Services.Database;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using eCommerce.Model.Messages;
+using Stripe;
+using eCommerce.Services;
 
 namespace eCommerce.Services
 {
     public class ScreeningService : BaseCRUDService<Screening, ScreeningResponse, ScreeningSearchObject, ScreeningInsertRequest, ScreeningUpdateRequest>, IScreeningService
     {
-        public ScreeningService(ECommerceDbContext dbContext, MapsterMapper.IMapper mapper, IValidator<ScreeningInsertRequest> insertValidator, IValidator<ScreeningUpdateRequest> updateValidator)
+        private readonly IAnalyticsNotifier _analyticsNotifier;
+        private readonly IEmailService _emailService;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<ScreeningService> _logger;
+
+        public ScreeningService(
+            ECommerceDbContext dbContext,
+            MapsterMapper.IMapper mapper,
+            IValidator<ScreeningInsertRequest> insertValidator,
+            IValidator<ScreeningUpdateRequest> updateValidator,
+            IAnalyticsNotifier analyticsNotifier,
+            IEmailService emailService,
+            IConfiguration configuration,
+            ILogger<ScreeningService> logger)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
+            _analyticsNotifier = analyticsNotifier;
+            _emailService = emailService;
+            _configuration = configuration;
+            _logger = logger;
         }
 
         protected override IEnumerable<Screening> ApplyFilters(IEnumerable<Screening> query, ScreeningSearchObject? search)
@@ -64,7 +86,8 @@ namespace eCommerce.Services
             }
             if (search.OnlyUpcoming == true)
             {
-                var now = DateTime.UtcNow;
+                // StartTime is cinema wall-clock local time (not UTC).
+                var now = DateTime.Now;
                 query = query.Where(s => s.StartTime >= now);
             }
 
@@ -147,6 +170,8 @@ namespace eCommerce.Services
             _dbContext.Screenings.Add(entity);
             await _dbContext.SaveChangesAsync();
 
+            await _analyticsNotifier.NotifyAnalyticsChangedAsync();
+
             return await GetByIdAsync(entity.Id);
         }
 
@@ -184,7 +209,166 @@ namespace eCommerce.Services
 
             await _dbContext.SaveChangesAsync();
 
+            await _analyticsNotifier.NotifyAnalyticsChangedAsync();
+
             return await GetByIdAsync(entity.Id);
+        }
+
+        public override async Task DeleteAsync(int id)
+        {
+            // Admin/staff can delete a projection even if customers already booked seats.
+            // We cancel affected reservations, free the seats, delete reservations, then delete the screening.
+            // After commit, we email all affected customers.
+            await using var tx = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                var screening = await _dbContext.Screenings
+                    .FirstOrDefaultAsync(s => s.Id == id)
+                    ?? throw new KeyNotFoundException($"Screening with id {id} not found.");
+
+                // Load email + seat details before deletion.
+                var reservations = await _dbContext.Reservations
+                    .Where(r => r.ScreeningId == id)
+                    .Include(r => r.User)
+                    .Include(r => r.ReservationSeats)
+                    .ThenInclude(rs => rs.Seat)
+                    .ToListAsync();
+
+                // Pre-build unique email bodies (after we free seats).
+                var movieTitle = await _dbContext.Movies
+                    .Where(m => m.Id == screening.MovieId)
+                    .Select(m => m.Title)
+                    .FirstOrDefaultAsync();
+
+                var hallName = await _dbContext.Halls
+                    .Where(h => h.Id == screening.HallId)
+                    .Select(h => h.Name)
+                    .FirstOrDefaultAsync();
+
+                foreach (var reservation in reservations)
+                {
+                    if (reservation.Status == ReservationStatus.Paid &&
+                        !string.IsNullOrWhiteSpace(reservation.PaymentTransactionId))
+                    {
+                        await TryRefundStripeAsync(reservation.PaymentTransactionId);
+                    }
+
+                    reservation.Status = ReservationStatus.Cancelled;
+                }
+
+                // Free seats for all reservations in this screening.
+                _dbContext.ReservationSeats.RemoveRange(
+                    reservations.SelectMany(r => r.ReservationSeats).ToList());
+
+                // Remove reservations so the Screening FK can be deleted safely.
+                _dbContext.Reservations.RemoveRange(reservations);
+
+                // Finally delete the screening itself.
+                _dbContext.Screenings.Remove(screening);
+
+                await _dbContext.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                await QueueCancellationEmailsAsync(
+                    reservations,
+                    movieTitle ?? string.Empty,
+                    hallName ?? string.Empty,
+                    screening.StartTime);
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+
+            await _analyticsNotifier.NotifyAnalyticsChangedAsync();
+        }
+
+        private async Task TryRefundStripeAsync(string paymentIntentId)
+        {
+            try
+            {
+                var secretKey = _configuration["Stripe:SecretKey"];
+                if (string.IsNullOrWhiteSpace(secretKey))
+                {
+                    _logger.LogWarning("Stripe secret key missing; cannot refund payment intent {PaymentIntentId}.", paymentIntentId);
+                    return;
+                }
+
+                StripeConfiguration.ApiKey = secretKey;
+                var refundService = new RefundService();
+                await refundService.CreateAsync(new RefundCreateOptions
+                {
+                    PaymentIntent = paymentIntentId
+                });
+            }
+            catch (Exception ex)
+            {
+                // Deleting a screening should not fail just because Stripe refund fails.
+                _logger.LogWarning(ex, "Stripe refund failed for PaymentIntent {PaymentIntentId}.", paymentIntentId);
+            }
+        }
+
+        private async Task QueueCancellationEmailsAsync(
+            List<Reservation> reservations,
+            string movieTitle,
+            string hallName,
+            DateTime startTime)
+        {
+            // One email per customer (unique email address).
+            var byEmail = reservations
+                .Select(r =>
+                {
+                    var email = string.IsNullOrWhiteSpace(r.CustomerEmail) ? r.User?.Email : r.CustomerEmail;
+                    return new { Reservation = r, Email = email };
+                })
+                .Where(x => !string.IsNullOrWhiteSpace(x.Email))
+                .GroupBy(x => x.Email!);
+
+            foreach (var group in byEmail)
+            {
+                var reservationsForUser = group.Select(x => x.Reservation).ToList();
+                var first = reservationsForUser.FirstOrDefault();
+                var userFirstName = first?.User?.FirstName ?? string.Empty;
+
+                var seatLines = new List<string>();
+                foreach (var r in reservationsForUser)
+                {
+                    var seats = r.ReservationSeats
+                        .Select(rs => rs.Seat != null ? $"{rs.Seat.RowLabel}{rs.Seat.SeatNumber}" : null)
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .ToList();
+
+                    seatLines.Add(
+                        $"- {r.ReservationNumber}: {string.Join(", ", seats)}");
+                }
+
+                var subject = $"CineVision: projection cancelled ({movieTitle})";
+                var body =
+                    $"Hi {userFirstName},\n\n" +
+                    $"Your booking(s) for the following projection were cancelled because the projection was deleted by admin/staff.\n\n" +
+                    $"Movie: {movieTitle}\n" +
+                    $"Hall: {hallName}\n" +
+                    $"Start: {startTime:yyyy-MM-dd HH:mm} UTC\n\n" +
+                    $"Reservations:\n{string.Join("\n", seatLines)}\n\n" +
+                    $"If you have already paid, a refund will be attempted automatically.\n\n" +
+                    $"Thank you,\nCineVision";
+
+                try
+                {
+                    await _emailService.QueueEmailAsync(new EmailMessage
+                    {
+                        To = group.Key,
+                        Subject = subject,
+                        Body = body,
+                        IsHtml = false
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to queue cancellation email to {Email}.", group.Key);
+                }
+            }
         }
 
         public async Task<List<ScreeningSeatResponse>> GetSeatsAsync(int screeningId)

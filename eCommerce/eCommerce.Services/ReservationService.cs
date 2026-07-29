@@ -22,14 +22,23 @@ namespace eCommerce.Services
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService;
         private readonly ILogger<ReservationService> _logger;
+        private readonly IAnalyticsNotifier _analyticsNotifier;
 
-        public ReservationService(ECommerceDbContext dbContext, IMapper mapper, IAuthenticatedUserAccessor userAccessor, IConfiguration configuration, IEmailService emailService, ILogger<ReservationService> logger)
+        public ReservationService(
+            ECommerceDbContext dbContext,
+            IMapper mapper,
+            IAuthenticatedUserAccessor userAccessor,
+            IConfiguration configuration,
+            IEmailService emailService,
+            ILogger<ReservationService> logger,
+            IAnalyticsNotifier analyticsNotifier)
             : base(mapper, dbContext)
         {
             _userAccessor = userAccessor;
             _configuration = configuration;
             _emailService = emailService;
             _logger = logger;
+            _analyticsNotifier = analyticsNotifier;
         }
 
         protected override IEnumerable<Reservation> ApplyFilters(IEnumerable<Reservation> query, ReservationSearchObject? search)
@@ -130,7 +139,7 @@ namespace eCommerce.Services
                     throw new ClinetException("This screening is not available for booking.");
                 }
 
-                if (screening.StartTime <= DateTime.UtcNow)
+                if (screening.StartTime <= DateTime.Now)
                 {
                     throw new ClinetException("This screening has already started.");
                 }
@@ -203,6 +212,7 @@ namespace eCommerce.Services
 
                 // Queue a confirmation email; a queue/broker outage must never fail the reservation.
                 await SendConfirmationEmailAsync(reservation, response);
+                await NotifyAnalyticsSafeAsync();
 
                 return response;
             }
@@ -239,7 +249,7 @@ namespace eCommerce.Services
                     $"Reservation: {response.ReservationNumber}\n" +
                     $"Movie: {response.MovieTitle}\n" +
                     $"Hall: {response.HallName}\n" +
-                    $"Start: {response.ScreeningStartTime:yyyy-MM-dd HH:mm} UTC\n" +
+                    $"Start: {response.ScreeningStartTime:yyyy-MM-dd HH:mm}\n" +
                     $"Seats: {seats}\n" +
                     $"Total: {response.TotalAmount:0.00}\n\n" +
                     $"Thank you for booking with CineVision.";
@@ -280,7 +290,7 @@ namespace eCommerce.Services
                 throw new ClinetException("Only confirmed or paid bookings can be refunded.");
             }
 
-            if (reservation.Screening.StartTime <= DateTime.UtcNow.AddHours(4))
+            if (reservation.Screening.StartTime <= DateTime.Now.AddHours(4))
             {
                 throw new ClinetException(
                     "Tickets can only be refunded at least 4 hours before the screening starts.");
@@ -298,6 +308,8 @@ namespace eCommerce.Services
             // Analytics read from ReservationSeats, so occupancy/revenue update automatically.
             _dbContext.ReservationSeats.RemoveRange(reservation.ReservationSeats);
             await _dbContext.SaveChangesAsync();
+
+            await NotifyAnalyticsSafeAsync();
 
             return await GetByIdAsync(reservation.Id);
         }
@@ -375,6 +387,18 @@ namespace eCommerce.Services
                 PublishableKey = _configuration["Stripe:PublishableKey"]
                                  ?? throw new InvalidOperationException("Stripe publishable key is not configured.")
             };
+        }
+
+        private async Task NotifyAnalyticsSafeAsync()
+        {
+            try
+            {
+                await _analyticsNotifier.NotifyAnalyticsChangedAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to push live analytics update.");
+            }
         }
 
         private ReservationResponse MapToResponse(Reservation r)

@@ -31,6 +31,23 @@ class Screening {
     this.availableSeats,
   });
 
+  /// Keep API clock-face numbers as local wall-clock (no UTC shift).
+  static DateTime? _parseWallClock(dynamic value) {
+    if (value == null) return null;
+    final parsed = DateTime.tryParse(value.toString());
+    if (parsed == null) return null;
+    return DateTime(
+      parsed.year,
+      parsed.month,
+      parsed.day,
+      parsed.hour,
+      parsed.minute,
+      parsed.second,
+      parsed.millisecond,
+      parsed.microsecond,
+    );
+  }
+
   factory Screening.fromJson(Map<String, dynamic> json) {
     final movie = json['movie'];
     return Screening(
@@ -42,12 +59,8 @@ class Screening {
           : null,
       hallId: json['hallId'] as int?,
       hallName: json['hallName'] as String?,
-      startTime: json['startTime'] != null
-          ? DateTime.tryParse(json['startTime'].toString())
-          : null,
-      endTime: json['endTime'] != null
-          ? DateTime.tryParse(json['endTime'].toString())
-          : null,
+      startTime: _parseWallClock(json['startTime']),
+      endTime: _parseWallClock(json['endTime']),
       basePrice: json['basePrice'] as num?,
       language: json['language'] as String?,
       hasSubtitles: json['hasSubtitles'] as bool?,

@@ -5,11 +5,10 @@ import 'package:ecommerce_mobile/core/routes/app_routes.dart';
 import 'package:ecommerce_mobile/core/widgets/cine_app_bar.dart';
 import 'package:ecommerce_mobile/models/genre.dart';
 import 'package:ecommerce_mobile/models/movie.dart';
-import 'package:ecommerce_mobile/models/recommendation.dart';
-import 'package:ecommerce_mobile/models/search_result.dart';
 import 'package:ecommerce_mobile/providers/auth_provider.dart';
 import 'package:ecommerce_mobile/providers/genre_provider.dart';
 import 'package:ecommerce_mobile/providers/movie_provider.dart';
+import 'package:ecommerce_mobile/providers/screening_provider.dart';
 import 'package:ecommerce_mobile/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -25,30 +24,58 @@ class MoviesPage extends StatefulWidget {
 class _MoviesPageState extends State<MoviesPage> {
   late MovieProvider _movieProvider;
   late GenreProvider _genreProvider;
+  late ScreeningProvider _screeningProvider;
 
-  SearchResult<Movie>? _movieResult;
+  final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+
+  List<Movie> _movies = [];
   Map<int, String> _recommendationReasons = {};
   List<Genre> _genres = [];
-  bool _isLoading = true;
+  bool _isLoading = true; // initial load
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+
   bool _usingRecommendations = false;
   bool _coldStartRecommendations = false;
   bool? _wasUsingRecommendations;
   int? _selectedGenreId;
 
-  final TextEditingController _searchController = TextEditingController();
+  Set<int> _upcomingMovieIds = {};
+
+  // Pagination (popular mode)
+  int _popularPage = 1;
+  final int _popularPageSize = 12;
+  int? _popularTotalCount;
+
+  // Pagination (recommendations mode)
+  int _recommendationsTake = 12;
 
   @override
   void initState() {
     super.initState();
     _movieProvider = context.read<MovieProvider>();
     _genreProvider = context.read<GenreProvider>();
+    _screeningProvider = context.read<ScreeningProvider>();
+    _scrollController.addListener(_onScroll);
     _loadData();
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_isLoading || _isLoadingMore || !_hasMore) return;
+    if (!_scrollController.hasClients) return;
+    final max = _scrollController.position.maxScrollExtent;
+    final current = _scrollController.position.pixels;
+    if (current >= max - 300) {
+      _loadMore();
+    }
   }
 
   bool _canUseRecommendations(AuthProvider auth) {
@@ -69,99 +96,175 @@ class _MoviesPageState extends State<MoviesPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _isLoadingMore = false;
+      _hasMore = true;
+      _popularPage = 1;
+      _popularTotalCount = null;
+      _recommendationsTake = 12;
+      _movies = [];
+      _recommendationReasons = {};
+      _upcomingMovieIds = {};
+    });
+
     try {
       final auth = context.read<AuthProvider>();
       final genres = await _genreProvider.get(filter: {'pageSize': 100});
 
-      SearchResult<Movie> movies;
+      final upcomingIds = await _fetchUpcomingMovieIds();
+      if (!mounted) return;
+      setState(() => _upcomingMovieIds = upcomingIds);
+
+      List<Movie> movies = [];
       Map<int, String> reasons = {};
       var usingRecommendations = false;
       var coldStart = false;
 
-      if (_canUseRecommendations(auth)) {
+      if (_canUseRecommendations(auth) && upcomingIds.isNotEmpty) {
         try {
-          final personalized = await _loadPersonalizedCatalog();
-          movies = personalized.movies;
-          reasons = personalized.reasons;
+          final loaded = await _loadRecommendationsForTake(_recommendationsTake);
+          movies = loaded.$1;
+          reasons = loaded.$2;
+          coldStart = loaded.$3;
           usingRecommendations = true;
-          coldStart = personalized.coldStart;
         } on Exception {
-          movies = await _loadPopularCatalog();
+          // fallback to popular mode
+          final loaded = await _loadPopularNextPage(reset: true);
+          movies = loaded.$1;
+          _hasMore = loaded.$2;
+          usingRecommendations = false;
+          coldStart = false;
         }
-      } else {
-        movies = await _loadPopularCatalog();
+      } else if (upcomingIds.isNotEmpty) {
+        final loaded = await _loadPopularNextPage(reset: true);
+        movies = loaded.$1;
+        _hasMore = loaded.$2;
+        usingRecommendations = false;
       }
 
       if (!mounted) return;
       setState(() {
         _genres = genres.items ?? [];
-        _movieResult = movies;
+        _movies = movies;
         _recommendationReasons = reasons;
         _usingRecommendations = usingRecommendations;
         _coldStartRecommendations = coldStart;
         _isLoading = false;
       });
-    } on Exception catch (e) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       alertBox(context, 'Error', e.toString());
     }
   }
 
-  Future<({SearchResult<Movie> movies, Map<int, String> reasons, bool coldStart})>
-      _loadPersonalizedCatalog() async {
-    final catalog = await _loadCatalogMovies();
-    final items = List<Movie>.from(catalog.items ?? []);
+  Future<Set<int>> _fetchUpcomingMovieIds() async {
+    final ids = <int>{};
+    const pageSize = 200;
+    var page = 1;
+    int? totalCount;
 
-    final recommendations = await _movieProvider.getRecommendations(take: 0);
-    final scoreById = <int, Recommendation>{
-      for (final r in recommendations)
-        if (r.movie.id != null) r.movie.id!: r,
-    };
+    while (true) {
+      final result = await _screeningProvider.get(
+        filter: {
+          'onlyUpcoming': true,
+          'page': page,
+          'pageSize': pageSize,
+          'includeTotalCount': true,
+        },
+      );
 
-    items.sort((a, b) {
-      final scoreA = scoreById[a.id]?.score ?? 0;
-      final scoreB = scoreById[b.id]?.score ?? 0;
-      final cmp = scoreB.compareTo(scoreA);
-      if (cmp != 0) return cmp;
-      return (a.title ?? '').compareTo(b.title ?? '');
-    });
+      totalCount ??= result.totalCount;
+      final items = result.items ?? [];
 
-    // No bookings/reviews yet → API scores are popularity-only (contentScore stays 0).
+      for (final s in items) {
+        final movieId = s.movieId;
+        if (movieId != null) ids.add(movieId);
+      }
+
+      final loadedCount = page * pageSize;
+      if (items.isEmpty || (totalCount != null && loadedCount >= totalCount)) {
+        break;
+      }
+      page++;
+    }
+
+    return ids;
+  }
+
+  Future<(List<Movie>, Map<int, String>, bool)> _loadRecommendationsForTake(int take) async {
+    final recommendations = await _movieProvider.getRecommendations(take: take);
+
+    // If user has no bookings/reviews yet -> API is effectively popularity-only.
     final coldStart = recommendations.isEmpty ||
         recommendations.every((r) => r.contentScore <= 0);
 
     final reasons = <int, String>{};
-    for (final r in recommendations) {
-      final id = r.movie.id;
-      if (id == null || r.reason.trim().isEmpty) continue;
-      // Cold start: banner explains popularity; skip repeating it on every card.
-      if (coldStart) continue;
-      reasons[id] = r.reason;
+    if (!coldStart) {
+      for (final r in recommendations) {
+        final id = r.movie.id;
+        if (id == null || r.reason.trim().isEmpty) continue;
+        reasons[id] = r.reason;
+      }
     }
 
-    final filtered = _applyClientFilters(items);
+    final filtered = recommendations
+        .map((r) => r.movie)
+        .where((m) => m.id != null && _upcomingMovieIds.contains(m.id))
+        .toList();
 
-    return (
-      movies: SearchResult<Movie>()
-        ..items = filtered
-        ..totalCount = filtered.length,
-      reasons: reasons,
-      coldStart: coldStart,
-    );
+    final uiFiltered = _applyClientFilters(filtered);
+    return (uiFiltered, reasons, coldStart);
   }
 
-  Future<SearchResult<Movie>> _loadPopularCatalog() async {
-    final catalog = await _loadCatalogMovies();
-    final items = List<Movie>.from(catalog.items ?? [])
-      ..sort((a, b) => (b.viewCount ?? 0).compareTo(a.viewCount ?? 0));
+  Future<(List<Movie>, bool)> _loadPopularNextPage({required bool reset}) async {
+    if (reset) {
+      _popularPage = 1;
+      _popularTotalCount = null;
+      _movies = [];
+    }
 
-    final filtered = _applyClientFilters(items);
+    final filter = <String, dynamic>{
+      'page': _popularPage,
+      'pageSize': _popularPageSize,
+      'includeTotalCount': true,
+      'movieState': 'ActiveMovieState',
+      'includeGenre': true,
+      'includeAssets': true,
+      'sortBy': 'ViewCount desc',
+      'title': _searchController.text,
+      if (_selectedGenreId != null) 'genreId': _selectedGenreId,
+    };
 
-    return SearchResult<Movie>()
-      ..items = filtered
-      ..totalCount = filtered.length;
+    final catalog = await _movieProvider.get(
+      filter: filter,
+      includePoster: true,
+    );
+
+    _popularTotalCount = catalog.totalCount ?? _popularTotalCount;
+    final items = catalog.items ?? [];
+
+    // Filter to only movies that have upcoming projections.
+    final upcomingFiltered = items
+        .where((m) => m.id != null && _upcomingMovieIds.contains(m.id))
+        .toList();
+
+    final uiFiltered = _applyClientFilters(upcomingFiltered);
+
+    final rawMoreAvailable = items.isNotEmpty &&
+        !(_popularTotalCount != null &&
+          (_popularPage * _popularPageSize) >= _popularTotalCount!);
+
+    if (reset) {
+      _movies = uiFiltered;
+    } else {
+      _movies.addAll(uiFiltered);
+    }
+
+    _popularPage++;
+    return (_movies, rawMoreAvailable);
   }
 
   void _onAuthModeChanged(bool useRecommendations) {
@@ -174,7 +277,7 @@ class _MoviesPageState extends State<MoviesPage> {
       _recommendationReasons = {};
       _usingRecommendations = false;
       _coldStartRecommendations = false;
-      _movieResult = null;
+      _movies = [];
       _isLoading = true;
     });
     _loadData();
@@ -185,20 +288,6 @@ class _MoviesPageState extends State<MoviesPage> {
       return 'New account — movies are ranked by popularity. After you book or review, the list adapts to your taste.';
     }
     return 'All movies shown — titles matching your bookings and preferences are ranked higher.';
-  }
-
-  Future<SearchResult<Movie>> _loadCatalogMovies() {
-    return _movieProvider.get(
-      filter: {
-        'title': _searchController.text,
-        'movieState': 'ActiveMovieState',
-        'includeGenre': true,
-        'includeAssets': true,
-        'pageSize': 100,
-        if (_selectedGenreId != null) 'genreId': _selectedGenreId,
-      },
-      includePoster: true,
-    );
   }
 
   @override
@@ -233,6 +322,7 @@ class _MoviesPageState extends State<MoviesPage> {
           body: RefreshIndicator(
             onRefresh: _loadData,
             child: CustomScrollView(
+              controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 SliverToBoxAdapter(
@@ -332,7 +422,7 @@ class _MoviesPageState extends State<MoviesPage> {
                   const SliverFillRemaining(
                     child: Center(child: CircularProgressIndicator()),
                   )
-                else if ((_movieResult?.items ?? []).isEmpty)
+                else if (_movies.isEmpty)
                   const SliverFillRemaining(
                     child: Center(
                       child: Text(
@@ -347,7 +437,7 @@ class _MoviesPageState extends State<MoviesPage> {
                       horizontal: AppDefaults.padding,
                     ),
                     sliver: SliverGrid.builder(
-                      itemCount: _movieResult!.items!.length,
+                      itemCount: _movies.length,
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
@@ -356,7 +446,7 @@ class _MoviesPageState extends State<MoviesPage> {
                         childAspectRatio: 0.52,
                       ),
                       itemBuilder: (_, index) {
-                        final movie = _movieResult!.items![index];
+                        final movie = _movies[index];
                         return MovieCard(
                           movie: movie,
                           recommendationReason: _usingRecommendations
@@ -366,6 +456,13 @@ class _MoviesPageState extends State<MoviesPage> {
                       },
                     ),
                   ),
+                if (!_isLoading && _isLoadingMore)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  ),
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
             ),
@@ -373,5 +470,36 @@ class _MoviesPageState extends State<MoviesPage> {
         );
       },
     );
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoading || _isLoadingMore || !_hasMore) return;
+    if (_upcomingMovieIds.isEmpty) return;
+
+    setState(() => _isLoadingMore = true);
+    try {
+      if (_usingRecommendations) {
+        _recommendationsTake += _popularPageSize;
+        final loaded = await _loadRecommendationsForTake(_recommendationsTake);
+
+        // Re-check hasMore by asking for the raw recommendation count.
+        final raw = await _movieProvider.getRecommendations(take: _recommendationsTake);
+        final rawHasMore = raw.isNotEmpty && raw.length >= _recommendationsTake;
+
+        setState(() {
+          _movies = loaded.$1;
+          _recommendationReasons = loaded.$2;
+          _coldStartRecommendations = loaded.$3;
+          _hasMore = rawHasMore;
+        });
+      } else {
+        final loaded = await _loadPopularNextPage(reset: false);
+        _hasMore = loaded.$2;
+      }
+    } catch (_) {
+      // Keep current list on transient failures.
+    } finally {
+      if (mounted) setState(() => _isLoadingMore = false);
+    }
   }
 }
