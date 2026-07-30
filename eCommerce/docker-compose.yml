@@ -1,7 +1,7 @@
 services:
   # SQL Server
   ecomm-fit-2026:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:2022-CU17-ubuntu-22.04
     container_name: ecomm-fit-2026
     environment:
       ACCEPT_EULA: "Y"
@@ -25,7 +25,7 @@ services:
 
   # RabbitMQ + management UI (http://localhost:15672)
   ecomm-fit-2026-rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.13.7-management
     container_name: ecomm-fit-2026-rabbitmq
     ports:
       - "5672:5672"
@@ -75,6 +75,26 @@ services:
       timeout: 5s
       retries: 20
       start_period: 90s
+    restart: unless-stopped
+
+  # Email worker — consumes RabbitMQ and sends real SMTP mail (separate process/container)
+  ecomm-fit-2026-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: ecomm-fit-2026-worker
+    env_file:
+      - .env
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      RabbitMq__Host: ecomm-fit-2026-rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+    depends_on:
+      ecomm-fit-2026-rabbitmq:
+        condition: service_healthy
+    networks:
+      - ecomm-2026
     restart: unless-stopped
 
 volumes:

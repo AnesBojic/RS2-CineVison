@@ -24,7 +24,7 @@ if (-not (Test-Path ".env")) {
     }
 }
 
-Write-Host "Starting CineVision stack (SQL Server + RabbitMQ + API)..." -ForegroundColor Cyan
+Write-Host "Starting CineVision stack (SQL Server + RabbitMQ + API + email Worker)..." -ForegroundColor Cyan
 
 $composeArgs = @("compose", "up", "-d", "--build")
 & docker @composeArgs
@@ -60,6 +60,7 @@ Write-Host "  Health:         http://localhost:5126/health"
 Write-Host "  RabbitMQ UI:    http://localhost:15672  (guest / guest)"
 Write-Host "  SQL Server:     localhost,1435  (sa / value from .env MSSQL_SA_PASSWORD)"
 Write-Host "  Config:         eCommerce/.env  (secrets — not committed)"
+Write-Host "  Email worker:   ecomm-fit-2026-worker (SMTP via RabbitMQ)"
 Write-Host ""
 Write-Host "Flutter apps still run on your PC (not in Docker):" -ForegroundColor Cyan
 Write-Host "  Desktop:  cd UI\ecommerce_desktop ; flutter run -d windows"

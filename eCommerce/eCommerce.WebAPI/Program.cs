@@ -105,12 +105,12 @@ builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<IAccessManager, AccessManager>();
 builder.Services.AddScoped<ICryptoService, CryptoService>();
 
-// email: RabbitMQ producer + background consumer (optional — disable in Development when RabbitMQ is not running)
+// email: API only publishes to RabbitMQ; eCommerce.Worker container consumes and sends SMTP
 var rabbitMqEnabled = builder.Configuration.GetValue("RabbitMq:Enabled", false);
 if (rabbitMqEnabled)
 {
+    builder.Services.AddSingleton<IRabbitMqConnection, RabbitMqConnection>();
     builder.Services.AddScoped<IEmailService, RabbitMqEmailService>();
-    builder.Services.AddHostedService<EmailConsumerBackgroundService>();
 }
 else
 {

@@ -10,42 +10,32 @@ using RabbitMQ.Client;
 namespace eCommerce.Services
 {
     /// <summary>
-    /// Producer that publishes <see cref="EmailMessage"/> instances as JSON to a durable RabbitMQ queue.
-    /// Connection settings are read from the "RabbitMq" configuration section.
+    /// Producer that publishes <see cref="EmailMessage"/> instances as JSON to a durable RabbitMQ queue
+    /// using the shared <see cref="IRabbitMqConnection"/>.
     /// </summary>
     public class RabbitMqEmailService : IEmailService
     {
+        private readonly IRabbitMqConnection _connection;
         private readonly IConfiguration _configuration;
         private readonly ILogger<RabbitMqEmailService> _logger;
 
-        public RabbitMqEmailService(IConfiguration configuration, ILogger<RabbitMqEmailService> logger)
+        public RabbitMqEmailService(
+            IRabbitMqConnection connection,
+            IConfiguration configuration,
+            ILogger<RabbitMqEmailService> logger)
         {
+            _connection = connection;
             _configuration = configuration;
             _logger = logger;
         }
 
         public Task QueueEmailAsync(EmailMessage message)
         {
-            var section = _configuration.GetSection("RabbitMq");
-            var host = section["Host"] ?? "localhost";
-            var port = int.TryParse(section["Port"], out var p) ? p : 5672;
-            var username = section["Username"] ?? "guest";
-            var password = section["Password"] ?? "guest";
-            var queue = section["Queue"] ?? "cinevision-emails";
-
-            var factory = new ConnectionFactory
-            {
-                HostName = host,
-                Port = port,
-                UserName = username,
-                Password = password,
-                DispatchConsumersAsync = true
-            };
+            var queue = _configuration["RabbitMq:Queue"] ?? "cinevision-emails";
 
             try
             {
-                using var connection = factory.CreateConnection();
-                using var channel = connection.CreateModel();
+                using var channel = _connection.CreateChannel();
 
                 channel.QueueDeclare(
                     queue: queue,
@@ -67,13 +57,15 @@ namespace eCommerce.Services
                     basicProperties: properties,
                     body: body);
 
-                _logger.LogInformation("Queued email to {To} with subject '{Subject}' on queue '{Queue}'.", message.To, message.Subject, queue);
+                _logger.LogInformation(
+                    "Queued email to {To} with subject '{Subject}' on queue '{Queue}'.",
+                    message.To,
+                    message.Subject,
+                    queue);
             }
             catch (Exception ex)
             {
-                // Surface the failure to the caller, but log with context. Callers that must not fail
-                // (e.g. reservation confirmation) wrap this in their own try/catch.
-                _logger.LogError(ex, "Failed to queue email to {To} on RabbitMQ host '{Host}:{Port}'.", message.To, host, port);
+                _logger.LogError(ex, "Failed to queue email to {To} on RabbitMQ.", message.To);
                 throw;
             }
 

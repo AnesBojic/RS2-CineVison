@@ -1,7 +1,7 @@
 namespace eCommerce.Model.Messages
 {
     /// <summary>
-    /// Contract for an email queued to RabbitMQ and consumed by the email background service.
+    /// Contract for an email queued to RabbitMQ and consumed by eCommerce.Worker.
     /// </summary>
     public class EmailMessage
     {
