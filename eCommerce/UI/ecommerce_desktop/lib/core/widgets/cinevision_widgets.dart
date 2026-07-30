@@ -265,12 +265,14 @@ class SearchField extends StatelessWidget {
     required this.hint,
     this.width = 260,
     this.onSubmitted,
+    this.onChanged,
   });
 
   final TextEditingController controller;
   final String hint;
   final double width;
   final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -280,6 +282,7 @@ class SearchField extends StatelessWidget {
       child: TextField(
         controller: controller,
         onSubmitted: onSubmitted,
+        onChanged: onChanged,
         style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,

@@ -87,71 +87,41 @@ class DashboardStats {
 
 
 class MoviePerformance {
-
   final int movieId;
-
   final String title;
-
   final int screeningsCount;
-
   final int reservationsCount;
-
   final int ticketsSold;
-
   final num revenue;
-
   final double occupancyPercent;
-
   final double? avgRating;
-
-
+  final String? posterImageBase64;
 
   MoviePerformance({
-
     required this.movieId,
-
     required this.title,
-
     required this.screeningsCount,
-
     required this.reservationsCount,
-
     required this.ticketsSold,
-
     required this.revenue,
-
     required this.occupancyPercent,
-
     this.avgRating,
-
+    this.posterImageBase64,
   });
 
-
-
   factory MoviePerformance.fromJson(Map<String, dynamic> json) {
-
     return MoviePerformance(
-
       movieId: json['movieId'] as int? ?? 0,
-
       title: json['title'] as String? ?? '',
-
       screeningsCount: json['screeningsCount'] as int? ?? 0,
-
       reservationsCount: json['reservationsCount'] as int? ?? 0,
-
       ticketsSold: json['ticketsSold'] as int? ?? 0,
-
       revenue: json['revenue'] as num? ?? 0,
-
       occupancyPercent: (json['occupancyPercent'] as num?)?.toDouble() ?? 0,
-
       avgRating: (json['avgRating'] as num?)?.toDouble(),
-
+      posterImageBase64: json['posterImageBase64'] as String?,
     );
-
   }
-
 }
 
 

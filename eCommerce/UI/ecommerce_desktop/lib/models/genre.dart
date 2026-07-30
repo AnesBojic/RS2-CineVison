@@ -14,4 +14,12 @@ class Genre {
       isActive: json['isActive'] as bool?,
     );
   }
+
+  Map<String, dynamic> toInsertJson() => {
+        'name': name,
+        'description': description ?? '',
+        'isActive': isActive ?? true,
+      };
+
+  Map<String, dynamic> toUpdateJson() => toInsertJson();
 }

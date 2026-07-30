@@ -6,6 +6,7 @@ import 'package:ecommerce_mobile/core/routes/app_routes.dart';
 import 'package:ecommerce_mobile/core/widgets/cine_app_bar.dart';
 import 'package:ecommerce_mobile/core/widgets/profile_avatar.dart';
 import 'package:ecommerce_mobile/models/user.dart';
+import 'package:ecommerce_mobile/core/utils/field_validators.dart';
 import 'package:ecommerce_mobile/providers/auth_provider.dart';
 import 'package:ecommerce_mobile/providers/user_provider.dart';
 import 'package:ecommerce_mobile/utils/utils_widgets.dart';
@@ -251,13 +252,7 @@ class _CineProfilePageState extends State<CineProfilePage> {
                         labelText: 'Email',
                         prefixIcon: Icon(Icons.email_outlined, size: 20),
                       ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Email is required';
-                        }
-                        if (!v.contains('@')) return 'Enter a valid email';
-                        return null;
-                      },
+                      validator: (v) => FieldValidators.email(v),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -268,6 +263,7 @@ class _CineProfilePageState extends State<CineProfilePage> {
                         labelText: 'Phone Number',
                         prefixIcon: Icon(Icons.phone_outlined, size: 20),
                       ),
+                      validator: (v) => FieldValidators.phone(v),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(

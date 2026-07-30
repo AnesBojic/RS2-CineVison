@@ -220,6 +220,7 @@ namespace eCommerce.Services
                     Id = s.Id,
                     MovieId = s.MovieId,
                     MovieTitle = s.Movie.Title,
+                    MoviePosterBase64 = s.Movie.PosterImageBase64,
                     HallId = s.HallId,
                     StartTime = s.StartTime,
                     IsActive = s.IsActive
@@ -280,6 +281,7 @@ namespace eCommerce.Services
                 {
                     MovieId = movieId,
                     Title = group.First().MovieTitle,
+                    PosterImageBase64 = group.First().MoviePosterBase64,
                     ScreeningsCount = group.Count(),
                     ReservationsCount = reservations,
                     TicketsSold = tickets,
@@ -332,6 +334,7 @@ namespace eCommerce.Services
             public int Id { get; set; }
             public int MovieId { get; set; }
             public string MovieTitle { get; set; } = string.Empty;
+            public string? MoviePosterBase64 { get; set; }
             public int HallId { get; set; }
             public DateTime StartTime { get; set; }
             public bool IsActive { get; set; }

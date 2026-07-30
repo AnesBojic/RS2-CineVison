@@ -1,6 +1,7 @@
 import 'package:ecommerce_mobile/core/widgets/cine_app_bar.dart';
 import 'package:ecommerce_mobile/core/utils/checkout_platform.dart';
 import 'package:ecommerce_mobile/core/utils/date_formatters.dart';
+import 'package:ecommerce_mobile/core/utils/field_validators.dart';
 import 'package:ecommerce_mobile/core/components/base64_image.dart';
 import 'package:ecommerce_mobile/core/constants/app_colors.dart';
 import 'package:ecommerce_mobile/core/constants/app_defaults.dart';
@@ -120,6 +121,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final screening = booking.screening;
     if (screening?.id == null || booking.selectedSeatIds.isEmpty) return;
 
+    final total = booking.totalPrice;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm purchase'),
+        content: Text(
+          supportsStripePaymentSheet
+              ? 'You will be charged \$${total.toStringAsFixed(2)} via Stripe. Continue?'
+              : 'Confirm demo booking for \$${total.toStringAsFixed(2)}?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirm')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
     setState(() => _busy = true);
     try {
       final reservationProvider = context.read<ReservationProvider>();
@@ -221,6 +240,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
           );
         }
 
+        final blockReason = _busy
+            ? 'Processing your booking…'
+            : (AuthProvider.accesstoken == null || AuthProvider.accesstoken!.isEmpty)
+                ? 'Sign in to complete your purchase'
+                : booking.selectedSeatIds.isEmpty
+                    ? 'Select seats before checkout'
+                    : null;
+
         return Scaffold(
           appBar: const CineAppBar(title: 'Checkout', showBack: true),
           bottomNavigationBar: SafeArea(
@@ -232,7 +259,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _busy ? null : () => _completePurchase(booking),
+                      onPressed: blockReason != null
+                          ? null
+                          : () => _completePurchase(booking),
                       child: _busy
                           ? const SizedBox(
                               height: 20,
@@ -246,12 +275,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    supportsStripePaymentSheet
-                        ? 'Payment is processed securely via Stripe.'
-                        : 'This is a demo payment form. No actual charges will be made.',
+                    blockReason ??
+                        (supportsStripePaymentSheet
+                            ? 'Payment is processed securely via Stripe.'
+                            : 'This is a demo payment form. No actual charges will be made.'),
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
+                    style: TextStyle(
+                      color: blockReason != null
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
                       fontSize: 12,
                     ),
                   ),
@@ -318,11 +350,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             hintText: 'john@example.com',
                           ),
                           keyboardType: TextInputType.emailAddress,
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'Required';
-                            if (!v.contains('@')) return 'Enter a valid email';
-                            return null;
-                          },
+                          validator: (v) => FieldValidators.email(v),
                         ),
                       ],
                     ),

@@ -23,9 +23,30 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   bool _loading = true;
   bool _exportingPdf = false;
   final _scrollController = ScrollController();
+  final _movieFilterCtrl = TextEditingController();
+  final _slotFilterCtrl = TextEditingController();
+  final _hallFilterCtrl = TextEditingController();
   List<MoviePerformance> _movies = [];
   List<TimeSlotPerformance> _timeSlots = [];
   List<HallUtilization> _halls = [];
+
+  List<MoviePerformance> get _filteredMovies {
+    final q = _movieFilterCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return _movies;
+    return _movies.where((m) => m.title.toLowerCase().contains(q)).toList();
+  }
+
+  List<TimeSlotPerformance> get _filteredSlots {
+    final q = _slotFilterCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return _timeSlots;
+    return _timeSlots.where((s) => s.timeSlot.toLowerCase().contains(q)).toList();
+  }
+
+  List<HallUtilization> get _filteredHalls {
+    final q = _hallFilterCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return _halls;
+    return _halls.where((h) => h.hallName.toLowerCase().contains(q)).toList();
+  }
 
   @override
   void initState() {
@@ -43,6 +64,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   void dispose() {
     context.read<AnalyticsProvider>().removeListener(_onLiveAnalytics);
     _scrollController.dispose();
+    _movieFilterCtrl.dispose();
+    _slotFilterCtrl.dispose();
+    _hallFilterCtrl.dispose();
     super.dispose();
   }
 
@@ -159,9 +183,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             const SizedBox(height: 20),
             _buildPdfReportsCard(),
             const SizedBox(height: 28),
-            const SectionHeader(title: 'Most Popular Movies'),
+            SectionHeader(
+              title: 'Most Popular Movies',
+              action: SizedBox(
+                width: 220,
+                child: SearchField(
+                  controller: _movieFilterCtrl,
+                  hint: 'Filter movies',
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
             DataCard(
-              emptyMessage: _movies.isEmpty ? 'No performance data yet' : null,
+              emptyMessage: _filteredMovies.isEmpty ? 'No performance data yet' : null,
               child: StyledDataTable(
                 columns: const [
                   DataColumn(label: Text('Movie')),
@@ -170,10 +204,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   DataColumn(label: Text('Occupancy')),
                   DataColumn(label: Text('Avg Rating')),
                 ],
-                rows: _movies.map((m) {
+                rows: _filteredMovies.map((m) {
                   return DataRow(cells: [
                     DataCell(Row(children: [
-                      posterThumbnail(null),
+                      posterThumbnail(m.posterImageBase64),
                       const SizedBox(width: 12),
                       Text(m.title, style: const TextStyle(fontWeight: FontWeight.w500)),
                     ])),
@@ -189,9 +223,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               ),
             ),
             const SizedBox(height: 28),
-            const SectionHeader(title: 'Performance by Time Slot'),
+            SectionHeader(
+              title: 'Performance by Time Slot',
+              action: SizedBox(
+                width: 220,
+                child: SearchField(
+                  controller: _slotFilterCtrl,
+                  hint: 'Filter slots',
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
             DataCard(
-              emptyMessage: _timeSlots.isEmpty ? 'No time slot data yet' : null,
+              emptyMessage: _filteredSlots.isEmpty ? 'No time slot data yet' : null,
               child: StyledDataTable(
                 columns: const [
                   DataColumn(label: Text('Time Slot')),
@@ -199,7 +243,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   DataColumn(label: Text('Occupancy')),
                   DataColumn(label: Text('Revenue')),
                 ],
-                rows: _timeSlots.map((s) {
+                rows: _filteredSlots.map((s) {
                   return DataRow(cells: [
                     DataCell(Text(s.timeSlot)),
                     DataCell(Text('${s.ticketsSold}')),
@@ -213,23 +257,33 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               ),
             ),
             const SizedBox(height: 28),
-            const SectionHeader(title: 'Hall Usage Distribution'),
+            SectionHeader(
+              title: 'Hall Usage Distribution',
+              action: SizedBox(
+                width: 220,
+                child: SearchField(
+                  controller: _hallFilterCtrl,
+                  hint: 'Filter halls',
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
             DataCard(
               child: Padding(
                 padding: const EdgeInsets.all(28),
-                child: _halls.isEmpty
+                child: _filteredHalls.isEmpty
                     ? const Center(
                         child: Text('No hall usage data yet', style: TextStyle(color: AppColors.textSecondary)),
                       )
                     : Column(
                         children: [
-                          SizedBox(height: 240, child: _HallPieChart(halls: _halls)),
+                          SizedBox(height: 240, child: _HallPieChart(halls: _filteredHalls)),
                           const SizedBox(height: 28),
                           Wrap(
                             spacing: 28,
                             runSpacing: 14,
                             alignment: WrapAlignment.center,
-                            children: _halls.asMap().entries.map((entry) {
+                            children: _filteredHalls.asMap().entries.map((entry) {
                               final h = entry.value;
                               return _HallLegendItem(
                                 color: _hallColor(entry.key),

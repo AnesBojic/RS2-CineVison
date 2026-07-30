@@ -82,7 +82,7 @@ class _NewsListScreenState extends State<NewsListScreen> {
         return StatefulBuilder(
           builder: (ctx, setLocal) {
             return AlertDialog(
-              backgroundColor: AppColors.surface,
+              backgroundColor: AppColors.card,
               title: Text(existing == null ? 'New announcement' : 'Edit announcement'),
               content: SizedBox(
                 width: 480,

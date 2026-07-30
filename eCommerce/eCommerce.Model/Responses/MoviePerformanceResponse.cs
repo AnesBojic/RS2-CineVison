@@ -17,5 +17,8 @@ namespace eCommerce.Model.Responses
 
         /// <summary>Average review rating (1-5) for the movie, or null when it has no reviews.</summary>
         public double? AvgRating { get; set; }
+
+        /// <summary>Optional poster for analytics / dashboard tables.</summary>
+        public string? PosterImageBase64 { get; set; }
     }
 }

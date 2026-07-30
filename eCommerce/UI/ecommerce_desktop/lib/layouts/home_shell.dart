@@ -9,11 +9,12 @@ import 'package:ecommerce_desktop/providers/user_provider.dart';
 import 'package:ecommerce_desktop/screens/analytics_screen.dart';
 import 'package:ecommerce_desktop/screens/chatbot_screen.dart';
 import 'package:ecommerce_desktop/screens/dashboard_screen.dart';
+import 'package:ecommerce_desktop/screens/genre_list_screen.dart';
 import 'package:ecommerce_desktop/screens/hall_list_screen.dart';
 import 'package:ecommerce_desktop/screens/login_screen.dart';
 import 'package:ecommerce_desktop/screens/movie_list_screen.dart';
-import 'package:ecommerce_desktop/screens/screening_list_screen.dart';
 import 'package:ecommerce_desktop/screens/news_list_screen.dart';
+import 'package:ecommerce_desktop/screens/screening_list_screen.dart';
 import 'package:ecommerce_desktop/screens/profile_screen.dart';
 import 'package:ecommerce_desktop/screens/user_list.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +38,7 @@ class _HomeShellState extends State<HomeShell> {
     _NavItem('Halls', Icons.tv_outlined, Icons.tv, adminOnly: false),
     _NavItem('Projections', Icons.calendar_today_outlined, Icons.calendar_today, adminOnly: false),
     _NavItem('News', Icons.campaign_outlined, Icons.campaign, adminOnly: false),
+    _NavItem('Genres', Icons.category_outlined, Icons.category, adminOnly: false),
     _NavItem('Users', Icons.people_outline, Icons.people, adminOnly: true),
     _NavItem('Analytics', Icons.bar_chart_outlined, Icons.bar_chart, adminOnly: false),
     _NavItem('Chatbot', Icons.chat_bubble_outline, Icons.chat_bubble, adminOnly: false),
@@ -61,7 +63,7 @@ class _HomeShellState extends State<HomeShell> {
 
   void _onNavTap(int index) {
     setState(() => _selectedIndex = index);
-    if (index == 7) {
+    if (index == 8) {
       context.read<NotificationProvider>().markAllRead(type: 'Message');
     } else {
       context.read<NotificationProvider>().refresh();
@@ -92,7 +94,7 @@ class _HomeShellState extends State<HomeShell> {
       _hallEditId = index == 2 ? editId : null;
       _screeningEditId = index == 3 ? editId : null;
     });
-    if (index == 7) {
+    if (index == 8) {
       context.read<NotificationProvider>().markAllRead(type: 'Message');
     } else {
       context.read<NotificationProvider>().refresh();
@@ -129,10 +131,12 @@ class _HomeShellState extends State<HomeShell> {
       case 4:
         return const NewsListScreen();
       case 5:
-        return const UserList();
+        return const GenreListScreen();
       case 6:
-        return const AnalyticsScreen();
+        return const UserList();
       case 7:
+        return const AnalyticsScreen();
+      case 8:
         return const ChatBotScreen();
       default:
         return DashboardScreen(onNavigate: _navigateTo);
@@ -140,7 +144,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   String _titleForIndex(int index) {
-    if (index == 7) return 'Chatbot';
+    if (index == 8) return 'Chatbot';
     return 'Dashboard';
   }
 

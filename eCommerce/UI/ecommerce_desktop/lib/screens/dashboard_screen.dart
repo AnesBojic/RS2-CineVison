@@ -26,10 +26,39 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _loading = true;
   final _scrollController = ScrollController();
+  final _movieFilterCtrl = TextEditingController();
+  final _hallFilterCtrl = TextEditingController();
+  final _screeningFilterCtrl = TextEditingController();
   DashboardStats? _dashboard;
   List<Movie> _movies = [];
   List<Hall> _halls = [];
   List<Screening> _screenings = [];
+
+  List<Movie> get _filteredMovies {
+    final q = _movieFilterCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return _movies;
+    return _movies.where((m) {
+      final title = (m.title ?? '').toLowerCase();
+      final genre = (m.genre?.name ?? '').toLowerCase();
+      return title.contains(q) || genre.contains(q);
+    }).toList();
+  }
+
+  List<Hall> get _filteredHalls {
+    final q = _hallFilterCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return _halls;
+    return _halls.where((h) => (h.name ?? '').toLowerCase().contains(q)).toList();
+  }
+
+  List<Screening> get _filteredScreenings {
+    final q = _screeningFilterCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return _screenings;
+    return _screenings.where((s) {
+      final movie = (_movieById(s.movieId)?.title ?? s.movieTitle ?? '').toLowerCase();
+      final hall = (s.hallName ?? '').toLowerCase();
+      return movie.contains(q) || hall.contains(q);
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -42,6 +71,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     context.read<AnalyticsProvider>().removeListener(_onLiveAnalytics);
     _scrollController.dispose();
+    _movieFilterCtrl.dispose();
+    _hallFilterCtrl.dispose();
+    _screeningFilterCtrl.dispose();
     super.dispose();
   }
 
@@ -83,6 +115,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       movies = (catalog[0] as SearchResult<Movie>).items ?? [];
       halls = (catalog[1] as SearchResult<Hall>).items ?? [];
       screenings = (catalog[2] as SearchResult<Screening>).items ?? [];
+      movies.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
+      halls.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
+      screenings.sort((a, b) {
+        final at = a.startTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bt = b.startTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bt.compareTo(at);
+      });
     } on Exception catch (e) {
       if (mounted) {
         alertBox(context, 'Error', e.toString());
@@ -272,14 +311,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         SectionHeader(
           title: 'Manage Movies',
-          action: PrimaryButton(
-            label: 'Add Movie',
-            compact: true,
-            onPressed: () => widget.onNavigate?.call(1),
+          action: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SearchField(
+                controller: _movieFilterCtrl,
+                hint: 'Filter movies',
+                width: 200,
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(width: 10),
+              PrimaryButton(
+                label: 'Add Movie',
+                compact: true,
+                onPressed: () => widget.onNavigate?.call(1),
+              ),
+            ],
           ),
         ),
         DataCard(
-          emptyMessage: _movies.isEmpty ? 'No movies yet' : null,
+          emptyMessage: _filteredMovies.isEmpty ? 'No movies yet' : null,
           child: StyledDataTable(
             columns: const [
               DataColumn(label: Text('Movie Title')),
@@ -290,7 +341,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               DataColumn(label: Text('Status')),
               DataColumn(label: Text('Actions')),
             ],
-            rows: _movies.map((m) {
+            rows: _filteredMovies.map((m) {
               return DataRow(cells: [
                 DataCell(Row(children: [
                   posterThumbnail(m.posterImageBase64),
@@ -324,14 +375,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         SectionHeader(
           title: 'Manage Halls',
-          action: PrimaryButton(
-            label: 'Add Hall',
-            compact: true,
-            onPressed: () => widget.onNavigate?.call(2),
+          action: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SearchField(
+                controller: _hallFilterCtrl,
+                hint: 'Filter halls',
+                width: 200,
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(width: 10),
+              PrimaryButton(
+                label: 'Add Hall',
+                compact: true,
+                onPressed: () => widget.onNavigate?.call(2),
+              ),
+            ],
           ),
         ),
         DataCard(
-          emptyMessage: _halls.isEmpty ? 'No halls yet' : null,
+          emptyMessage: _filteredHalls.isEmpty ? 'No halls yet' : null,
           child: StyledDataTable(
             columns: const [
               DataColumn(label: Text('Hall Name')),
@@ -340,7 +403,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               DataColumn(label: Text('Status')),
               DataColumn(label: Text('Actions')),
             ],
-            rows: _halls.map((h) {
+            rows: _filteredHalls.map((h) {
               return DataRow(cells: [
                 DataCell(Row(children: [
                   Container(
@@ -380,14 +443,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         SectionHeader(
           title: 'Manage Projections',
-          action: PrimaryButton(
-            label: 'Add Projection',
-            compact: true,
-            onPressed: () => widget.onNavigate?.call(3),
+          action: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SearchField(
+                controller: _screeningFilterCtrl,
+                hint: 'Filter projections',
+                width: 200,
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(width: 10),
+              PrimaryButton(
+                label: 'Add Projection',
+                compact: true,
+                onPressed: () => widget.onNavigate?.call(3),
+              ),
+            ],
           ),
         ),
         DataCard(
-          emptyMessage: _screenings.isEmpty ? 'No projections scheduled' : null,
+          emptyMessage: _filteredScreenings.isEmpty ? 'No projections scheduled' : null,
           child: StyledDataTable(
             columns: const [
               DataColumn(label: Text('Movie')),
@@ -397,23 +472,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
               DataColumn(label: Text('Price')),
               DataColumn(label: Text('Actions')),
             ],
-            rows: _screenings.map((s) {
-              final poster = s.moviePosterBase64?.isNotEmpty == true
-                  ? s.moviePosterBase64
-                  : _movieById(s.movieId)?.posterImageBase64;
+            rows: _filteredScreenings.map((s) {
+              final movie = _movieById(s.movieId);
+              final poster = movie?.posterImageBase64 ?? s.moviePosterBase64;
               return DataRow(cells: [
                 DataCell(Row(children: [
                   posterThumbnail(poster),
                   const SizedBox(width: 12),
-                  Text(s.movieTitle ?? '—', style: const TextStyle(fontWeight: FontWeight.w500)),
+                  Text(
+                    movie?.title ?? s.movieTitle ?? '—',
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
                 ])),
                 DataCell(Text(s.hallName ?? '—')),
                 DataCell(Text(formatDate(s.startTime))),
-                DataCell(StatusBadge(
-                  label: formatTime(s.startTime),
-                  color: AppColors.green,
-                  filled: true,
-                )),
+                DataCell(Text(formatTime(s.startTime))),
                 DataCell(Text(formatCurrency(s.basePrice))),
                 DataCell(_actionsCell(
                   onEdit: () => widget.onNavigate?.call(3, editId: s.id),

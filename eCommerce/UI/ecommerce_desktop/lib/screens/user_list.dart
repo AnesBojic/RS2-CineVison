@@ -6,6 +6,7 @@ import 'package:ecommerce_desktop/models/user.dart';
 import 'package:ecommerce_desktop/providers/notification_provider.dart';
 import 'package:ecommerce_desktop/providers/user_provider.dart';
 import 'package:ecommerce_desktop/utils/api_client_exception.dart';
+import 'package:ecommerce_desktop/utils/field_validators.dart';
 import 'package:ecommerce_desktop/utils/image_utils.dart';
 import 'package:ecommerce_desktop/utils/utils_widgets.dart';
 import 'package:file_picker/file_picker.dart';
@@ -258,6 +259,7 @@ class _UserListState extends State<UserList> {
     bool isActive = fullUser?.isActive ?? true;
     String? profileImageBase64 = fullUser?.profileImageBase64;
     bool submitting = false;
+    final formKey = GlobalKey<FormState>();
 
     await showDialog(
       context: context,
@@ -268,18 +270,7 @@ class _UserListState extends State<UserList> {
           isSubmitting: submitting,
           maxWidth: 560,
           onSubmit: () async {
-            if (firstCtrl.text.trim().isEmpty || lastCtrl.text.trim().isEmpty) {
-              alertBox(context, 'Validation', 'First and last name are required');
-              return;
-            }
-            if (emailCtrl.text.trim().isEmpty) {
-              alertBox(context, 'Validation', 'Email is required');
-              return;
-            }
-            if (user == null && passwordCtrl.text.length < 6) {
-              alertBox(context, 'Validation', 'Password must be at least 6 characters');
-              return;
-            }
+            if (!(formKey.currentState?.validate() ?? false)) return;
 
             setDialogState(() => submitting = true);
             try {
@@ -320,7 +311,9 @@ class _UserListState extends State<UserList> {
               if (context.mounted) alertBox(context, 'Error', e.toString());
             }
           },
-          child: Column(
+          child: Form(
+            key: formKey,
+            child: Column(
             children: [
               Center(
                 child: Column(
@@ -370,33 +363,38 @@ class _UserListState extends State<UserList> {
               const SizedBox(height: 8),
               Row(children: [
                 Expanded(
-                  child: TextField(
+                  child: TextFormField(
                     controller: firstCtrl,
                     decoration: const InputDecoration(labelText: 'First Name'),
+                    validator: (v) => FieldValidators.required(v, field: 'First name'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
+                  child: TextFormField(
                     controller: lastCtrl,
                     decoration: const InputDecoration(labelText: 'Last Name'),
+                    validator: (v) => FieldValidators.required(v, field: 'Last name'),
                   ),
                 ),
               ]),
               const SizedBox(height: 12),
-              TextField(
+              TextFormField(
                 controller: emailCtrl,
                 decoration: const InputDecoration(labelText: 'Email'),
+                validator: FieldValidators.email,
               ),
               const SizedBox(height: 12),
-              TextField(
+              TextFormField(
                 controller: usernameCtrl,
                 decoration: const InputDecoration(labelText: 'Username'),
+                validator: (v) => FieldValidators.required(v, field: 'Username'),
               ),
               const SizedBox(height: 12),
-              TextField(
+              TextFormField(
                 controller: phoneCtrl,
                 decoration: const InputDecoration(labelText: 'Phone Number'),
+                validator: (v) => FieldValidators.phone(v),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
@@ -417,13 +415,15 @@ class _UserListState extends State<UserList> {
               ),
               if (user == null) ...[
                 const SizedBox(height: 12),
-                TextField(
+                TextFormField(
                   controller: passwordCtrl,
                   obscureText: true,
                   decoration: const InputDecoration(labelText: 'Password'),
+                  validator: (v) => FieldValidators.minLength(v, 6, field: 'Password'),
                 ),
               ],
             ],
+            ),
           ),
         ),
       ),

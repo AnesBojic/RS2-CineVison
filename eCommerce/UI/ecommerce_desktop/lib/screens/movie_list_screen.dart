@@ -4,6 +4,7 @@ import 'package:ecommerce_desktop/models/genre.dart';
 import 'package:ecommerce_desktop/models/movie.dart';
 import 'package:ecommerce_desktop/providers/genre_provider.dart';
 import 'package:ecommerce_desktop/providers/movie_provider.dart';
+import 'package:ecommerce_desktop/utils/field_validators.dart';
 import 'package:ecommerce_desktop/utils/image_utils.dart';
 import 'package:ecommerce_desktop/utils/api_client_exception.dart';
 import 'package:ecommerce_desktop/utils/utils_widgets.dart';
@@ -56,9 +57,11 @@ class _MovieListScreenState extends State<MovieListScreen> {
 
       final data = await _movieProvider.get(filter: filter, includePoster: true);
       if (!mounted) return;
+      final movies = data.items ?? [];
+      movies.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
       setState(() {
         _genres = genres.items ?? [];
-        _movies = data.items ?? [];
+        _movies = movies;
         _loading = false;
       });
       _maybeOpenEdit();
@@ -216,6 +219,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
     String? posterBase64 = fullMovie?.posterImageBase64;
     String? originalPoster = fullMovie?.posterImageBase64;
     bool submitting = false;
+    final formKey = GlobalKey<FormState>();
 
     if (!mounted) return;
 
@@ -228,8 +232,9 @@ class _MovieListScreenState extends State<MovieListScreen> {
           isSubmitting: submitting,
           maxWidth: 620,
           onSubmit: () async {
-            if (titleCtrl.text.trim().isEmpty) {
-              alertBox(context, 'Validation', 'Movie title is required');
+            if (!(formKey.currentState?.validate() ?? false)) return;
+            if (genreId == null) {
+              showAppSnackBar(context, 'Select a genre', isError: true);
               return;
             }
             setDialogState(() => submitting = true);
@@ -274,7 +279,9 @@ class _MovieListScreenState extends State<MovieListScreen> {
               if (context.mounted) alertBox(context, 'Error', e.toString());
             }
           },
-          child: Column(
+          child: Form(
+            key: formKey,
+            child: Column(
             children: [
               PosterUploadBox(
                 base64: posterBase64,
@@ -289,9 +296,10 @@ class _MovieListScreenState extends State<MovieListScreen> {
               const SizedBox(height: 16),
               Row(children: [
                 Expanded(
-                  child: TextField(
+                  child: TextFormField(
                     controller: titleCtrl,
                     decoration: const InputDecoration(labelText: 'Movie Title', hintText: 'Enter movie title'),
+                    validator: (v) => FieldValidators.required(v, field: 'Movie title'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -304,6 +312,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
                         .map((g) => DropdownMenuItem(value: g.id, child: Text(g.name ?? '')))
                         .toList(),
                     onChanged: (v) => setDialogState(() => genreId = v),
+                    validator: (v) => v == null ? 'Genre is required' : null,
                   ),
                 ),
               ]),
@@ -358,6 +367,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
                 ),
               ]),
             ],
+            ),
           ),
         ),
       ),

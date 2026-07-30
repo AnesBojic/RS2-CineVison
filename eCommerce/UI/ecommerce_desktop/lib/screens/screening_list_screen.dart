@@ -259,6 +259,19 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
     await _ensurePickerData();
     if (!mounted) return;
 
+    if (_movies.isEmpty || _halls.isEmpty) {
+      showAppSnackBar(
+        context,
+        _movies.isEmpty && _halls.isEmpty
+            ? 'Add at least one movie and one hall before creating a projection.'
+            : _movies.isEmpty
+                ? 'Add at least one movie before creating a projection.'
+                : 'Add at least one active hall before creating a projection.',
+        isError: true,
+      );
+      return;
+    }
+
     int? movieId = screening?.movieId;
     int? hallId = screening?.hallId;
     final localStart = screening?.startTime?.toLocal();
@@ -267,6 +280,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
         localStart != null ? TimeOfDay.fromDateTime(localStart) : null;
     final priceCtrl = TextEditingController(text: '${screening?.basePrice ?? ''}');
     bool submitting = false;
+    final formKey = GlobalKey<FormState>();
 
     await showDialog(
       context: context,
@@ -276,8 +290,9 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
           submitLabel: screening == null ? 'Add Projection' : 'Save',
           isSubmitting: submitting,
           onSubmit: () async {
+            if (!(formKey.currentState?.validate() ?? false)) return;
             if (movieId == null || hallId == null || date == null || time == null) {
-              alertBox(context, 'Validation', 'Please fill all fields');
+              showAppSnackBar(context, 'Please fill all fields', isError: true);
               return;
             }
             final selectedHall = _hallById(hallId);
@@ -328,7 +343,9 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
               if (context.mounted) alertBox(context, 'Error', e.toString());
             }
           },
-          child: Column(
+          child: Form(
+            key: formKey,
+            child: Column(
             children: [
               DropdownButtonFormField<int>(
                 initialValue: movieId,
@@ -338,6 +355,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
                     .map((m) => DropdownMenuItem(value: m.id, child: Text(m.title ?? '')))
                     .toList(),
                 onChanged: (v) => setDialogState(() => movieId = v),
+                validator: (v) => v == null ? 'Movie is required' : null,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
@@ -364,6 +382,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
                     );
                   }
                 },
+                validator: (v) => v == null ? 'Hall is required' : null,
               ),
               const SizedBox(height: 12),
               Row(children: [
@@ -402,12 +421,19 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
                 ),
               ]),
               const SizedBox(height: 12),
-              TextField(
+              TextFormField(
                 controller: priceCtrl,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'Price', hintText: 'e.g. \$15'),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Price is required';
+                  final n = num.tryParse(v.replaceAll('\$', '').trim());
+                  if (n == null || n <= 0) return 'Enter a valid price';
+                  return null;
+                },
               ),
             ],
+            ),
           ),
         ),
       ),
