@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 dynamic dateEncode(dynamic item) {
   if (item is DateTime) {
-    return item.toIso8601String();
+    return item.toUtc().toIso8601String();
   }
   return item;
 }

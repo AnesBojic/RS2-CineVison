@@ -89,6 +89,20 @@ class Movie {
         genre: genre,
       );
 
+  /// A release date is a calendar day, not an instant, so it must not shift with
+  /// the viewer's timezone. The API stores it as UTC midnight; read and write the
+  /// UTC calendar components so the day stays the same everywhere.
+  static DateTime? _parseDateOnly(dynamic value) {
+    final parsed = value == null ? null : DateTime.tryParse(value.toString());
+    if (parsed == null) return null;
+    final utc = parsed.toUtc();
+    return DateTime(utc.year, utc.month, utc.day);
+  }
+
+  static String? _toDateOnlyApi(DateTime? value) => value == null
+      ? null
+      : DateTime.utc(value.year, value.month, value.day).toIso8601String();
+
   factory Movie.fromJson(Map<String, dynamic> json) {
     return Movie(
       id: json['id'] as int?,
@@ -97,9 +111,7 @@ class Movie {
       durationMinutes: json['durationMinutes'] as int?,
       genreId: json['genreId'] as int?,
       director: json['director'] as String?,
-      releaseDate: json['releaseDate'] != null
-          ? DateTime.tryParse(json['releaseDate'].toString())
-          : null,
+      releaseDate: _parseDateOnly(json['releaseDate']),
       language: json['language'] as String?,
       ageRating: json['ageRating'] as String?,
       trailerUrl: json['trailerUrl'] as String?,
@@ -126,7 +138,7 @@ class Movie {
         'durationMinutes': durationMinutes ?? 0,
         'genreId': genreId,
         'director': director,
-        'releaseDate': releaseDate?.toIso8601String(),
+        'releaseDate': _toDateOnlyApi(releaseDate),
         'language': language,
         'ageRating': ageRating,
         'trailerUrl': trailerUrl,

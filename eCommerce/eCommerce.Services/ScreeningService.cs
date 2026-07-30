@@ -86,8 +86,7 @@ namespace eCommerce.Services
             }
             if (search.OnlyUpcoming == true)
             {
-                // StartTime is cinema wall-clock local time (not UTC).
-                var now = DateTime.Now;
+                var now = DateTime.UtcNow;
                 query = query.Where(s => s.StartTime >= now);
             }
 

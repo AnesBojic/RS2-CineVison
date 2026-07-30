@@ -159,7 +159,7 @@ namespace eCommerce.Services
 
         private async Task<string> BuildCinemaContextAsync()
         {
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var horizon = now.AddDays(14);
 
             var movies = await _dbContext.Movies
@@ -244,7 +244,7 @@ namespace eCommerce.Services
             sb.AppendLine($"Upcoming screenings (next 14 days, max 25 shown): {upcomingScreenings.Count}");
             foreach (var s in upcomingScreenings)
             {
-                sb.AppendLine($"  - {s.Movie?.Title} in {s.Hall?.Name} | {s.StartTime:yyyy-MM-dd HH:mm} | ${s.BasePrice:F2}");
+                sb.AppendLine($"  - {s.Movie?.Title} in {s.Hall?.Name} | {s.StartTime:yyyy-MM-dd HH:mm} UTC | ${s.BasePrice:F2}");
             }
 
             sb.AppendLine();

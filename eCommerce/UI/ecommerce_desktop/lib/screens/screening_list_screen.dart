@@ -261,11 +261,10 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
 
     int? movieId = screening?.movieId;
     int? hallId = screening?.hallId;
-    // startTime is already local wall-clock after fromJson.
-    DateTime? date = screening?.startTime;
-    TimeOfDay? time = screening?.startTime != null
-        ? TimeOfDay.fromDateTime(screening!.startTime!)
-        : null;
+    final localStart = screening?.startTime?.toLocal();
+    DateTime? date = localStart;
+    TimeOfDay? time =
+        localStart != null ? TimeOfDay.fromDateTime(localStart) : null;
     final priceCtrl = TextEditingController(text: '${screening?.basePrice ?? ''}');
     bool submitting = false;
 

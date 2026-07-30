@@ -901,13 +901,12 @@ Widget occupancyBar(double percent, Color color, {double width = 120}) {
 
 String formatDate(DateTime? date) {
   if (date == null) return '—';
-  // Wall-clock value — do not call toLocal() (that re-applies timezone offset).
-  return DateFormat('MMM d, yyyy').format(date);
+  return DateFormat('MMM d, yyyy').format(date.toLocal());
 }
 
 String formatTime(DateTime? date) {
   if (date == null) return '—';
-  return DateFormat('h:mm a').format(date);
+  return DateFormat('h:mm a').format(date.toLocal());
 }
 
 String formatCurrency(num? value) {

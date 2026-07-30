@@ -7,6 +7,7 @@ using eCommerce.Services.MovieStateMachine;
 using eCommerce.Services.Validators;
 using eCommerce.WebAPI.Filters;
 using eCommerce.WebAPI.Hubs;
+using eCommerce.WebAPI.Serialization;
 using eCommerce.WebAPI.Services;
 using eCommerce.WebAPI.Services.AccessManager;
 using FluentValidation;
@@ -25,11 +26,19 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuthenticatedUserAccessor, HttpAuthenticatedUserAccessor>();
 
-builder.Services.AddControllers(
-   options => options.Filters.Add<ExceptionFilter>()
-);
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ExceptionFilter>();
+    options.ModelBinderProviders.Insert(0, new UtcDateTimeModelBinderProvider());
+}).AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
+});
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR().AddJsonProtocol(options =>
+{
+    options.PayloadSerializerOptions.Converters.Add(new UtcDateTimeConverter());
+});
 
 // Add Entity Framework Core DbContext
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");

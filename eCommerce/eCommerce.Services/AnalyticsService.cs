@@ -30,7 +30,7 @@ namespace eCommerce.Services
             var seatSales = await GetSeatSalesAsync();
             var avgRatings = await GetAvgRatingsAsync();
 
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
 
             var response = new DashboardResponse
             {

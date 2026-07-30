@@ -31,45 +31,15 @@ class Screening {
     this.availableSeats,
   });
 
-  /// Keep the clock-face numbers the user typed / the API stored.
-  /// Do not convert UTC↔local here — that caused the persistent 2h shift.
-  static DateTime? _parseWallClock(dynamic value) {
-    if (value == null) return null;
-    final parsed = DateTime.tryParse(value.toString());
-    if (parsed == null) return null;
-    return DateTime(
-      parsed.year,
-      parsed.month,
-      parsed.day,
-      parsed.hour,
-      parsed.minute,
-      parsed.second,
-      parsed.millisecond,
-      parsed.microsecond,
-    );
+  /// The API always sends UTC (trailing `Z`), so the whole app works with
+  /// local time and only converts back to UTC when writing.
+  static DateTime? _parseUtcAsLocal(dynamic value) {
+    final parsed = value == null ? null : DateTime.tryParse(value.toString());
+    return parsed?.toLocal();
   }
 
-  /// Serialize as local wall-clock without a `Z` suffix so the API stores
-  /// exactly the hour/minute chosen in the desktop picker.
-  static String? _toWallClockApi(DateTime? value) {
-    if (value == null) return null;
-    final local = value.isUtc ? value.toLocal() : value;
-    final wall = DateTime(
-      local.year,
-      local.month,
-      local.day,
-      local.hour,
-      local.minute,
-      local.second,
-    );
-    final y = wall.year.toString().padLeft(4, '0');
-    final m = wall.month.toString().padLeft(2, '0');
-    final d = wall.day.toString().padLeft(2, '0');
-    final hh = wall.hour.toString().padLeft(2, '0');
-    final mm = wall.minute.toString().padLeft(2, '0');
-    final ss = wall.second.toString().padLeft(2, '0');
-    return '$y-$m-${d}T$hh:$mm:$ss';
-  }
+  static String? _toUtcApi(DateTime? value) =>
+      value?.toUtc().toIso8601String();
 
   factory Screening.fromJson(Map<String, dynamic> json) {
     final movie = json['movie'];
@@ -82,8 +52,8 @@ class Screening {
       moviePosterBase64: (json['moviePosterBase64'] as String?) ?? nestedPoster,
       hallId: json['hallId'] as int?,
       hallName: json['hallName'] as String?,
-      startTime: _parseWallClock(json['startTime']),
-      endTime: _parseWallClock(json['endTime']),
+      startTime: _parseUtcAsLocal(json['startTime']),
+      endTime: _parseUtcAsLocal(json['endTime']),
       basePrice: json['basePrice'] as num?,
       language: json['language'] as String?,
       hasSubtitles: json['hasSubtitles'] as bool?,
@@ -96,7 +66,7 @@ class Screening {
   Map<String, dynamic> toJson() => {
         'movieId': movieId,
         'hallId': hallId,
-        'startTime': _toWallClockApi(startTime),
+        'startTime': _toUtcApi(startTime),
         'basePrice': basePrice,
         'language': language,
         'hasSubtitles': hasSubtitles ?? false,

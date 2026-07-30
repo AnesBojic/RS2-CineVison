@@ -204,7 +204,7 @@ namespace eCommerce.Services
             var userId = _userAccessor.GetUserId()
                 ?? throw new InvalidOperationException("User id claim is missing.");
 
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
 
             var attendedMovies = await _dbContext.Reservations
                 .AsNoTracking()
@@ -245,7 +245,7 @@ namespace eCommerce.Services
 
         private async Task<bool> UserCanReviewMovieAsync(int userId, int movieId)
         {
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             return await _dbContext.Reservations
                 .AnyAsync(r =>
                     r.UserId == userId

@@ -76,6 +76,15 @@ class Movie {
         genre: genre,
       );
 
+  /// A release date is a calendar day, not an instant. The API stores it as UTC
+  /// midnight, so read the UTC components to keep the day stable in any timezone.
+  static DateTime? _parseDateOnly(dynamic value) {
+    final parsed = value == null ? null : DateTime.tryParse(value.toString());
+    if (parsed == null) return null;
+    final utc = parsed.toUtc();
+    return DateTime(utc.year, utc.month, utc.day);
+  }
+
   factory Movie.fromJson(Map<String, dynamic> json) {
     return Movie(
       id: json['id'] as int?,
@@ -84,9 +93,7 @@ class Movie {
       durationMinutes: json['durationMinutes'] as int?,
       genreId: json['genreId'] as int?,
       director: json['director'] as String?,
-      releaseDate: json['releaseDate'] != null
-          ? DateTime.tryParse(json['releaseDate'].toString())
-          : null,
+      releaseDate: _parseDateOnly(json['releaseDate']),
       language: json['language'] as String?,
       ageRating: json['ageRating'] as String?,
       trailerUrl: json['trailerUrl'] as String?,

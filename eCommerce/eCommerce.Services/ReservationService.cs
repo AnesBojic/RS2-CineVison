@@ -139,7 +139,7 @@ namespace eCommerce.Services
                     throw new ClinetException("This screening is not available for booking.");
                 }
 
-                if (screening.StartTime <= DateTime.Now)
+                if (screening.StartTime <= DateTime.UtcNow)
                 {
                     throw new ClinetException("This screening has already started.");
                 }
@@ -249,7 +249,7 @@ namespace eCommerce.Services
                     $"Reservation: {response.ReservationNumber}\n" +
                     $"Movie: {response.MovieTitle}\n" +
                     $"Hall: {response.HallName}\n" +
-                    $"Start: {response.ScreeningStartTime:yyyy-MM-dd HH:mm}\n" +
+                    $"Start: {response.ScreeningStartTime:yyyy-MM-dd HH:mm} UTC\n" +
                     $"Seats: {seats}\n" +
                     $"Total: {response.TotalAmount:0.00}\n\n" +
                     $"Thank you for booking with CineVision.";
@@ -290,7 +290,7 @@ namespace eCommerce.Services
                 throw new ClinetException("Only confirmed or paid bookings can be refunded.");
             }
 
-            if (reservation.Screening.StartTime <= DateTime.Now.AddHours(4))
+            if (reservation.Screening.StartTime <= DateTime.UtcNow.AddHours(4))
             {
                 throw new ClinetException(
                     "Tickets can only be refunded at least 4 hours before the screening starts.");

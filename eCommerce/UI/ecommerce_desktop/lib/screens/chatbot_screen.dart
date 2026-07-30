@@ -230,7 +230,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         _messages.add(_ChatBubble(
           isBot: true,
           text: response.reply,
-          time: response.repliedAt ?? DateTime.now(),
+          time: response.repliedAt?.toLocal() ?? DateTime.now(),
         ));
         _sending = false;
       });
@@ -334,7 +334,8 @@ class _ChatBubble {
     return _ChatBubble(
       isBot: json['isBot'] as bool? ?? false,
       text: json['text'] as String? ?? '',
-      time: DateTime.tryParse(json['time']?.toString() ?? '') ?? DateTime.now(),
+      time: DateTime.tryParse(json['time']?.toString() ?? '')?.toLocal() ??
+          DateTime.now(),
     );
   }
 
