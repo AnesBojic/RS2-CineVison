@@ -1,3 +1,4 @@
+using eCommerce.Model;
 using eCommerce.Model.Requests;
 using FluentValidation;
 
@@ -32,12 +33,25 @@ namespace eCommerce.Services.Validators
 
             RuleFor(x => x.Role)
                 .NotEmpty().WithMessage("Role is required.")
-                .Must(r => r is "Admin" or "Staff" or "Customer")
-                .WithMessage("Role must be Admin, Staff, or Customer.");
+                .Must(RoleNames.IsKnown)
+                .WithMessage($"Role must be {RoleNames.Admin}, {RoleNames.Staff}, or {RoleNames.Customer}.");
 
             RuleFor(x => x.PhoneNumber)
                 .MaximumLength(20).WithMessage("Phone number cannot exceed 20 characters.")
                 .When(x => !string.IsNullOrEmpty(x.PhoneNumber));
+
+            RuleFor(x => x.ProfileImageBase64)
+                .Must(base64 =>
+                {
+                    if (string.IsNullOrWhiteSpace(base64))
+                    {
+                        return true;
+                    }
+
+                    return ImageContentValidator.TryValidateBase64(base64, out _, out _);
+                })
+                .WithMessage("Profile image must be a valid JPEG, PNG, GIF, or WebP file.")
+                .When(x => !string.IsNullOrWhiteSpace(x.ProfileImageBase64));
         }
     }
 }

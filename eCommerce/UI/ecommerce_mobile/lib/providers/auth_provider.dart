@@ -136,8 +136,6 @@ class AuthProvider extends ChangeNotifier {
         'email': email,
         'username': username,
         'password': password,
-        'role': 'Customer',
-        'isActive': true,
       }),
     );
 

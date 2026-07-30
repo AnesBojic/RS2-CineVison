@@ -1,3 +1,4 @@
+using eCommerce.Model;
 using eCommerce.Model.Messages;
 using eCommerce.Common.Services.CryptoService;
 using eCommerce.Model.Access;
@@ -239,6 +240,11 @@ namespace eCommerce.Services
             }
 
             EnsureProfileImageSize(request.ProfileImageBase64);
+            if (!string.IsNullOrWhiteSpace(request.ProfileImageBase64)
+                && !ImageContentValidator.TryValidateBase64(request.ProfileImageBase64, out _, out var imageError))
+            {
+                throw new ClinetException(imageError);
+            }
 
             var entity = MapInsertRequestToEntity(request);
             entity.CreatedAt = DateTime.UtcNow;
@@ -251,6 +257,23 @@ namespace eCommerce.Services
             await _dbContext.SaveChangesAsync();
 
             return await GetByIdAsync(entity.Id);
+        }
+
+        public async Task<UserResponse> RegisterAsync(UserRegisterRequest request)
+        {
+            // Role is never taken from the client for public registration.
+            return await InsertAsync(new UserInsertRequest
+            {
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Email = request.Email,
+                Username = request.Username,
+                Password = request.Password,
+                PhoneNumber = request.PhoneNumber,
+                ProfileImageBase64 = request.ProfileImageBase64,
+                Role = RoleNames.Customer,
+                IsActive = true
+            });
         }
 
 
@@ -339,6 +362,12 @@ namespace eCommerce.Services
             if (request.ProfileImageBase64 != null)
             {
                 EnsureProfileImageSize(request.ProfileImageBase64);
+                if (!string.IsNullOrWhiteSpace(request.ProfileImageBase64)
+                    && !ImageContentValidator.TryValidateBase64(request.ProfileImageBase64, out _, out var imageError))
+                {
+                    throw new ClinetException(imageError);
+                }
+
                 entity.ProfileImageBase64 = request.ProfileImageBase64;
             }
 
@@ -485,7 +514,8 @@ namespace eCommerce.Services
             }
 
             var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
-            user.PasswordResetCode = code;
+            // Store a hash of the code (never plain text). Email still receives the raw code.
+            user.PasswordResetCode = _cryptoService.GenerateHash(code, user.PasswordSalt);
             user.PasswordResetExpiresAt = DateTime.UtcNow.AddMinutes(15);
             user.UpdatedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();
@@ -516,7 +546,7 @@ namespace eCommerce.Services
 
             if (user == null ||
                 string.IsNullOrWhiteSpace(user.PasswordResetCode) ||
-                user.PasswordResetCode != code ||
+                !_cryptoService.Verify(user.PasswordResetCode, user.PasswordSalt, code) ||
                 !user.PasswordResetExpiresAt.HasValue ||
                 user.PasswordResetExpiresAt.Value < DateTime.UtcNow)
             {

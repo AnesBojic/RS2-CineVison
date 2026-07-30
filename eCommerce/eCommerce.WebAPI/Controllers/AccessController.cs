@@ -1,3 +1,4 @@
+using eCommerce.Model;
 using eCommerce.Model.Access;
 using eCommerce.Model.Requests;
 using eCommerce.Services;
@@ -22,6 +23,7 @@ namespace eCommerce.WebAPI.Controllers
             _userAccessor = userAccessor;
         }
 
+        [AllowAnonymous]
         [HttpPost("Login")]
         public async Task<ActionResult> Login([FromBody] UserLoginRequest request)
         {
@@ -29,6 +31,7 @@ namespace eCommerce.WebAPI.Controllers
             return Ok(result);
         }
 
+        [AllowAnonymous]
         [HttpPost("LoginWithRefreshToken")]
         public async Task<ActionResult> LoginWithRefreshToken([FromBody] RefreshAccessTokenRequest request)
         {
@@ -36,19 +39,19 @@ namespace eCommerce.WebAPI.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Public registration. Role is never taken from the client — always Customer.
+        /// </summary>
+        [AllowAnonymous]
         [HttpPost("Register")]
-        public async Task<IActionResult> Register([FromBody] UserInsertRequest request)
+        public async Task<IActionResult> Register([FromBody] UserRegisterRequest request)
         {
-            await _userService.InsertAsync(request);
+            await _userService.RegisterAsync(request);
             return Ok("You have registered successfully");
         }
 
-        /// <summary>
-        /// Sends a 6-digit reset code to the account email (when the account exists).
-        /// Always returns the same message so callers cannot probe which accounts exist.
-        /// </summary>
-        [HttpPost("ForgotPassword")]
         [AllowAnonymous]
+        [HttpPost("ForgotPassword")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
             await _userService.ForgotPasswordAsync(request);
@@ -58,9 +61,8 @@ namespace eCommerce.WebAPI.Controllers
             });
         }
 
-        /// <summary>Sets a new password using the emailed reset code.</summary>
-        [HttpPost("ResetPassword")]
         [AllowAnonymous]
+        [HttpPost("ResetPassword")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
         {
             await _userService.ResetPasswordAsync(request);

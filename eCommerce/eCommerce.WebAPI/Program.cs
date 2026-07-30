@@ -131,6 +131,7 @@ builder.Services.AddScoped<IValidator<ScreeningUpdateRequest>, ScreeningUpdateVa
 builder.Services.AddScoped<IValidator<AssetInsertRequest>, AssetInsertValidator>();
 builder.Services.AddScoped<IValidator<AssetUpdateRequest>, AssetUpdateValidator>();
 builder.Services.AddScoped<IValidator<UserInsertRequest>, UserInsertValidator>();
+builder.Services.AddScoped<IValidator<UserRegisterRequest>, UserRegisterValidator>();
 builder.Services.AddScoped<IValidator<UserUpdateRequest>, UserUpdateValidator>();
 builder.Services.AddScoped<IValidator<UserProfileUpdateRequest>, UserProfileUpdateValidator>();
 builder.Services.AddScoped<IValidator<ForgotPasswordRequest>, ForgotPasswordValidator>();
@@ -162,7 +163,7 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ClockSkew = TimeSpan.Zero,
         // Tell ASP.NET which JWT claims carry the user name and role so that
-        // User.IsInRole(...) and [Authorize(Roles = "Admin")] work off the token.
+        // User.IsInRole(...) and [Authorize(Roles = RoleNames.Admin)] work off the token.
         NameClaimType = "Id",
         RoleClaimType = "Role"
     };
@@ -223,9 +224,27 @@ builder.Services.AddSwaggerGen(
                 });
     });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("CineVisionCors", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:5126",
+                "http://127.0.0.1:5126",
+                "http://localhost:3000",
+                "http://localhost:8080",
+                "http://localhost:5000",
+                "http://localhost:4200")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
@@ -259,10 +278,13 @@ var app = builder.Build();
     });
 }
 
+app.UseCors("CineVisionCors");
+
 app.UseAuthentication();
 
 app.UseAuthorization();
 
+// Liveness probe for Docker — no secrets; kept outside IsDevelopment on purpose.
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 app.MapControllers();

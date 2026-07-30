@@ -1,3 +1,4 @@
+using eCommerce.Model;
 using eCommerce.Model.Access;
 using eCommerce.Model.Messages;
 using eCommerce.Model.Requests;
@@ -12,7 +13,7 @@ namespace eCommerce.WebAPI.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = RoleNames.Admin)]
 public class UsersController : BaseCRUDController<UserResponse, UserSearch, UserInsertRequest, UserUpdateRequest, IUserService>
 {
     private readonly IEmailService _emailService;

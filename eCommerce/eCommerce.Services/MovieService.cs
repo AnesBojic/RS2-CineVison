@@ -159,6 +159,16 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         var entity = await _dbContext.Movies.FindAsync(id)
             ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
 
+        if (string.IsNullOrWhiteSpace(request.PosterImageBase64))
+        {
+            throw new ClinetException("Poster image is required.");
+        }
+
+        if (!ImageContentValidator.TryValidateBase64(request.PosterImageBase64, out _, out var imageError))
+        {
+            throw new ClinetException(imageError);
+        }
+
         entity.PosterImageBase64 = request.PosterImageBase64;
         entity.UpdatedAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync();

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using eCommerce.Model;
 using eCommerce.Model.Responses;
 using eCommerce.Model.SearchObjects;
 using eCommerce.Services.Database;
@@ -39,7 +40,7 @@ namespace eCommerce.Services
                 TotalReservations = await _dbContext.Reservations.CountAsync(r => r.Status != ReservationStatus.Cancelled),
                 TotalCustomers = await _dbContext.Users.CountAsync(u =>
                     u.IsActive &&
-                    u.UserRoles.Any(ur => ur.Role != null && ur.Role.Name == "Customer")),
+                    u.UserRoles.Any(ur => ur.Role != null && ur.Role.Name == RoleNames.Customer)),
                 TotalMovies = await _dbContext.Movies.CountAsync(),
                 ActiveMovies = await _dbContext.Movies.CountAsync(m => m.IsActive),
                 TotalScreenings = screenings.Count,

@@ -7,12 +7,9 @@ using Microsoft.AspNetCore.Authorization;
 namespace eCommerce.WebAPI.Controllers;
 
 /// <summary>
-/// Generic base controller for read-only operations (GetAll, GetById)
+/// Generic base controller for read-only operations (GetAll, GetById).
+/// Derived controllers must declare [Authorize] (or stronger) — anonymous access is not the default.
 /// </summary>
-/// <typeparam name="TResponse">The response model type</typeparam>
-/// <typeparam name="TSearch">The search/filter object type</typeparam>
-/// <typeparam name="TService">The service interface type implementing IBaseReadService</typeparam>
-//[Authorize]
 [ApiController]
 [Route("[controller]")]
 public abstract class BaseReadController<TResponse, TSearch, TService> : ControllerBase
@@ -27,6 +24,7 @@ public abstract class BaseReadController<TResponse, TSearch, TService> : Control
     }
 
     [HttpGet]
+    [Authorize]
     public virtual async Task<PageResult<TResponse>> GetAll([FromQuery] TSearch? search)
     {
         var results = await _service.GetAllAsync(search);
@@ -34,6 +32,7 @@ public abstract class BaseReadController<TResponse, TSearch, TService> : Control
     }
 
     [HttpGet("{id}")]
+    [Authorize]
     public virtual async Task<ActionResult<TResponse>> GetById(int id)
     {
         try

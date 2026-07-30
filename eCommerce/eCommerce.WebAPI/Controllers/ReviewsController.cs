@@ -8,26 +8,14 @@ using Microsoft.AspNetCore.Mvc;
 namespace eCommerce.WebAPI.Controllers;
 
 /// <summary>
-/// Customer movie reviews. Reads are public so movie pages can show ratings; writing a review
-/// requires authentication and ownership is enforced in the service.
+/// Customer movie reviews. Authentication required for all operations;
+/// ownership is enforced in the service layer.
 /// </summary>
 [Authorize]
 public class ReviewsController : BaseReadController<ReviewResponse, ReviewSearchObject, IReviewService>
 {
     public ReviewsController(IReviewService reviewService) : base(reviewService)
     {
-    }
-
-    [AllowAnonymous]
-    public override Task<PageResult<ReviewResponse>> GetAll([FromQuery] ReviewSearchObject? search)
-    {
-        return base.GetAll(search);
-    }
-
-    [AllowAnonymous]
-    public override Task<ActionResult<ReviewResponse>> GetById(int id)
-    {
-        return base.GetById(id);
     }
 
     [HttpPost]

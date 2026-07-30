@@ -1,3 +1,4 @@
+using eCommerce.Model;
 using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Model.SearchObjects;
@@ -7,26 +8,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace eCommerce.WebAPI.Controllers;
 
-[Authorize(Roles = "Admin,Staff")]
+[Authorize]
 public class MoviesController : BaseCRUDController<MovieResponse, MovieSearchObject, MovieInsertRequest, MovieUpdateRequest, IMovieService>
 {
     public MoviesController(IMovieService movieService) : base(movieService)
     {
     }
 
-    [AllowAnonymous]
-    public override Task<PageResult<MovieResponse>> GetAll([FromQuery] MovieSearchObject? search)
-    {
-        return base.GetAll(search);
-    }
-
-    [AllowAnonymous]
-    public override Task<ActionResult<MovieResponse>> GetById(int id)
-    {
-        return base.GetById(id);
-    }
-
-    [AllowAnonymous]
+    [Authorize]
     [HttpPost("{id}/View")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -36,9 +25,7 @@ public class MoviesController : BaseCRUDController<MovieResponse, MovieSearchObj
         return NoContent();
     }
 
-    /// <summary>
-    /// Upload or replace the movie poster (base64 image). Matches the desktop "upload poster" action.
-    /// </summary>
+    [Authorize(Roles = RoleNames.AdminStaff)]
     [HttpPut("{id}/Poster")]
     [ProducesResponseType(typeof(MovieResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -48,6 +35,7 @@ public class MoviesController : BaseCRUDController<MovieResponse, MovieSearchObj
         return Ok(result);
     }
 
+    [Authorize(Roles = RoleNames.AdminStaff)]
     [HttpPost("{id}/Activate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -57,6 +45,7 @@ public class MoviesController : BaseCRUDController<MovieResponse, MovieSearchObj
         return Ok(result);
     }
 
+    [Authorize(Roles = RoleNames.AdminStaff)]
     [HttpPost("{id}/Deactivate")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -66,6 +55,7 @@ public class MoviesController : BaseCRUDController<MovieResponse, MovieSearchObj
         return Ok(result);
     }
 
+    [Authorize(Roles = RoleNames.AdminStaff)]
     [HttpGet("{id}/AllowedActions")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

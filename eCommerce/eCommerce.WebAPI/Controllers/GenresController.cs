@@ -7,22 +7,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace eCommerce.WebAPI.Controllers;
 
-[Authorize(Roles = "Admin,Staff")]
+[Authorize]
 public class GenresController : BaseCRUDController<GenreResponse, GenreSearchObject, GenreInsertRequest, GenreUpdateRequest, IGenreService>
 {
     public GenresController(IGenreService genreService) : base(genreService)
     {
-    }
-
-    [AllowAnonymous]
-    public override Task<PageResult<GenreResponse>> GetAll([FromQuery] GenreSearchObject? search)
-    {
-        return base.GetAll(search);
-    }
-
-    [AllowAnonymous]
-    public override Task<ActionResult<GenreResponse>> GetById(int id)
-    {
-        return base.GetById(id);
     }
 }

@@ -1,3 +1,4 @@
+using eCommerce.Model;
 using eCommerce.Model.Responses;
 using eCommerce.Model.SearchObjects;
 using eCommerce.Services;
@@ -12,7 +13,7 @@ namespace eCommerce.WebAPI.Controllers;
 /// </summary>
 [ApiController]
 [Route("[controller]")]
-[Authorize(Roles = "Admin,Staff")]
+[Authorize(Roles = RoleNames.AdminStaff)]
 public class AnalyticsController : ControllerBase
 {
     private readonly IAnalyticsService _analyticsService;

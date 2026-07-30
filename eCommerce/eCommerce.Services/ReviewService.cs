@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using eCommerce.Model;
 using eCommerce.Model.Exceptions;
 using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
@@ -188,7 +189,7 @@ namespace eCommerce.Services
                 ?? throw new KeyNotFoundException($"Review with id {id} not found.");
 
             // Users may remove their own review; administrators may remove any review.
-            if (review.UserId != userId && !_userAccessor.IsInRole("Admin"))
+            if (review.UserId != userId && !_userAccessor.IsInRole(RoleNames.Admin))
             {
                 throw new ClinetException("You can only delete your own review.");
             }

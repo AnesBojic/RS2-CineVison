@@ -1,3 +1,4 @@
+using eCommerce.Model;
 using eCommerce.Model.Access;
 using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
@@ -13,7 +14,7 @@ namespace eCommerce.WebAPI.Controllers;
 /// </summary>
 [ApiController]
 [Route("[controller]")]
-[Authorize(Roles = "Admin,Staff")]
+[Authorize(Roles = RoleNames.AdminStaff)]
 public class ChatBotController : ControllerBase
 {
     private readonly IChatBotService _chatBotService;
@@ -38,7 +39,7 @@ public class ChatBotController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ChatResponse>> Chat([FromBody] ChatRequest request)
     {
-        var role = User.FindFirst(ClaimNames.Role)?.Value ?? "Staff";
+        var role = User.FindFirst(ClaimNames.Role)?.Value ?? RoleNames.Staff;
         var result = await _chatBotService.ChatAsync(request, role);
 
         var userId = _userAccessor.GetUserId();

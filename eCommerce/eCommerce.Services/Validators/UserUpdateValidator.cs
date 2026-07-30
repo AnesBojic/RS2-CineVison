@@ -1,3 +1,4 @@
+using eCommerce.Model;
 using eCommerce.Model.Requests;
 using FluentValidation;
 
@@ -27,8 +28,8 @@ namespace eCommerce.Services.Validators
 
             RuleFor(x => x.Role)
                 .NotEmpty().WithMessage("Role is required.")
-                .Must(r => r is "Admin" or "Staff" or "Customer")
-                .WithMessage("Role must be Admin, Staff, or Customer.");
+                .Must(RoleNames.IsKnown)
+                .WithMessage($"Role must be {RoleNames.Admin}, {RoleNames.Staff}, or {RoleNames.Customer}.");
         }
     }
 }
