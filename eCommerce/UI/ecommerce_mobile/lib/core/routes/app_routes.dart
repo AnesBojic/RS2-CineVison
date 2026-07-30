@@ -21,6 +21,7 @@ class AppRoutes {
   static const bookingConfirmed = '/bookingConfirmed';
   static const myBookings = '/myBookings';
   static const myProfile = '/myProfile';
+  static const news = '/news';
 
   /* <---- Products Order Process -----> */
   static const home = '/home';

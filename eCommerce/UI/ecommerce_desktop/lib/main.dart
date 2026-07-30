@@ -5,6 +5,7 @@ import 'package:ecommerce_desktop/providers/chatbot_provider.dart';
 import 'package:ecommerce_desktop/providers/genre_provider.dart';
 import 'package:ecommerce_desktop/providers/hall_provider.dart';
 import 'package:ecommerce_desktop/providers/movie_provider.dart';
+import 'package:ecommerce_desktop/providers/news_provider.dart';
 import 'package:ecommerce_desktop/providers/notification_provider.dart';
 import 'package:ecommerce_desktop/providers/screening_provider.dart';
 import 'package:ecommerce_desktop/providers/user_provider.dart';
@@ -21,6 +22,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => GenreProvider()),
         ChangeNotifierProvider(create: (_) => HallProvider()),
         ChangeNotifierProvider(create: (_) => ScreeningProvider()),
+        ChangeNotifierProvider(create: (_) => NewsProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => AnalyticsProvider()),

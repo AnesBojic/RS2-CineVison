@@ -8,6 +8,7 @@ import 'package:ecommerce_mobile/models/movie.dart';
 import 'package:ecommerce_mobile/providers/auth_provider.dart';
 import 'package:ecommerce_mobile/providers/genre_provider.dart';
 import 'package:ecommerce_mobile/providers/movie_provider.dart';
+import 'package:ecommerce_mobile/providers/notification_provider.dart';
 import 'package:ecommerce_mobile/providers/screening_provider.dart';
 import 'package:ecommerce_mobile/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
@@ -59,6 +60,14 @@ class _MoviesPageState extends State<MoviesPage> {
     _screeningProvider = context.read<ScreeningProvider>();
     _scrollController.addListener(_onScroll);
     _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      if (auth.isAuthenticated) {
+        final notifications = context.read<NotificationProvider>();
+        notifications.refresh();
+        notifications.connectRealtime();
+      }
+    });
   }
 
   @override
@@ -307,17 +316,38 @@ class _MoviesPageState extends State<MoviesPage> {
           appBar: CineAppBar(
             title: 'Cinevision',
             showBack: false,
-            additionalActions: auth.isAuthenticated
-                ? [
-                    TextButton(
+            additionalActions: [
+              TextButton(
+                onPressed: () => Navigator.pushNamed(context, AppRoutes.news),
+                child: const Text('News'),
+              ),
+              if (auth.isAuthenticated) ...[
+                Consumer<NotificationProvider>(
+                  builder: (context, notifications, _) {
+                    final count = notifications.unreadCount;
+                    return IconButton(
+                      tooltip: 'Notifications',
                       onPressed: () => Navigator.pushNamed(
                         context,
-                        AppRoutes.myBookings,
+                        AppRoutes.notifications,
                       ),
-                      child: const Text('Bookings'),
-                    ),
-                  ]
-                : [],
+                      icon: Badge(
+                        isLabelVisible: count > 0,
+                        label: Text('$count'),
+                        child: const Icon(Icons.notifications_outlined),
+                      ),
+                    );
+                  },
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    AppRoutes.myBookings,
+                  ),
+                  child: const Text('Bookings'),
+                ),
+              ],
+            ],
           ),
           body: RefreshIndicator(
             onRefresh: _loadData,

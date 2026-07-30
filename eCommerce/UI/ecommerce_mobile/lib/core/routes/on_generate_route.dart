@@ -43,6 +43,7 @@ import '../../views/profile/address/address_page.dart';
 import '../../views/profile/address/new_address_page.dart';
 import '../../views/profile/coupon/coupon_details_page.dart';
 import '../../views/profile/coupon/coupon_page.dart';
+import '../../views/news/news_page.dart';
 import '../../views/profile/notification_page.dart';
 import '../../views/profile/order/my_order_page.dart';
 import '../../views/profile/order/order_details.dart';
@@ -101,6 +102,9 @@ class RouteGenerator {
 
       case AppRoutes.myBookings:
         return MaterialPageRoute(builder: (_) => const MyBookingsPage());
+
+      case AppRoutes.news:
+        return MaterialPageRoute(builder: (_) => const NewsPage());
 
       case AppRoutes.myProfile:
         return MaterialPageRoute(builder: (_) => const CineProfilePage());

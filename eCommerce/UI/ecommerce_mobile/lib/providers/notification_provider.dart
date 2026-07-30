@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:ecommerce_desktop/models/notification.dart';
-import 'package:ecommerce_desktop/providers/auth_provider.dart';
-import 'package:ecommerce_desktop/providers/base_provider.dart';
+import 'package:ecommerce_mobile/models/app_notification.dart';
+import 'package:ecommerce_mobile/providers/auth_provider.dart';
+import 'package:ecommerce_mobile/providers/base_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:signalr_netcore/signalr_client.dart';
@@ -97,12 +97,8 @@ class NotificationProvider with ChangeNotifier {
       final item = AppNotification.fromJson(Map<String, dynamic>.from(n));
       if (item.id != null && item.id! > 0) {
         _items = [item, ..._items.where((e) => e.id != item.id)];
-        if (_items.length > 30) {
-          _items = _items.take(30).toList();
-        }
       }
     }
-
     notifyListeners();
   }
 
@@ -118,28 +114,35 @@ class NotificationProvider with ChangeNotifier {
   }
 
   Future<void> refresh() async {
+    if (AuthProvider.accesstoken == null || AuthProvider.accesstoken!.isEmpty) {
+      _items = [];
+      _unreadCount = 0;
+      notifyListeners();
+      return;
+    }
+
     _loading = true;
     notifyListeners();
-
     try {
       final countResponse = await http.get(
         Uri.parse('${_baseUrl}Notifications/UnreadCount'),
         headers: _headers,
       );
-      _validate(countResponse);
-      _unreadCount = jsonDecode(countResponse.body) as int? ?? 0;
+      if (countResponse.statusCode < 299) {
+        _unreadCount = jsonDecode(countResponse.body) as int? ?? 0;
+      }
 
       final listResponse = await http.get(
-        Uri.parse('${_baseUrl}Notifications?limit=30'),
+        Uri.parse('${_baseUrl}Notifications?limit=50'),
         headers: _headers,
       );
-      _validate(listResponse);
-      final list = jsonDecode(listResponse.body) as List<dynamic>;
-      _items = list
-          .map((e) => AppNotification.fromJson(Map<String, dynamic>.from(e as Map)))
-          .toList();
+      if (listResponse.statusCode < 299) {
+        final list = jsonDecode(listResponse.body) as List<dynamic>;
+        _items = list
+            .map((e) => AppNotification.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList();
+      }
     } catch (_) {
-      // Keep previous values on transient failures.
     } finally {
       _loading = false;
       notifyListeners();
@@ -151,22 +154,20 @@ class NotificationProvider with ChangeNotifier {
       Uri.parse('${_baseUrl}Notifications/$id/Read'),
       headers: _headers,
     );
-    _validate(response);
-    await refresh();
-  }
-
-  Future<void> markAllRead({String? type}) async {
-    final uri = type == null
-        ? Uri.parse('${_baseUrl}Notifications/ReadAll')
-        : Uri.parse('${_baseUrl}Notifications/ReadAll?type=${Uri.encodeComponent(type)}');
-    final response = await http.put(uri, headers: _headers);
-    _validate(response);
-    await refresh();
-  }
-
-  void _validate(http.Response response) {
     if (response.statusCode >= 299) {
-      throw Exception('Notification request failed (${response.statusCode})');
+      throw Exception('Could not mark notification as read.');
     }
+    await refresh();
+  }
+
+  Future<void> markAllRead() async {
+    final response = await http.put(
+      Uri.parse('${_baseUrl}Notifications/ReadAll'),
+      headers: _headers,
+    );
+    if (response.statusCode >= 299) {
+      throw Exception('Could not mark notifications as read.');
+    }
+    await refresh();
   }
 }

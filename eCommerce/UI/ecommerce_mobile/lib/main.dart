@@ -2,6 +2,8 @@ import 'package:ecommerce_mobile/providers/auth_provider.dart';
 import 'package:ecommerce_mobile/providers/booking_provider.dart';
 import 'package:ecommerce_mobile/providers/genre_provider.dart';
 import 'package:ecommerce_mobile/providers/movie_provider.dart';
+import 'package:ecommerce_mobile/providers/news_provider.dart';
+import 'package:ecommerce_mobile/providers/notification_provider.dart';
 import 'package:ecommerce_mobile/providers/reservation_provider.dart';
 import 'package:ecommerce_mobile/providers/review_provider.dart';
 import 'package:ecommerce_mobile/providers/screening_provider.dart';
@@ -26,6 +28,8 @@ void main() {
         ChangeNotifierProvider(create: (_) => ReviewProvider()),
         ChangeNotifierProvider(create: (_) => BookingProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => NewsProvider()),
       ],
       child: const MyApp(),
     ),

@@ -25,6 +25,7 @@ namespace eCommerce.Services
         private readonly IEmailService _emailService;
         private readonly ILogger<ReservationService> _logger;
         private readonly IAnalyticsNotifier _analyticsNotifier;
+        private readonly INotificationService _notificationService;
 
         public ReservationService(
             ECommerceDbContext dbContext,
@@ -33,7 +34,8 @@ namespace eCommerce.Services
             IConfiguration configuration,
             IEmailService emailService,
             ILogger<ReservationService> logger,
-            IAnalyticsNotifier analyticsNotifier)
+            IAnalyticsNotifier analyticsNotifier,
+            INotificationService notificationService)
             : base(mapper, dbContext)
         {
             _userAccessor = userAccessor;
@@ -41,6 +43,7 @@ namespace eCommerce.Services
             _emailService = emailService;
             _logger = logger;
             _analyticsNotifier = analyticsNotifier;
+            _notificationService = notificationService;
         }
 
         private bool IsAdminOrStaff() =>
@@ -283,6 +286,7 @@ namespace eCommerce.Services
 
                 // Queue a confirmation email; a queue/broker outage must never fail the reservation.
                 await SendConfirmationEmailAsync(reservation, response);
+                await NotifyBookingCreatedSafeAsync(response);
                 await NotifyAnalyticsSafeAsync();
 
                 return response;
@@ -472,6 +476,12 @@ namespace eCommerce.Services
             _dbContext.ReservationSeats.RemoveRange(reservation.ReservationSeats);
             await _dbContext.SaveChangesAsync();
 
+            await NotifySafeAsync(
+                reservation.UserId,
+                "Booking cancelled",
+                $"Reservation {reservation.ReservationNumber} was cancelled. {reason}",
+                "Cancellation");
+
             await NotifyAnalyticsSafeAsync();
 
             return await GetByIdAsync(reservation.Id);
@@ -490,6 +500,13 @@ namespace eCommerce.Services
 
             ReservationStatusTransitions.Apply(reservation, ReservationStatus.Completed);
             await _dbContext.SaveChangesAsync();
+
+            await NotifySafeAsync(
+                reservation.UserId,
+                "Booking completed",
+                $"Reservation {reservation.ReservationNumber} is marked as completed. Thanks for visiting CineVision!",
+                "Status");
+
             await NotifyAnalyticsSafeAsync();
 
             return await GetByIdAsync(reservation.Id);
@@ -589,6 +606,38 @@ namespace eCommerce.Services
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to push live analytics update.");
+            }
+        }
+
+        private async Task NotifyBookingCreatedSafeAsync(ReservationResponse response)
+        {
+            if (response.Status == (int)ReservationStatus.Paid)
+            {
+                await NotifySafeAsync(
+                    response.UserId,
+                    "Payment confirmed",
+                    $"Payment received for {response.ReservationNumber} — {response.MovieTitle}. Seats are reserved.",
+                    "Payment");
+            }
+            else
+            {
+                await NotifySafeAsync(
+                    response.UserId,
+                    "Booking confirmed",
+                    $"Reservation {response.ReservationNumber} for {response.MovieTitle} is confirmed.",
+                    "Reservation");
+            }
+        }
+
+        private async Task NotifySafeAsync(int userId, string title, string message, string type)
+        {
+            try
+            {
+                await _notificationService.CreateAsync(userId, title, message, type);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to create {Type} notification for user {UserId}.", type, userId);
             }
         }
 

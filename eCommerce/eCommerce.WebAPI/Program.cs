@@ -101,6 +101,7 @@ builder.Services.AddHttpClient("OpenAI", client =>
 // shared services
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<INotificationPushNotifier, NotificationPushNotifier>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<IAccessManager, AccessManager>();
@@ -292,6 +293,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 app.MapControllers();
 app.MapHub<AnalyticsHub>("/hubs/analytics");
+app.MapHub<NotificationsHub>("/hubs/notifications");
 
 await EnsureDatabaseReadyAsync(app);
 

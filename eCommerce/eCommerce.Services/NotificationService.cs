@@ -1,16 +1,24 @@
 using eCommerce.Model.Responses;
 using eCommerce.Services.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace eCommerce.Services
 {
     public class NotificationService : INotificationService
     {
         private readonly ECommerceDbContext _dbContext;
+        private readonly INotificationPushNotifier _pushNotifier;
+        private readonly ILogger<NotificationService> _logger;
 
-        public NotificationService(ECommerceDbContext dbContext)
+        public NotificationService(
+            ECommerceDbContext dbContext,
+            INotificationPushNotifier pushNotifier,
+            ILogger<NotificationService> logger)
         {
             _dbContext = dbContext;
+            _pushNotifier = pushNotifier;
+            _logger = logger;
         }
 
         public async Task<int> GetUnreadCountAsync(int userId)
@@ -54,7 +62,7 @@ namespace eCommerce.Services
             _dbContext.UserNotifications.Add(entity);
             await _dbContext.SaveChangesAsync();
 
-            return new NotificationResponse
+            var response = new NotificationResponse
             {
                 Id = entity.Id,
                 Title = entity.Title,
@@ -63,6 +71,9 @@ namespace eCommerce.Services
                 IsRead = entity.IsRead,
                 CreatedAt = entity.CreatedAt
             };
+
+            await PushSafeAsync(userId, response);
+            return response;
         }
 
         public async Task MarkAsReadAsync(int userId, int notificationId)
@@ -77,6 +88,8 @@ namespace eCommerce.Services
 
             entity.IsRead = true;
             await _dbContext.SaveChangesAsync();
+
+            await PushUnreadCountSafeAsync(userId);
         }
 
         public async Task MarkAllReadAsync(int userId, string? type = null)
@@ -97,6 +110,34 @@ namespace eCommerce.Services
             if (items.Count > 0)
             {
                 await _dbContext.SaveChangesAsync();
+            }
+
+            await PushUnreadCountSafeAsync(userId);
+        }
+
+        private async Task PushSafeAsync(int userId, NotificationResponse notification)
+        {
+            try
+            {
+                var unread = await GetUnreadCountAsync(userId);
+                await _pushNotifier.NotifyUserAsync(userId, notification, unread);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to push notification {NotificationId} to user {UserId}.", notification.Id, userId);
+            }
+        }
+
+        private async Task PushUnreadCountSafeAsync(int userId)
+        {
+            try
+            {
+                var unread = await GetUnreadCountAsync(userId);
+                await _pushNotifier.NotifyUnreadCountAsync(userId, unread);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to push unread count to user {UserId}.", userId);
             }
         }
     }

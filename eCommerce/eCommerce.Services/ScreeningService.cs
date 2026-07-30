@@ -25,6 +25,7 @@ namespace eCommerce.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<ScreeningService> _logger;
         private readonly IAuthenticatedUserAccessor _userAccessor;
+        private readonly INotificationService _notificationService;
 
         public ScreeningService(
             ECommerceDbContext dbContext,
@@ -35,7 +36,8 @@ namespace eCommerce.Services
             IEmailService emailService,
             IConfiguration configuration,
             ILogger<ScreeningService> logger,
-            IAuthenticatedUserAccessor userAccessor)
+            IAuthenticatedUserAccessor userAccessor,
+            INotificationService notificationService)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
             _analyticsNotifier = analyticsNotifier;
@@ -43,6 +45,7 @@ namespace eCommerce.Services
             _configuration = configuration;
             _logger = logger;
             _userAccessor = userAccessor;
+            _notificationService = notificationService;
         }
 
         protected override IEnumerable<Screening> ApplyFilters(IEnumerable<Screening> query, ScreeningSearchObject? search)
@@ -299,6 +302,22 @@ namespace eCommerce.Services
                     movieTitle ?? string.Empty,
                     hallName ?? string.Empty,
                     screening.StartTime);
+
+                foreach (var reservation in justCancelled)
+                {
+                    try
+                    {
+                        await _notificationService.CreateAsync(
+                            reservation.UserId,
+                            "Screening cancelled",
+                            $"Your booking {reservation.ReservationNumber} was cancelled because the projection was removed by staff.",
+                            "Cancellation");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to notify user {UserId} about screening cancellation.", reservation.UserId);
+                    }
+                }
             }
             catch
             {
