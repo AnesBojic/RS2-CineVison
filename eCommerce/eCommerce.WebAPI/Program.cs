@@ -80,6 +80,7 @@ builder.Services.AddScoped<ActiveMovieState>();
 
 // cinema domain services
 builder.Services.AddScoped<IGenreService, GenreService>();
+builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<IHallService, HallService>();
 builder.Services.AddScoped<ISeatService, SeatService>();
 builder.Services.AddScoped<IScreeningService, ScreeningService>();
@@ -120,6 +121,8 @@ else
 // validators
 builder.Services.AddScoped<IValidator<GenreInsertRequest>, GenreInsertValidator>();
 builder.Services.AddScoped<IValidator<GenreUpdateRequest>, GenreUpdateValidator>();
+builder.Services.AddScoped<IValidator<NewsInsertRequest>, NewsInsertValidator>();
+builder.Services.AddScoped<IValidator<NewsUpdateRequest>, NewsUpdateValidator>();
 builder.Services.AddScoped<IValidator<MovieInsertRequest>, MovieInsertValidator>();
 builder.Services.AddScoped<IValidator<MovieUpdateRequest>, MovieUpdateValidator>();
 builder.Services.AddScoped<IValidator<HallInsertRequest>, HallInsertValidator>();

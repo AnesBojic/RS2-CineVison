@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using eCommerce.Model.Messages;
+using eCommerce.Services.ReservationStateMachine;
 using Stripe;
 using eCommerce.Services;
 
@@ -23,6 +24,7 @@ namespace eCommerce.Services
         private readonly IEmailService _emailService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<ScreeningService> _logger;
+        private readonly IAuthenticatedUserAccessor _userAccessor;
 
         public ScreeningService(
             ECommerceDbContext dbContext,
@@ -32,13 +34,15 @@ namespace eCommerce.Services
             IAnalyticsNotifier analyticsNotifier,
             IEmailService emailService,
             IConfiguration configuration,
-            ILogger<ScreeningService> logger)
+            ILogger<ScreeningService> logger,
+            IAuthenticatedUserAccessor userAccessor)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
             _analyticsNotifier = analyticsNotifier;
             _emailService = emailService;
             _configuration = configuration;
             _logger = logger;
+            _userAccessor = userAccessor;
         }
 
         protected override IEnumerable<Screening> ApplyFilters(IEnumerable<Screening> query, ScreeningSearchObject? search)
@@ -153,12 +157,15 @@ namespace eCommerce.Services
                 throw new ClinetException($"Hall '{hall.Name}' is not available (status: {hall.Status}). Projections can only be scheduled in active halls.");
             }
 
+            var endTime = request.StartTime.AddMinutes(movie.DurationMinutes);
+            await EnsureNoHallOverlapAsync(request.HallId, request.StartTime, endTime);
+
             var entity = new Screening
             {
                 MovieId = request.MovieId,
                 HallId = request.HallId,
                 StartTime = request.StartTime,
-                EndTime = request.StartTime.AddMinutes(movie.DurationMinutes),
+                EndTime = endTime,
                 BasePrice = request.BasePrice,
                 Language = request.Language,
                 HasSubtitles = request.HasSubtitles,
@@ -196,10 +203,13 @@ namespace eCommerce.Services
                 throw new ClinetException($"Hall '{hall.Name}' is not available (status: {hall.Status}). Projections can only be scheduled in active halls.");
             }
 
+            var endTime = request.StartTime.AddMinutes(movie.DurationMinutes);
+            await EnsureNoHallOverlapAsync(request.HallId, request.StartTime, endTime, excludeScreeningId: id);
+
             entity.MovieId = request.MovieId;
             entity.HallId = request.HallId;
             entity.StartTime = request.StartTime;
-            entity.EndTime = request.StartTime.AddMinutes(movie.DurationMinutes);
+            entity.EndTime = endTime;
             entity.BasePrice = request.BasePrice;
             entity.Language = request.Language;
             entity.HasSubtitles = request.HasSubtitles;
@@ -215,9 +225,8 @@ namespace eCommerce.Services
 
         public override async Task DeleteAsync(int id)
         {
-            // Admin/staff can delete a projection even if customers already booked seats.
-            // We cancel affected reservations, free the seats, delete reservations, then delete the screening.
-            // After commit, we email all affected customers.
+            // Soft-cancel the projection: keep reservation rows (Cancelled + audit), free seats,
+            // refund paid bookings, and deactivate the screening (no hard delete of bookings).
             await using var tx = await _dbContext.Database.BeginTransactionAsync();
             try
             {
@@ -225,7 +234,6 @@ namespace eCommerce.Services
                     .FirstOrDefaultAsync(s => s.Id == id)
                     ?? throw new KeyNotFoundException($"Screening with id {id} not found.");
 
-                // Load email + seat details before deletion.
                 var reservations = await _dbContext.Reservations
                     .Where(r => r.ScreeningId == id)
                     .Include(r => r.User)
@@ -233,7 +241,6 @@ namespace eCommerce.Services
                     .ThenInclude(rs => rs.Seat)
                     .ToListAsync();
 
-                // Pre-build unique email bodies (after we free seats).
                 var movieTitle = await _dbContext.Movies
                     .Where(m => m.Id == screening.MovieId)
                     .Select(m => m.Title)
@@ -244,32 +251,51 @@ namespace eCommerce.Services
                     .Select(h => h.Name)
                     .FirstOrDefaultAsync();
 
+                var actorUserId = _userAccessor.GetUserId();
+                var seatsToFree = new List<ReservationSeat>();
+                var justCancelled = new List<Reservation>();
+
                 foreach (var reservation in reservations)
                 {
+                    if (reservation.Status == ReservationStatus.Cancelled)
+                    {
+                        continue;
+                    }
+
                     if (reservation.Status == ReservationStatus.Paid &&
                         !string.IsNullOrWhiteSpace(reservation.PaymentTransactionId))
                     {
                         await TryRefundStripeAsync(reservation.PaymentTransactionId);
                     }
 
-                    reservation.Status = ReservationStatus.Cancelled;
+                    if (!ReservationStatusTransitions.CanTransition(reservation.Status, ReservationStatus.Cancelled))
+                    {
+                        continue;
+                    }
+
+                    ReservationStatusTransitions.Apply(
+                        reservation,
+                        ReservationStatus.Cancelled,
+                        cancelledByUserId: actorUserId,
+                        cancellationReason: "Screening cancelled by staff");
+
+                    seatsToFree.AddRange(reservation.ReservationSeats);
+                    justCancelled.Add(reservation);
                 }
 
-                // Free seats for all reservations in this screening.
-                _dbContext.ReservationSeats.RemoveRange(
-                    reservations.SelectMany(r => r.ReservationSeats).ToList());
+                if (seatsToFree.Count > 0)
+                {
+                    _dbContext.ReservationSeats.RemoveRange(seatsToFree);
+                }
 
-                // Remove reservations so the Screening FK can be deleted safely.
-                _dbContext.Reservations.RemoveRange(reservations);
-
-                // Finally delete the screening itself.
-                _dbContext.Screenings.Remove(screening);
+                screening.IsActive = false;
+                screening.UpdatedAt = DateTime.UtcNow;
 
                 await _dbContext.SaveChangesAsync();
                 await tx.CommitAsync();
 
                 await QueueCancellationEmailsAsync(
-                    reservations,
+                    justCancelled,
                     movieTitle ?? string.Empty,
                     hallName ?? string.Empty,
                     screening.StartTime);
@@ -281,6 +307,43 @@ namespace eCommerce.Services
             }
 
             await _analyticsNotifier.NotifyAnalyticsChangedAsync();
+        }
+
+        /// <summary>
+        /// Ensures no other active screening in the same hall overlaps [start, end).
+        /// </summary>
+        private async Task EnsureNoHallOverlapAsync(
+            int hallId,
+            DateTime start,
+            DateTime end,
+            int? excludeScreeningId = null)
+        {
+            if (end <= start)
+            {
+                throw new ClinetException("Screening end time must be after start time.");
+            }
+
+            var query = _dbContext.Screenings.AsNoTracking()
+                .Where(s =>
+                    s.HallId == hallId &&
+                    s.IsActive &&
+                    s.StartTime < end &&
+                    s.EndTime > start);
+
+            if (excludeScreeningId.HasValue)
+            {
+                query = query.Where(s => s.Id != excludeScreeningId.Value);
+            }
+
+            var conflict = await query
+                .Select(s => new { s.Id, s.StartTime, s.EndTime })
+                .FirstOrDefaultAsync();
+
+            if (conflict != null)
+            {
+                throw new ClinetException(
+                    $"Hall already has screening #{conflict.Id} from {conflict.StartTime:u} to {conflict.EndTime:u} (UTC). Choose another time or hall.");
+            }
         }
 
         private async Task TryRefundStripeAsync(string paymentIntentId)

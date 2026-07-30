@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -23,40 +22,49 @@ namespace eCommerce.Services.Database
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; }
 
-        // Customer who made the reservation
         public int UserId { get; set; }
 
         [ForeignKey("UserId")]
         public User User { get; set; } = null!;
 
-        // Screening being reserved
         public int ScreeningId { get; set; }
 
         [ForeignKey("ScreeningId")]
         public Screening Screening { get; set; } = null!;
 
-        // Guest contact details captured at checkout (shown on the booking confirmation screen).
         [MaxLength(100)]
         public string? CustomerName { get; set; }
 
         [MaxLength(200)]
         public string? CustomerEmail { get; set; }
 
-        // Payment information
         [MaxLength(100)]
         public string? PaymentTransactionId { get; set; }
 
         public DateTime? PaymentDate { get; set; }
 
-        // Navigation property for the reserved seats
+        /// <summary>User who cancelled (customer or admin).</summary>
+        public int? CancelledByUserId { get; set; }
+
+        [ForeignKey(nameof(CancelledByUserId))]
+        public User? CancelledByUser { get; set; }
+
+        public DateTime? CancelledAt { get; set; }
+
+        [MaxLength(500)]
+        public string? CancellationReason { get; set; }
+
+        public DateTime? CompletedAt { get; set; }
+
         public ICollection<ReservationSeat> ReservationSeats { get; set; } = new List<ReservationSeat>();
     }
 
     public enum ReservationStatus
     {
-        Pending,
-        Confirmed,
-        Paid,
-        Cancelled
+        Pending = 0,
+        Confirmed = 1,
+        Paid = 2,
+        Cancelled = 3,
+        Completed = 4
     }
 }

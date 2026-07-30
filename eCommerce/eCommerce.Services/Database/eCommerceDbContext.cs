@@ -23,6 +23,8 @@ namespace eCommerce.Services.Database
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<UserNotification> UserNotifications { get; set; }
+        public DbSet<News> News { get; set; }
+        public DbSet<SearchHistory> SearchHistories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

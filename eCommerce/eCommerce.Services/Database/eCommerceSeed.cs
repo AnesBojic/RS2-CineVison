@@ -171,7 +171,11 @@ namespace eCommerce.Services.Database
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
                     PaymentTransactionId = (string?)"pi_seed_001",
-                    PaymentDate = (DateTime?)new DateTime(2026, 6, 15, 14, 31, 0, DateTimeKind.Utc)
+                    PaymentDate = (DateTime?)new DateTime(2026, 6, 15, 14, 31, 0, DateTimeKind.Utc),
+                    CancelledByUserId = (int?)null,
+                    CancelledAt = (DateTime?)null,
+                    CancellationReason = (string?)null,
+                    CompletedAt = (DateTime?)null
                 },
                 new
                 {
@@ -185,7 +189,11 @@ namespace eCommerce.Services.Database
                     CustomerName = (string?)"Eve Customer",
                     CustomerEmail = (string?)"customer2@gmail.com",
                     PaymentTransactionId = (string?)"pi_seed_002",
-                    PaymentDate = (DateTime?)new DateTime(2026, 6, 20, 10, 16, 0, DateTimeKind.Utc)
+                    PaymentDate = (DateTime?)new DateTime(2026, 6, 20, 10, 16, 0, DateTimeKind.Utc),
+                    CancelledByUserId = (int?)null,
+                    CancelledAt = (DateTime?)null,
+                    CancellationReason = (string?)null,
+                    CompletedAt = (DateTime?)null
                 },
                 new
                 {
@@ -199,7 +207,11 @@ namespace eCommerce.Services.Database
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
                     PaymentTransactionId = (string?)"pi_seed_003",
-                    PaymentDate = (DateTime?)new DateTime(2026, 6, 22, 18, 46, 0, DateTimeKind.Utc)
+                    PaymentDate = (DateTime?)new DateTime(2026, 6, 22, 18, 46, 0, DateTimeKind.Utc),
+                    CancelledByUserId = (int?)null,
+                    CancelledAt = (DateTime?)null,
+                    CancellationReason = (string?)null,
+                    CompletedAt = (DateTime?)null
                 },
                 new
                 {
@@ -213,7 +225,11 @@ namespace eCommerce.Services.Database
                     CustomerName = (string?)"Eve Customer",
                     CustomerEmail = (string?)"customer2@gmail.com",
                     PaymentTransactionId = (string?)"pi_seed_004",
-                    PaymentDate = (DateTime?)new DateTime(2026, 7, 1, 11, 1, 0, DateTimeKind.Utc)
+                    PaymentDate = (DateTime?)new DateTime(2026, 7, 1, 11, 1, 0, DateTimeKind.Utc),
+                    CancelledByUserId = (int?)null,
+                    CancelledAt = (DateTime?)null,
+                    CancellationReason = (string?)null,
+                    CompletedAt = (DateTime?)null
                 },
                 new
                 {
@@ -227,7 +243,11 @@ namespace eCommerce.Services.Database
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
                     PaymentTransactionId = (string?)"pi_seed_005",
-                    PaymentDate = (DateTime?)new DateTime(2026, 7, 3, 16, 21, 0, DateTimeKind.Utc)
+                    PaymentDate = (DateTime?)new DateTime(2026, 7, 3, 16, 21, 0, DateTimeKind.Utc),
+                    CancelledByUserId = (int?)null,
+                    CancelledAt = (DateTime?)null,
+                    CancellationReason = (string?)null,
+                    CompletedAt = (DateTime?)null
                 },
                 new
                 {
@@ -241,7 +261,11 @@ namespace eCommerce.Services.Database
                     CustomerName = (string?)"Eve Customer",
                     CustomerEmail = (string?)"customer2@gmail.com",
                     PaymentTransactionId = (string?)"pi_seed_006",
-                    PaymentDate = (DateTime?)new DateTime(2026, 6, 28, 20, 6, 0, DateTimeKind.Utc)
+                    PaymentDate = (DateTime?)new DateTime(2026, 6, 28, 20, 6, 0, DateTimeKind.Utc),
+                    CancelledByUserId = (int?)null,
+                    CancelledAt = (DateTime?)null,
+                    CancellationReason = (string?)null,
+                    CompletedAt = (DateTime?)null
                 },
                 new
                 {
@@ -255,7 +279,36 @@ namespace eCommerce.Services.Database
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
                     PaymentTransactionId = (string?)null,
-                    PaymentDate = (DateTime?)null
+                    PaymentDate = (DateTime?)null,
+                    CancelledByUserId = (int?)null,
+                    CancelledAt = (DateTime?)null,
+                    CancellationReason = (string?)null,
+                    CompletedAt = (DateTime?)null
+                }
+            );
+
+            modelBuilder.Entity<News>().HasData(
+                new
+                {
+                    Id = 1,
+                    Title = "Summer premiere nights",
+                    Content = "Join us every Friday for premiere nights with discounted snacks and late shows.",
+                    ImageBase64 = (string?)null,
+                    PublishedAt = new DateTime(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc),
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc),
+                    UpdatedAt = (DateTime?)null
+                },
+                new
+                {
+                    Id = 2,
+                    Title = "Student discount weekdays",
+                    Content = "Show your student ID Monday–Thursday for 20% off base ticket prices.",
+                    ImageBase64 = (string?)null,
+                    PublishedAt = new DateTime(2026, 6, 20, 9, 0, 0, DateTimeKind.Utc),
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 6, 20, 9, 0, 0, DateTimeKind.Utc),
+                    UpdatedAt = (DateTime?)null
                 }
             );
         }

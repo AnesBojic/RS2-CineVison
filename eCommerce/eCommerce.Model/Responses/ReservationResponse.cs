@@ -23,6 +23,11 @@ namespace eCommerce.Model.Responses
         public string? PaymentTransactionId { get; set; }
         public DateTime? PaymentDate { get; set; }
 
+        public int? CancelledByUserId { get; set; }
+        public DateTime? CancelledAt { get; set; }
+        public string? CancellationReason { get; set; }
+        public DateTime? CompletedAt { get; set; }
+
         public List<ReservationSeatResponse> Seats { get; set; } = new();
     }
 }

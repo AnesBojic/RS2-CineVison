@@ -28,8 +28,12 @@ class ReservationProvider extends BaseProvider<Reservation> {
     final response = await http.post(uri, headers: headers, body: body);
     validateResponse(response);
     final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final clientSecret = data['clientSecret'] as String;
+    final paymentIntentId = (data['paymentIntentId'] as String?) ??
+        clientSecret.split('_secret_').first;
     return {
-      'clientSecret': data['clientSecret'] as String,
+      'paymentIntentId': paymentIntentId,
+      'clientSecret': clientSecret,
       'publishableKey': data['publishableKey'] as String,
     };
   }

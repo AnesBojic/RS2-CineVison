@@ -146,7 +146,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
           await Stripe.instance.presentPaymentSheet();
 
-          final paymentIntentId =
+          final paymentIntentId = intentData['paymentIntentId'] ??
               intentData['clientSecret']!.split('_secret_').first;
 
           reservation = await _submitReservation(

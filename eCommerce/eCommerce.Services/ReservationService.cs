@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using eCommerce.Model;
 using eCommerce.Model.Exceptions;
 using eCommerce.Model.Messages;
 using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Model.SearchObjects;
 using eCommerce.Services.Database;
+using eCommerce.Services.ReservationStateMachine;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -41,6 +43,9 @@ namespace eCommerce.Services
             _analyticsNotifier = analyticsNotifier;
         }
 
+        private bool IsAdminOrStaff() =>
+            _userAccessor.IsInRole(RoleNames.Admin) || _userAccessor.IsInRole(RoleNames.Staff);
+
         protected override IEnumerable<Reservation> ApplyFilters(IEnumerable<Reservation> query, ReservationSearchObject? search)
         {
             // Filtering handled in GetAllAsync against the database.
@@ -61,8 +66,13 @@ namespace eCommerce.Services
                 .AsNoTracking()
                 .Include(r => r.Screening).ThenInclude(s => s.Movie)
                 .Include(r => r.Screening).ThenInclude(s => s.Hall)
-                .Include(r => r.ReservationSeats).ThenInclude(rs => rs.Seat)
-                .Where(r => r.UserId == userId.Value);
+                .Include(r => r.ReservationSeats).ThenInclude(rs => rs.Seat);
+
+            // Customers see only their bookings; Admin/Staff can manage all.
+            if (!IsAdminOrStaff())
+            {
+                query = query.Where(r => r.UserId == userId.Value);
+            }
 
             if (search.Status.HasValue)
             {
@@ -104,15 +114,27 @@ namespace eCommerce.Services
             var userId = _userAccessor.GetUserId()
                 ?? throw new KeyNotFoundException($"Reservation with id {id} not found.");
 
-            var reservation = await _dbContext.Reservations
+            var reservation = await LoadReservationForReadAsync(id, userId)
+                ?? throw new KeyNotFoundException($"Reservation with id {id} not found.");
+
+            return MapToResponse(reservation);
+        }
+
+        private async Task<Reservation?> LoadReservationForReadAsync(int id, int userId)
+        {
+            var query = _dbContext.Reservations
                 .AsNoTracking()
                 .Include(r => r.Screening).ThenInclude(s => s.Movie)
                 .Include(r => r.Screening).ThenInclude(s => s.Hall)
                 .Include(r => r.ReservationSeats).ThenInclude(rs => rs.Seat)
-                .FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId)
-                ?? throw new KeyNotFoundException($"Reservation with id {id} not found.");
+                .Where(r => r.Id == id);
 
-            return MapToResponse(reservation);
+            if (!IsAdminOrStaff())
+            {
+                query = query.Where(r => r.UserId == userId);
+            }
+
+            return await query.FirstOrDefaultAsync();
         }
 
         public async Task<ReservationResponse> CreateReservationAsync(ReservationCreateRequest request)
@@ -124,6 +146,25 @@ namespace eCommerce.Services
             if (seatIds.Count == 0)
             {
                 throw new ClinetException("No seats were selected.");
+            }
+
+            var paymentIntentId = string.IsNullOrWhiteSpace(request.PaymentIntentId)
+                ? null
+                : request.PaymentIntentId.Trim();
+
+            // Idempotent confirm: same PaymentIntent already booked → return existing reservation.
+            if (paymentIntentId != null)
+            {
+                var existing = await FindByPaymentIntentAsync(paymentIntentId);
+                if (existing != null)
+                {
+                    if (existing.UserId != userId && !IsAdminOrStaff())
+                    {
+                        throw new ClinetException("This payment was already used for another booking.");
+                    }
+
+                    return await GetByIdAsync(existing.Id);
+                }
             }
 
             await using var tx = await _dbContext.Database.BeginTransactionAsync();
@@ -177,6 +218,22 @@ namespace eCommerce.Services
                 }
 
                 var total = screening.BasePrice * expandedList.Count;
+                var initialStatus = ReservationStatus.Confirmed;
+
+                if (paymentIntentId != null)
+                {
+                    await VerifyStripePaymentSucceededAsync(
+                        paymentIntentId,
+                        expectedAmountCents: (long)(total * 100),
+                        expectedScreeningId: screening.Id,
+                        expectedUserId: userId);
+                    initialStatus = ReservationStatus.Paid;
+                }
+
+                if (!ReservationStatusTransitions.IsValidInitialStatus(initialStatus))
+                {
+                    throw new ClinetException($"Invalid initial reservation status: {initialStatus}.");
+                }
 
                 var reservation = new Reservation
                 {
@@ -184,14 +241,12 @@ namespace eCommerce.Services
                     ScreeningId = screening.Id,
                     ReservationDate = DateTime.UtcNow,
                     ReservationNumber = $"R-{DateTime.UtcNow:yyyyMMddHHmmss}-{userId}",
-                    Status = string.IsNullOrWhiteSpace(request.PaymentIntentId)
-                        ? ReservationStatus.Confirmed
-                        : ReservationStatus.Paid,
+                    Status = initialStatus,
                     TotalAmount = total,
                     CustomerName = string.IsNullOrWhiteSpace(request.CustomerName) ? null : request.CustomerName.Trim(),
                     CustomerEmail = string.IsNullOrWhiteSpace(request.CustomerEmail) ? null : request.CustomerEmail.Trim(),
-                    PaymentTransactionId = request.PaymentIntentId,
-                    PaymentDate = string.IsNullOrWhiteSpace(request.PaymentIntentId) ? (DateTime?)null : DateTime.UtcNow
+                    PaymentTransactionId = paymentIntentId,
+                    PaymentDate = initialStatus == ReservationStatus.Paid ? DateTime.UtcNow : null
                 };
 
                 foreach (var seatId in expandedList)
@@ -205,8 +260,24 @@ namespace eCommerce.Services
                 }
 
                 _dbContext.Reservations.Add(reservation);
-                await _dbContext.SaveChangesAsync();
-                await tx.CommitAsync();
+
+                try
+                {
+                    await _dbContext.SaveChangesAsync();
+                    await tx.CommitAsync();
+                }
+                catch (DbUpdateException) when (paymentIntentId != null)
+                {
+                    // Race: another request won the unique PaymentTransactionId index.
+                    await tx.RollbackAsync();
+                    var raced = await FindByPaymentIntentAsync(paymentIntentId);
+                    if (raced != null && (raced.UserId == userId || IsAdminOrStaff()))
+                    {
+                        return await GetByIdAsync(raced.Id);
+                    }
+
+                    throw new ClinetException("This payment was already used for another booking.");
+                }
 
                 var response = await GetByIdAsync(reservation.Id);
 
@@ -216,11 +287,90 @@ namespace eCommerce.Services
 
                 return response;
             }
-            catch
+            catch (ClinetException)
             {
-                await tx.RollbackAsync();
+                try { await tx.RollbackAsync(); } catch { /* already committed/rolled back */ }
                 throw;
             }
+            catch
+            {
+                try { await tx.RollbackAsync(); } catch { /* already committed/rolled back */ }
+                throw;
+            }
+        }
+
+        private async Task<Reservation?> FindByPaymentIntentAsync(string paymentIntentId)
+        {
+            return await _dbContext.Reservations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.PaymentTransactionId == paymentIntentId);
+        }
+
+        /// <summary>
+        /// Confirms with Stripe that the PaymentIntent succeeded and matches the server-calculated amount.
+        /// </summary>
+        private async Task VerifyStripePaymentSucceededAsync(
+            string paymentIntentId,
+            long expectedAmountCents,
+            int expectedScreeningId,
+            int expectedUserId)
+        {
+            ConfigureStripe();
+
+            PaymentIntent intent;
+            try
+            {
+                var service = new PaymentIntentService();
+                intent = await service.GetAsync(paymentIntentId);
+            }
+            catch (StripeException ex)
+            {
+                _logger.LogWarning(ex, "Stripe lookup failed for PaymentIntent {PaymentIntentId}.", paymentIntentId);
+                throw new ClinetException(
+                    ex.StripeError?.Message ?? "Could not verify payment with Stripe. Please try again.");
+            }
+
+            if (!string.Equals(intent.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ClinetException(
+                    $"Payment is not completed (status: {intent.Status}). Complete payment before confirming the booking.");
+            }
+
+            if (intent.Amount != expectedAmountCents)
+            {
+                throw new ClinetException(
+                    "Paid amount does not match the booking total. Payment was not accepted for these seats.");
+            }
+
+            if (!string.Equals(intent.Currency, "usd", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ClinetException("Unexpected payment currency.");
+            }
+
+            // Metadata is set when the intent is created; reject mismatched intents.
+            if (intent.Metadata != null)
+            {
+                if (intent.Metadata.TryGetValue("screeningId", out var metaScreening) &&
+                    int.TryParse(metaScreening, out var screeningId) &&
+                    screeningId != expectedScreeningId)
+                {
+                    throw new ClinetException("Payment was created for a different screening.");
+                }
+
+                if (intent.Metadata.TryGetValue("userId", out var metaUser) &&
+                    int.TryParse(metaUser, out var metaUserId) &&
+                    metaUserId != expectedUserId)
+                {
+                    throw new ClinetException("Payment belongs to a different user.");
+                }
+            }
+        }
+
+        private void ConfigureStripe()
+        {
+            var secretKey = _configuration["Stripe:SecretKey"]
+                            ?? throw new InvalidOperationException("Stripe secret key is not configured.");
+            StripeConfiguration.ApiKey = secretKey;
         }
 
         private async Task SendConfirmationEmailAsync(Reservation reservation, ReservationResponse response)
@@ -268,29 +418,33 @@ namespace eCommerce.Services
             }
         }
 
-        public async Task<ReservationResponse> CancelAsync(int id)
+        public async Task<ReservationResponse> CancelAsync(int id, ReservationCancelRequest? request = null)
         {
             var userId = _userAccessor.GetUserId()
                 ?? throw new InvalidOperationException("User id claim is missing.");
 
+            var isStaff = IsAdminOrStaff();
+
             var reservation = await _dbContext.Reservations
                 .Include(r => r.ReservationSeats)
                 .Include(r => r.Screening)
-                .FirstOrDefaultAsync(r => r.Id == id && r.UserId == userId)
+                .FirstOrDefaultAsync(r => r.Id == id)
                 ?? throw new KeyNotFoundException($"Reservation with id {id} not found.");
+
+            if (!isStaff && reservation.UserId != userId)
+            {
+                throw new KeyNotFoundException($"Reservation with id {id} not found.");
+            }
 
             if (reservation.Status == ReservationStatus.Cancelled)
             {
                 throw new ClinetException("This reservation is already cancelled.");
             }
 
-            if (reservation.Status != ReservationStatus.Paid &&
-                reservation.Status != ReservationStatus.Confirmed)
-            {
-                throw new ClinetException("Only confirmed or paid bookings can be refunded.");
-            }
+            ReservationStatusTransitions.EnsureCanTransition(reservation.Status, ReservationStatus.Cancelled);
 
-            if (reservation.Screening.StartTime <= DateTime.UtcNow.AddHours(4))
+            // Customers must cancel at least 4h before showtime; Admin/Staff may cancel anytime.
+            if (!isStaff && reservation.Screening.StartTime <= DateTime.UtcNow.AddHours(4))
             {
                 throw new ClinetException(
                     "Tickets can only be refunded at least 4 hours before the screening starts.");
@@ -303,7 +457,16 @@ namespace eCommerce.Services
                 await RefundStripePaymentAsync(reservation.PaymentTransactionId);
             }
 
-            reservation.Status = ReservationStatus.Cancelled;
+            var reason = string.IsNullOrWhiteSpace(request?.Reason)
+                ? (isStaff ? "Cancelled by staff" : "Cancelled by customer")
+                : request!.Reason!.Trim();
+
+            ReservationStatusTransitions.Apply(
+                reservation,
+                ReservationStatus.Cancelled,
+                cancelledByUserId: userId,
+                cancellationReason: reason);
+
             // Free the seats so they become available again for the screening.
             // Analytics read from ReservationSeats, so occupancy/revenue update automatically.
             _dbContext.ReservationSeats.RemoveRange(reservation.ReservationSeats);
@@ -314,12 +477,27 @@ namespace eCommerce.Services
             return await GetByIdAsync(reservation.Id);
         }
 
+        public async Task<ReservationResponse> CompleteAsync(int id)
+        {
+            if (!IsAdminOrStaff())
+            {
+                throw new ClinetException("Only Admin or Staff can mark a reservation as completed.");
+            }
+
+            var reservation = await _dbContext.Reservations
+                .FirstOrDefaultAsync(r => r.Id == id)
+                ?? throw new KeyNotFoundException($"Reservation with id {id} not found.");
+
+            ReservationStatusTransitions.Apply(reservation, ReservationStatus.Completed);
+            await _dbContext.SaveChangesAsync();
+            await NotifyAnalyticsSafeAsync();
+
+            return await GetByIdAsync(reservation.Id);
+        }
+
         private async Task RefundStripePaymentAsync(string paymentIntentId)
         {
-            var secretKey = _configuration["Stripe:SecretKey"]
-                            ?? throw new InvalidOperationException("Stripe secret key is not configured.");
-
-            StripeConfiguration.ApiKey = secretKey;
+            ConfigureStripe();
 
             try
             {
@@ -339,6 +517,9 @@ namespace eCommerce.Services
 
         public async Task<PaymentIntentResponse> CreatePaymentIntentAsync(CreatePaymentIntentRequest request)
         {
+            var userId = _userAccessor.GetUserId()
+                ?? throw new InvalidOperationException("User id claim is missing.");
+
             var seatIds = (request.SeatIds ?? new List<int>()).Distinct().ToList();
             if (seatIds.Count == 0)
             {
@@ -349,6 +530,11 @@ namespace eCommerce.Services
                 .Include(s => s.Hall).ThenInclude(h => h.Seats)
                 .FirstOrDefaultAsync(s => s.Id == request.ScreeningId)
                 ?? throw new ClinetException($"Screening {request.ScreeningId} was not found.");
+
+            if (!screening.IsActive)
+            {
+                throw new ClinetException("This screening is not available for booking.");
+            }
 
             var hallSeats = screening.Hall.Seats.ToDictionary(s => s.Id);
             var expandedCount = 0;
@@ -363,19 +549,23 @@ namespace eCommerce.Services
             }
 
             var total = screening.BasePrice * expandedCount;
+            var amountCents = (long)(total * 100);
 
-            var secretKey = _configuration["Stripe:SecretKey"]
-                            ?? throw new InvalidOperationException("Stripe secret key is not configured.");
-
-            StripeConfiguration.ApiKey = secretKey;
+            ConfigureStripe();
             var options = new PaymentIntentCreateOptions
             {
-                Amount = (long)(total * 100), // amount in cents
+                Amount = amountCents,
                 Currency = "usd",
                 AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                 {
                     Enabled = true,
                 },
+                Metadata = new Dictionary<string, string>
+                {
+                    ["screeningId"] = screening.Id.ToString(),
+                    ["userId"] = userId.ToString(),
+                    ["seatCount"] = expandedCount.ToString()
+                }
             };
 
             var service = new PaymentIntentService();
@@ -383,7 +573,8 @@ namespace eCommerce.Services
 
             return new PaymentIntentResponse
             {
-                ClientSecret = intent.ClientSecret,
+                PaymentIntentId = intent.Id,
+                ClientSecret = intent.ClientSecret ?? string.Empty,
                 PublishableKey = _configuration["Stripe:PublishableKey"]
                                  ?? throw new InvalidOperationException("Stripe publishable key is not configured.")
             };
@@ -422,6 +613,10 @@ namespace eCommerce.Services
                 ScreeningEndTime = r.Screening?.EndTime ?? default,
                 PaymentTransactionId = r.PaymentTransactionId,
                 PaymentDate = r.PaymentDate,
+                CancelledByUserId = r.CancelledByUserId,
+                CancelledAt = r.CancelledAt,
+                CancellationReason = r.CancellationReason,
+                CompletedAt = r.CompletedAt,
                 Seats = r.ReservationSeats
                     .OrderBy(rs => rs.Seat != null ? rs.Seat.RowLabel : string.Empty)
                     .ThenBy(rs => rs.Seat != null ? rs.Seat.SeatNumber : 0)

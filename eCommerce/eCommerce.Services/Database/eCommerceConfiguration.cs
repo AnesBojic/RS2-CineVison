@@ -64,6 +64,18 @@ namespace eCommerce.Services.Database
                 .HasForeignKey(r => r.ScreeningId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            modelBuilder.Entity<Reservation>()
+                .HasOne(r => r.CancelledByUser)
+                .WithMany()
+                .HasForeignKey(r => r.CancelledByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Prevent the same Stripe PaymentIntent from paying multiple reservations.
+            modelBuilder.Entity<Reservation>()
+                .HasIndex(r => r.PaymentTransactionId)
+                .IsUnique()
+                .HasFilter("[PaymentTransactionId] IS NOT NULL");
+
             // ReservationSeat relationships.
             modelBuilder.Entity<ReservationSeat>()
                 .HasOne(rs => rs.Reservation)
@@ -125,6 +137,21 @@ namespace eCommerce.Services.Database
                 .WithMany()
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SearchHistory>()
+                .HasOne(s => s.User)
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SearchHistory>()
+                .HasOne(s => s.Genre)
+                .WithMany()
+                .HasForeignKey(s => s.GenreId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<SearchHistory>()
+                .HasIndex(s => new { s.UserId, s.SearchedAt });
         }
     }
 }

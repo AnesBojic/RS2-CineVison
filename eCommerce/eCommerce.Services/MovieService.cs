@@ -14,11 +14,61 @@ namespace eCommerce.Services;
 public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObject>, IMovieService
 {
     protected BaseMovieState MovieState { get; }
+    private readonly IAuthenticatedUserAccessor _userAccessor;
 
-    public MovieService(ECommerceDbContext dbContext, MapsterMapper.IMapper mapper, BaseMovieState movieState)
+    public MovieService(
+        ECommerceDbContext dbContext,
+        MapsterMapper.IMapper mapper,
+        BaseMovieState movieState,
+        IAuthenticatedUserAccessor userAccessor)
         : base(mapper, dbContext)
     {
         MovieState = movieState;
+        _userAccessor = userAccessor;
+    }
+
+    public override async Task<PageResult<MovieResponse>> GetAllAsync(MovieSearchObject? search = null)
+    {
+        var result = await base.GetAllAsync(search);
+        await TryRecordSearchAsync(search);
+        return result;
+    }
+
+    private async Task TryRecordSearchAsync(MovieSearchObject? search)
+    {
+        if (search == null)
+        {
+            return;
+        }
+
+        var queryText = search.Title?.Trim();
+        if (string.IsNullOrWhiteSpace(queryText) && !search.GenreId.HasValue)
+        {
+            return;
+        }
+
+        var userId = _userAccessor.GetUserId();
+        if (userId == null)
+        {
+            return;
+        }
+
+        _dbContext.SearchHistories.Add(new SearchHistory
+        {
+            UserId = userId.Value,
+            Query = string.IsNullOrWhiteSpace(queryText) ? $"genre:{search.GenreId}" : queryText!,
+            GenreId = search.GenreId,
+            SearchedAt = DateTime.UtcNow
+        });
+
+        try
+        {
+            await _dbContext.SaveChangesAsync();
+        }
+        catch
+        {
+            // Search history must never break listing movies.
+        }
     }
 
     protected override Task<IQueryable<Movie>> IncludeRelatedEntitiesAsync(MovieSearchObject? search, IQueryable<Movie> query = null!)
