@@ -14,12 +14,22 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     Write-Error "Docker is not installed or not on PATH. Install Docker Desktop first."
 }
 
+if (-not (Test-Path ".env")) {
+    if (Test-Path ".env.example") {
+        Copy-Item ".env.example" ".env"
+        Write-Host "Created .env from .env.example — fill in secrets before relying on Stripe/SMTP/OpenAI." -ForegroundColor Yellow
+    }
+    else {
+        Write-Error "Missing .env next to docker-compose.yml. Copy .env.example to .env and fill secrets."
+    }
+}
+
 Write-Host "Starting CineVision stack (SQL Server + RabbitMQ + API)..." -ForegroundColor Cyan
 
 $composeArgs = @("compose", "up", "-d", "--build")
 & docker @composeArgs
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "docker compose failed. Is Docker Desktop running?"
+    Write-Error "docker compose failed. Is Docker Desktop running? Is .env complete?"
 }
 
 Write-Host ""
@@ -48,7 +58,8 @@ Write-Host "  API:            http://localhost:5126"
 Write-Host "  Swagger/Scalar: http://localhost:5126/swagger  (or /scalar)"
 Write-Host "  Health:         http://localhost:5126/health"
 Write-Host "  RabbitMQ UI:    http://localhost:15672  (guest / guest)"
-Write-Host "  SQL Server:     localhost,1435  (sa / see .env or default qweasd123!)"
+Write-Host "  SQL Server:     localhost,1435  (sa / value from .env MSSQL_SA_PASSWORD)"
+Write-Host "  Config:         eCommerce/.env  (secrets — not committed)"
 Write-Host ""
 Write-Host "Flutter apps still run on your PC (not in Docker):" -ForegroundColor Cyan
 Write-Host "  Desktop:  cd UI\ecommerce_desktop ; flutter run -d windows"

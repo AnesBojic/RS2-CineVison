@@ -5,9 +5,9 @@ services:
     container_name: ecomm-fit-2026
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:-qweasd123!}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
     ports:
-      - "1435:1433"
+      - "${SQL_HOST_PORT:-1435}:1433"
     volumes:
       - sqlserver_data:/var/opt/mssql
     networks:
@@ -23,7 +23,7 @@ services:
       retries: 20
       start_period: 40s
 
-  # RabbitMQ + management UI (http://localhost:15672 — guest/guest)
+  # RabbitMQ + management UI (http://localhost:15672)
   ecomm-fit-2026-rabbitmq:
     image: rabbitmq:3-management
     container_name: ecomm-fit-2026-rabbitmq
@@ -31,8 +31,8 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
@@ -44,29 +44,24 @@ services:
       retries: 10
       start_period: 20s
 
-  # CineVision Web API — http://localhost:5126 (matches Flutter defaults)
+  # CineVision Web API — http://localhost:${API_HOST_PORT:-5126}
   ecomm-fit-2026-api:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: ecomm-fit-2026-api
-    # Optional overrides for Stripe/SMTP/OpenAI. Copy .env.example → .env
     env_file:
-      - path: .env
-        required: false
+      - .env
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5121
-      # Docker service names (not localhost)
-      ConnectionStrings__DefaultConnection: Server=ecomm-fit-2026,1433;Database=CineVision;User Id=sa;Password=${MSSQL_SA_PASSWORD:-qweasd123!};TrustServerCertificate=True;MultipleActiveResultSets=True
-      RabbitMq__Enabled: "true"
+      # Docker service hostnames (override the localhost values from .env)
+      ConnectionStrings__DefaultConnection: Server=ecomm-fit-2026,1433;Database=${DB_NAME};User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=True
       RabbitMq__Host: ecomm-fit-2026-rabbitmq
-      RabbitMq__Port: "5672"
-      RabbitMq__Username: ${RABBITMQ_USER:-guest}
-      RabbitMq__Password: ${RABBITMQ_PASSWORD:-guest}
-      RabbitMq__Queue: cinevision-emails
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
     ports:
-      - "5126:5121"
+      - "${API_HOST_PORT:-5126}:5121"
     depends_on:
       ecomm-fit-2026:
         condition: service_healthy

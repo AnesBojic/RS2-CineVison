@@ -19,6 +19,13 @@ using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
 using System.Text;
 
+// Load eCommerce/.env before CreateBuilder so env vars override empty appsettings secrets.
+// Docker Compose already injects env; EnvFileLoader will not overwrite existing variables.
+EnvFileLoader.Load(
+    Path.Combine(Directory.GetCurrentDirectory(), ".env"),
+    Path.Combine(Directory.GetCurrentDirectory(), "..", ".env"),
+    Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".env")));
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
