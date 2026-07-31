@@ -1,6 +1,6 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:ecommerce_mobile/utils/base64_image_cache.dart';
 import 'package:flutter/material.dart';
 
 import '../constants/app_defaults.dart';
@@ -22,23 +22,9 @@ class Base64ImageWithLoader extends StatelessWidget {
   final double radius;
   final BorderRadius? borderRadius;
 
-  Uint8List? _decodeBase64Image(String base64Image) {
-    try {
-      // Supports both plain base64 and data URLs:
-      // data:image/png;base64,....
-      final cleanedBase64 = base64Image.contains(',')
-          ? base64Image.split(',').last
-          : base64Image;
-
-      return base64Decode(cleanedBase64);
-    } catch (_) {
-      return null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final imageBytes = _decodeBase64Image(src);
+    final imageBytes = Base64ImageCache.decode(src);
 
     return ClipRRect(
       borderRadius: borderRadius ?? BorderRadius.all(Radius.circular(radius)),

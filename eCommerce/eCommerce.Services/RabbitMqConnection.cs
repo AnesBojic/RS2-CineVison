@@ -17,16 +17,23 @@ public interface IRabbitMqConnection : IDisposable
 
 public sealed class RabbitMqConnection : IRabbitMqConnection
 {
-    private readonly IConfiguration _configuration;
     private readonly ILogger<RabbitMqConnection> _logger;
+    private readonly string _host;
+    private readonly int _port;
+    private readonly string _username;
+    private readonly string _password;
     private readonly object _sync = new();
     private IConnection? _connection;
     private bool _disposed;
 
     public RabbitMqConnection(IConfiguration configuration, ILogger<RabbitMqConnection> logger)
     {
-        _configuration = configuration;
         _logger = logger;
+        var section = configuration.GetSection("RabbitMq");
+        _host = section["Host"] ?? "localhost";
+        _port = int.TryParse(section["Port"], out var p) ? p : 5672;
+        _username = section["Username"] ?? "guest";
+        _password = section["Password"] ?? "guest";
     }
 
     public bool IsConnected => _connection is { IsOpen: true };
@@ -57,25 +64,19 @@ public sealed class RabbitMqConnection : IRabbitMqConnection
 
             _connection?.Dispose();
 
-            var section = _configuration.GetSection("RabbitMq");
-            var host = section["Host"] ?? "localhost";
-            var port = int.TryParse(section["Port"], out var p) ? p : 5672;
-            var username = section["Username"] ?? "guest";
-            var password = section["Password"] ?? "guest";
-
             var factory = new ConnectionFactory
             {
-                HostName = host,
-                Port = port,
-                UserName = username,
-                Password = password,
+                HostName = _host,
+                Port = _port,
+                UserName = _username,
+                Password = _password,
                 DispatchConsumersAsync = true,
                 AutomaticRecoveryEnabled = true,
                 NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
             };
 
             _connection = factory.CreateConnection();
-            _logger.LogInformation("Opened shared RabbitMQ connection to {Host}:{Port}.", host, port);
+            _logger.LogInformation("Opened shared RabbitMQ connection to {Host}:{Port}.", _host, _port);
         }
     }
 

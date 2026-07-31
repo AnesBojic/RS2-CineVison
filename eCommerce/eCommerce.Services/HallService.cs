@@ -9,14 +9,30 @@ using eCommerce.Model.SearchObjects;
 using eCommerce.Services.Database;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace eCommerce.Services
 {
     public class HallService : BaseCRUDService<Hall, HallResponse, HallSearchObject, HallInsertRequest, HallUpdateRequest>, IHallService
     {
-        public HallService(ECommerceDbContext dbContext, MapsterMapper.IMapper mapper, IValidator<HallInsertRequest> insertValidator, IValidator<HallUpdateRequest> updateValidator)
+        private readonly IAnalyticsNotifier _analyticsNotifier;
+        private readonly string? _stripeSecretKey;
+        private readonly ILogger<HallService> _logger;
+
+        public HallService(
+            ECommerceDbContext dbContext,
+            MapsterMapper.IMapper mapper,
+            IValidator<HallInsertRequest> insertValidator,
+            IValidator<HallUpdateRequest> updateValidator,
+            IAnalyticsNotifier analyticsNotifier,
+            IConfiguration configuration,
+            ILogger<HallService> logger)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
+            _analyticsNotifier = analyticsNotifier;
+            _stripeSecretKey = configuration["Stripe:SecretKey"];
+            _logger = logger;
         }
 
         protected override async Task<IQueryable<Hall>> IncludeRelatedEntitiesAsync(HallSearchObject? search, IQueryable<Hall> query = null!)
@@ -166,27 +182,73 @@ namespace eCommerce.Services
             return BuildResponse(hall, includeSeats: true);
         }
 
-        public override async Task DeleteAsync(int id)
+        public async Task<CascadeDeleteImpactResponse> GetDeleteImpactAsync(int id)
         {
-            var hall = await _dbContext.Halls.FindAsync(id)
+            var hall = await _dbContext.Halls.AsNoTracking().FirstOrDefaultAsync(h => h.Id == id)
                 ?? throw new KeyNotFoundException($"Hall with id {id} not found.");
 
-            var hasScreenings = await _dbContext.Screenings.AnyAsync(s => s.HallId == id);
-            if (hasScreenings)
+            var screeningIds = await _dbContext.Screenings
+                .AsNoTracking()
+                .Where(s => s.HallId == id)
+                .Select(s => s.Id)
+                .ToListAsync();
+
+            var graph = await BookingGraphCascade.CountForScreeningIdsAsync(_dbContext, screeningIds);
+            var seatCount = await _dbContext.Seats.CountAsync(s => s.HallId == id);
+
+            return BookingGraphCascade.BuildImpact(
+                hall.Id,
+                hall.Name,
+                ("Projections", graph.ScreeningCount),
+                ("Reservations", graph.ReservationCount),
+                ("Reserved seats", graph.ReservationSeatCount),
+                ("Seats", seatCount));
+        }
+
+        public override async Task DeleteAsync(int id)
+        {
+            var hall = await _dbContext.Halls
+                .Include(h => h.Seats)
+                .FirstOrDefaultAsync(h => h.Id == id)
+                ?? throw new KeyNotFoundException($"Hall with id {id} not found.");
+
+            await using var tx = await _dbContext.Database.BeginTransactionAsync();
+            try
             {
-                throw new ClinetException(
-                    "Cannot delete this hall because it is used in projections. Remove the projections first.");
+                var screeningIds = await _dbContext.Screenings
+                    .Where(s => s.HallId == id)
+                    .Select(s => s.Id)
+                    .ToListAsync();
+
+                await BookingGraphCascade.RemoveScreeningsAsync(
+                    _dbContext,
+                    screeningIds,
+                    paymentIntentId => StripeRefundHelper.TryRefundAsync(_stripeSecretKey, paymentIntentId, _logger));
+
+                // PartnerSeat is Restrict — clear links before seats cascade with the hall.
+                foreach (var seat in hall.Seats)
+                {
+                    seat.PartnerSeatId = null;
+                }
+
+                _dbContext.Halls.Remove(hall);
+                await _dbContext.SaveChangesAsync();
+                await tx.CommitAsync();
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
             }
 
-            _dbContext.Halls.Remove(hall);
-            await _dbContext.SaveChangesAsync();
+            await _analyticsNotifier.NotifyAnalyticsChangedAsync();
         }
 
         public async Task<HallResponse> UpdateSeatLayoutAsync(int hallId, HallSeatLayoutUpdateRequest request)
         {
             if (request.Seats == null || request.Seats.Count == 0)
             {
-                throw new ClinetException("No seat layout was provided.");
+                throw new ClientException("No seat layout was provided.");
             }
 
             var hall = await _dbContext.Halls
@@ -214,12 +276,12 @@ namespace eCommerce.Services
             {
                 if (!byId.TryGetValue(item.SeatId, out var seat))
                 {
-                    throw new ClinetException($"Seat {item.SeatId} does not belong to this hall.");
+                    throw new ClientException($"Seat {item.SeatId} does not belong to this hall.");
                 }
 
                 if (item.SeatType != 0 && item.SeatType != (int)SeatType.Couple)
                 {
-                    throw new ClinetException($"Invalid seat type for seat {seat.RowLabel}{seat.SeatNumber}. Use Regular or Couple only.");
+                    throw new ClientException($"Invalid seat type for seat {seat.RowLabel}{seat.SeatNumber}. Use Regular or Couple only.");
                 }
 
                 if (item.SeatType == 1)
@@ -241,20 +303,20 @@ namespace eCommerce.Services
 
                 if (!rows.TryGetValue(seat.RowLabel, out var rowSeats))
                 {
-                    throw new ClinetException($"Row {seat.RowLabel} was not found.");
+                    throw new ClientException($"Row {seat.RowLabel} was not found.");
                 }
 
                 var index = rowSeats.FindIndex(s => s.Id == seat.Id);
                 if (index < 0 || index >= rowSeats.Count - 1)
                 {
-                    throw new ClinetException(
+                    throw new ClientException(
                         $"Seat {seat.RowLabel}{seat.SeatNumber} cannot be a couple seat — there is no seat to the right.");
                 }
 
                 var partner = rowSeats[index + 1];
                 if (couplePrimaryIds.Contains(partner.Id))
                 {
-                    throw new ClinetException(
+                    throw new ClientException(
                         $"Seat {partner.RowLabel}{partner.SeatNumber} is already marked as a couple seat.");
                 }
 

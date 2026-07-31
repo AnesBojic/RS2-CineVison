@@ -48,7 +48,7 @@ public static class ReservationStatusTransitions
 
         if (!CanTransition(from, to))
         {
-            throw new ClinetException(
+            throw new ClientException(
                 $"Reservation status cannot change from {from} to {to}.");
         }
     }

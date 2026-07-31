@@ -32,6 +32,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuthenticatedUserAccessor, HttpAuthenticatedUserAccessor>();
+builder.Services.AddMemoryCache();
 
 builder.Services.AddControllers(options =>
 {

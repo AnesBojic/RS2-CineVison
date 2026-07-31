@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:jwt_decoder/jwt_decoder.dart';
 
 class AuthProvider extends ChangeNotifier {
+  static AuthProvider? _active;
+
   bool _isAuthenticated = false;
   static String? _accesstoken;
   String? _refreshtoken;
@@ -36,6 +38,7 @@ class AuthProvider extends ChangeNotifier {
   String _baseUrl = '';
 
   AuthProvider() {
+    _active = this;
     _baseUrl = resolveAuthBaseUrl();
   }
 
@@ -231,6 +234,17 @@ class AuthProvider extends ChangeNotifier {
     _userId = null;
     _profileImageBase64 = null;
     notifyListeners();
+  }
+
+  /// Clears tokens when any API call returns 401 (session expired / invalid JWT).
+  static void clearSessionOnUnauthorized() {
+    final active = _active;
+    if (active == null) {
+      _accesstoken = null;
+      _accessTokenDecoded = null;
+      return;
+    }
+    active.logout();
   }
 
   Map<String, String> createHeaders() => {'Content-Type': 'application/json'};

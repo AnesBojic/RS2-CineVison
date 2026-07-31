@@ -24,4 +24,16 @@ public class HallsController : BaseCRUDController<HallResponse, HallSearchObject
     {
         return await _hallService.UpdateSeatLayoutAsync(id, request);
     }
+
+    /// <summary>
+    /// Preview of related records that will be removed if this hall is cascade-deleted.
+    /// </summary>
+    [HttpGet("{id}/DeleteImpact")]
+    [ProducesResponseType(typeof(CascadeDeleteImpactResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CascadeDeleteImpactResponse>> GetDeleteImpact(int id)
+    {
+        var result = await _hallService.GetDeleteImpactAsync(id);
+        return Ok(result);
+    }
 }

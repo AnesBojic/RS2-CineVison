@@ -18,13 +18,39 @@ public sealed class EmailConsumerWorker : BackgroundService
     private const int MaxMessageAttempts = 4;
     private const string RetryHeader = "x-retry-count";
 
-    private readonly IConfiguration _configuration;
     private readonly ILogger<EmailConsumerWorker> _logger;
+    private readonly string _rabbitHost;
+    private readonly int _rabbitPort;
+    private readonly string _rabbitUsername;
+    private readonly string _rabbitPassword;
+    private readonly string _rabbitQueue;
+    private readonly string? _smtpHost;
+    private readonly int _smtpPort;
+    private readonly string? _smtpUser;
+    private readonly string? _smtpPassword;
+    private readonly string _fromEmail;
+    private readonly string _fromName;
+    private readonly bool _smtpUseSsl;
 
     public EmailConsumerWorker(IConfiguration configuration, ILogger<EmailConsumerWorker> logger)
     {
-        _configuration = configuration;
         _logger = logger;
+
+        var rabbit = configuration.GetSection("RabbitMq");
+        _rabbitHost = rabbit["Host"] ?? "localhost";
+        _rabbitPort = int.TryParse(rabbit["Port"], out var rp) ? rp : 5672;
+        _rabbitUsername = rabbit["Username"] ?? "guest";
+        _rabbitPassword = rabbit["Password"] ?? "guest";
+        _rabbitQueue = rabbit["Queue"] ?? "cinevision-emails";
+
+        var smtp = configuration.GetSection("Smtp");
+        _smtpHost = smtp["Host"];
+        _smtpPort = int.TryParse(smtp["Port"], out var sp) ? sp : 587;
+        _smtpUser = smtp["User"];
+        _smtpPassword = smtp["Password"];
+        _fromEmail = smtp["FromEmail"] ?? "no-reply@cinevision.local";
+        _fromName = smtp["FromName"] ?? "CineVision";
+        _smtpUseSsl = bool.TryParse(smtp["UseSsl"], out var ssl) && ssl;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -66,19 +92,12 @@ public sealed class EmailConsumerWorker : BackgroundService
 
     private async Task ConsumeAsync(CancellationToken stoppingToken)
     {
-        var section = _configuration.GetSection("RabbitMq");
-        var host = section["Host"] ?? "localhost";
-        var port = int.TryParse(section["Port"], out var p) ? p : 5672;
-        var username = section["Username"] ?? "guest";
-        var password = section["Password"] ?? "guest";
-        var queue = section["Queue"] ?? "cinevision-emails";
-
         var factory = new ConnectionFactory
         {
-            HostName = host,
-            Port = port,
-            UserName = username,
-            Password = password,
+            HostName = _rabbitHost,
+            Port = _rabbitPort,
+            UserName = _rabbitUsername,
+            Password = _rabbitPassword,
             DispatchConsumersAsync = true,
             AutomaticRecoveryEnabled = true,
             NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
@@ -88,7 +107,7 @@ public sealed class EmailConsumerWorker : BackgroundService
         using var channel = connection.CreateModel();
 
         channel.QueueDeclare(
-            queue: queue,
+            queue: _rabbitQueue,
             durable: true,
             exclusive: false,
             autoDelete: false,
@@ -98,9 +117,9 @@ public sealed class EmailConsumerWorker : BackgroundService
 
         _logger.LogInformation(
             "Email worker connected to RabbitMQ '{Host}:{Port}', listening on queue '{Queue}'.",
-            host,
-            port,
-            queue);
+            _rabbitHost,
+            _rabbitPort,
+            _rabbitQueue);
 
         var consumer = new AsyncEventingBasicConsumer(channel);
         consumer.Received += async (_, ea) =>
@@ -165,7 +184,7 @@ public sealed class EmailConsumerWorker : BackgroundService
 
                 channel.BasicPublish(
                     exchange: string.Empty,
-                    routingKey: queue,
+                    routingKey: _rabbitQueue,
                     basicProperties: props,
                     body: ea.Body);
 
@@ -173,7 +192,7 @@ public sealed class EmailConsumerWorker : BackgroundService
             }
         };
 
-        channel.BasicConsume(queue: queue, autoAck: false, consumer: consumer);
+        channel.BasicConsume(queue: _rabbitQueue, autoAck: false, consumer: consumer);
 
         while (!stoppingToken.IsCancellationRequested && connection.IsOpen)
         {
@@ -188,23 +207,13 @@ public sealed class EmailConsumerWorker : BackgroundService
 
     private async Task SendEmailAsync(EmailMessage message, CancellationToken stoppingToken)
     {
-        var smtp = _configuration.GetSection("Smtp");
-        var smtpHost = smtp["Host"];
-
-        if (string.IsNullOrWhiteSpace(smtpHost))
+        if (string.IsNullOrWhiteSpace(_smtpHost))
         {
             throw new InvalidOperationException("SMTP is not configured (Smtp:Host missing).");
         }
 
-        var smtpPort = int.TryParse(smtp["Port"], out var sp) ? sp : 587;
-        var smtpUser = smtp["User"];
-        var smtpPassword = smtp["Password"];
-        var fromEmail = smtp["FromEmail"] ?? "no-reply@cinevision.local";
-        var fromName = smtp["FromName"] ?? "CineVision";
-        var useSsl = bool.TryParse(smtp["UseSsl"], out var ssl) && ssl;
-
         var mime = new MimeMessage();
-        mime.From.Add(new MailboxAddress(fromName, fromEmail));
+        mime.From.Add(new MailboxAddress(_fromName, _fromEmail));
         mime.To.Add(MailboxAddress.Parse(message.To));
         mime.Subject = message.Subject;
 
@@ -221,12 +230,12 @@ public sealed class EmailConsumerWorker : BackgroundService
         mime.Body = bodyBuilder.ToMessageBody();
 
         using var client = new SmtpClient();
-        var socketOptions = useSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTlsWhenAvailable;
-        await client.ConnectAsync(smtpHost, smtpPort, socketOptions, stoppingToken);
+        var socketOptions = _smtpUseSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTlsWhenAvailable;
+        await client.ConnectAsync(_smtpHost, _smtpPort, socketOptions, stoppingToken);
 
-        if (!string.IsNullOrWhiteSpace(smtpUser))
+        if (!string.IsNullOrWhiteSpace(_smtpUser))
         {
-            await client.AuthenticateAsync(smtpUser, smtpPassword, stoppingToken);
+            await client.AuthenticateAsync(_smtpUser, _smtpPassword, stoppingToken);
         }
 
         await client.SendAsync(mime, stoppingToken);

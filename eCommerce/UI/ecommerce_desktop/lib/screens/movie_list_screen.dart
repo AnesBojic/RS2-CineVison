@@ -137,6 +137,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
       child: DataCard(
         emptyMessage: _movies.isEmpty ? 'No movies found' : null,
         child: StyledDataTable(
+          key: ValueKey(_movies.map((m) => '${m.id}-${m.displayState}').join('|')),
           columns: const [
             DataColumn(label: Text('Movie Title')),
             DataColumn(label: Text('Genre')),
@@ -144,7 +145,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
             DataColumn(label: Text('Duration')),
             DataColumn(label: Text('Release Date')),
             DataColumn(label: Text('Status')),
-            DataColumn(label: Text('Actions')),
+            actionsDataColumn,
           ],
           rows: _movies.map(_buildRow).toList(),
         ),
@@ -169,29 +170,44 @@ class _MovieListScreenState extends State<MovieListScreen> {
         color: isActive ? AppColors.green : AppColors.orange,
         filled: true,
       )),
-      DataCell(Row(children: [
+      actionButtonsCell([
         ActionIconButton(
           icon: Icons.edit_outlined,
           color: AppColors.blue,
+          tooltip: 'Edit',
           onPressed: () => _showMovieDialog(movie: m),
         ),
-        const SizedBox(width: 8),
         ActionIconButton(
           icon: Icons.delete_outline,
           color: AppColors.primary,
+          tooltip: 'Delete',
           onPressed: () => _delete(m),
         ),
-      ])),
+      ]),
     ]);
   }
 
   Future<void> _delete(Movie m) async {
-    final ok = await confirmDelete(context, 'Delete "${m.title}"?');
+    if (m.id == null) return;
+
+    Map<String, dynamic>? impact;
+    try {
+      impact = await _movieProvider.getDeleteImpact(m.id!);
+    } on Exception catch (_) {}
+
+    if (!mounted) return;
+    final ok = await confirmDelete(
+      context,
+      buildCascadeDeleteWarning(
+        subjectLabel: '"${m.title}"',
+        impact: impact,
+      ),
+    );
     if (ok != true || !mounted) return;
     try {
       await _movieProvider.remove(m.id!);
-      showAppSnackBar(context, 'Movie deleted');
-      _load();
+      showAppSnackBar(context, 'Movie and related data deleted');
+      await _load();
     } on ApiClientException catch (e) {
       if (mounted) alertBox(context, 'Cannot delete', e.message);
     } on Exception catch (e) {
@@ -272,7 +288,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
               if (context.mounted) {
                 Navigator.pop(context);
                 showAppSnackBar(this.context, movie == null ? 'Movie added' : 'Movie updated');
-                _load();
+                await _load();
               }
             } on Exception catch (e) {
               setDialogState(() => submitting = false);

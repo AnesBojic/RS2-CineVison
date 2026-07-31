@@ -83,7 +83,7 @@ class _UserListState extends State<UserList> {
             DataColumn(label: Text('Role')),
             DataColumn(label: Text('Date Created')),
             DataColumn(label: Text('Date Modified')),
-            DataColumn(label: Text('Actions')),
+            actionsDataColumn,
           ],
           rows: _users.map(_buildRow).toList(),
         ),
@@ -110,25 +110,23 @@ class _UserListState extends State<UserList> {
       DataCell(RoleBadge(role: (u.role?.isNotEmpty == true) ? u.role! : 'Customer')),
       DataCell(Text(formatDate(u.createdAt))),
       DataCell(Text(formatDate(u.updatedAt))),
-      DataCell(Row(children: [
+      actionButtonsCell([
         ActionIconButton(
           icon: Icons.edit_outlined,
           color: AppColors.blue,
           onPressed: () => _showUserDialog(user: u),
         ),
-        const SizedBox(width: 8),
         ActionIconButton(
           icon: Icons.mail_outline,
           color: AppColors.green,
           onPressed: () => _showEmailDialog(u),
         ),
-        const SizedBox(width: 8),
         ActionIconButton(
           icon: Icons.delete_outline,
           color: AppColors.primary,
           onPressed: () => _delete(u),
         ),
-      ])),
+      ]),
     ]);
   }
 

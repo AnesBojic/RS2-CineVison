@@ -5,6 +5,7 @@ import 'package:ecommerce_desktop/models/notification.dart';
 import 'package:ecommerce_desktop/providers/auth_provider.dart';
 import 'package:ecommerce_desktop/providers/notification_provider.dart';
 import 'package:ecommerce_desktop/screens/profile_screen.dart';
+import 'package:ecommerce_desktop/utils/base64_image_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -77,10 +78,11 @@ class TopBar extends StatelessWidget {
               key: ValueKey(auth.profileImageBase64?.hashCode ?? 0),
               radius: 18,
               backgroundColor: AppColors.inputFill,
-              backgroundImage: auth.profileImageBase64 != null && auth.profileImageBase64!.isNotEmpty
-                  ? MemoryImage(base64Decode(auth.profileImageBase64!))
-                  : null,
-              child: auth.profileImageBase64 == null || auth.profileImageBase64!.isEmpty
+              backgroundImage: () {
+                final bytes = Base64ImageCache.decode(auth.profileImageBase64);
+                return bytes != null ? MemoryImage(bytes) : null;
+              }(),
+              child: Base64ImageCache.decode(auth.profileImageBase64) == null
                   ? Text(
                       _initials(auth.displayName),
                       style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
@@ -233,24 +235,34 @@ class ManagePageLayout extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                  ),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
+              const Spacer(),
               if (toolbar != null) toolbar!,
             ],
           ),
           const SizedBox(height: 20),
           Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                : child,
+            child: Stack(
+              children: [
+                Positioned.fill(child: child),
+                if (isLoading)
+                  Positioned.fill(
+                    child: Container(
+                      color: AppColors.background.withValues(alpha: 0.55),
+                      child: const Center(
+                        child: CircularProgressIndicator(color: AppColors.primary),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
@@ -570,7 +582,7 @@ class ActionIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    final button = Material(
       color: color.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
@@ -583,7 +595,36 @@ class ActionIconButton extends StatelessWidget {
         ),
       ),
     );
+    if (tooltip == null || tooltip!.isEmpty) return button;
+    return Tooltip(message: tooltip!, child: button);
   }
+}
+
+/// Right-aligned actions header for data tables.
+const DataColumn actionsDataColumn = DataColumn(
+  label: Align(
+    alignment: Alignment.centerRight,
+    child: Text('Actions'),
+  ),
+);
+
+/// Right-aligns edit/delete buttons inside a wide Actions cell.
+DataCell actionButtonsCell(List<Widget> buttons) {
+  final children = <Widget>[];
+  for (var i = 0; i < buttons.length; i++) {
+    if (i > 0) children.add(const SizedBox(width: 8));
+    children.add(buttons[i]);
+  }
+  return DataCell(
+    Align(
+      alignment: Alignment.centerRight,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: children,
+      ),
+    ),
+  );
 }
 
 class StyledDataTable extends StatefulWidget {
@@ -626,7 +667,9 @@ class _StyledDataTableState extends State<StyledDataTable> {
             controller: _horizontalController,
             scrollDirection: Axis.horizontal,
             child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: MediaQuery.sizeOf(context).width - 320),
+              constraints: BoxConstraints(
+                minWidth: (MediaQuery.sizeOf(context).width - 320).clamp(900, double.infinity),
+              ),
               child: DividerTheme(
                 data: const DividerThemeData(
                   color: AppColors.tableDivider,
@@ -634,10 +677,13 @@ class _StyledDataTableState extends State<StyledDataTable> {
                   space: 0,
                 ),
                 child: DataTable(
+                  key: ValueKey(widget.rows.length),
                   columns: widget.columns,
                   rows: widget.rows,
                   dividerThickness: 0.5,
                   showBottomBorder: false,
+                  columnSpacing: 24,
+                  horizontalMargin: 16,
                 ),
               ),
             ),
@@ -855,17 +901,19 @@ class RatingChip extends StatelessWidget {
 
 Widget posterThumbnail(String? base64, {double size = 36}) {
   if (base64 != null && base64.isNotEmpty) {
-    try {
+    final bytes = Base64ImageCache.decode(base64);
+    if (bytes != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.memory(
-          base64Decode(base64),
+          bytes,
           width: size,
           height: size,
           fit: BoxFit.cover,
+          gaplessPlayback: true,
         ),
       );
-    } catch (_) {}
+    }
   }
   return Container(
     width: size,
@@ -937,4 +985,38 @@ Future<bool?> confirmDelete(BuildContext context, String message) {
       ],
     ),
   );
+}
+
+/// Builds a cascade-delete warning from a `DeleteImpact` API response.
+String buildCascadeDeleteWarning({
+  required String subjectLabel,
+  Map<String, dynamic>? impact,
+}) {
+  final buffer = StringBuffer();
+  buffer.writeln('Delete $subjectLabel?');
+  buffer.writeln();
+
+  final total = impact?['totalAffectedRows'] as int? ?? 0;
+  final items = impact?['items'];
+  if (total > 0 && items is List && items.isNotEmpty) {
+    buffer.writeln(
+      'Warning: this will permanently cascade-delete $total related row(s):',
+    );
+    for (final item in items) {
+      if (item is! Map) continue;
+      final name = item['entityName']?.toString() ?? 'Related';
+      final count = item['count'] as int? ?? 0;
+      if (count > 0) {
+        buffer.writeln('• $count $name');
+      }
+    }
+    buffer.writeln();
+    buffer.writeln('Children are removed first, then this record.');
+  } else {
+    buffer.writeln(
+      'No related bookings were found. The record will still be removed permanently.',
+    );
+  }
+
+  return buffer.toString().trim();
 }

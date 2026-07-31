@@ -8,6 +8,8 @@ using eCommerce.Model.SearchObjects;
 using eCommerce.Services.Database;
 using eCommerce.Services.MovieStateMachine;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace eCommerce.Services;
 
@@ -15,21 +17,38 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 {
     protected BaseMovieState MovieState { get; }
     private readonly IAuthenticatedUserAccessor _userAccessor;
+    private readonly IAnalyticsNotifier _analyticsNotifier;
+    private readonly string? _stripeSecretKey;
+    private readonly ILogger<MovieService> _logger;
 
     public MovieService(
         ECommerceDbContext dbContext,
         MapsterMapper.IMapper mapper,
         BaseMovieState movieState,
-        IAuthenticatedUserAccessor userAccessor)
+        IAuthenticatedUserAccessor userAccessor,
+        IAnalyticsNotifier analyticsNotifier,
+        IConfiguration configuration,
+        ILogger<MovieService> logger)
         : base(mapper, dbContext)
     {
         MovieState = movieState;
         _userAccessor = userAccessor;
+        _analyticsNotifier = analyticsNotifier;
+        _stripeSecretKey = configuration["Stripe:SecretKey"];
+        _logger = logger;
     }
 
     public override async Task<PageResult<MovieResponse>> GetAllAsync(MovieSearchObject? search = null)
     {
         var result = await base.GetAllAsync(search);
+        if (search?.IncludePoster != true && result.Items != null)
+        {
+            foreach (var item in result.Items)
+            {
+                item.PosterImageBase64 = null;
+            }
+        }
+
         await TryRecordSearchAsync(search);
         return result;
     }
@@ -169,26 +188,61 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         return await state.UpdateAsync(id, request);
     }
 
+    public async Task<CascadeDeleteImpactResponse> GetDeleteImpactAsync(int id)
+    {
+        var movie = await _dbContext.Movies.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id)
+            ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
+
+        var screeningIds = await _dbContext.Screenings
+            .AsNoTracking()
+            .Where(s => s.MovieId == id)
+            .Select(s => s.Id)
+            .ToListAsync();
+
+        var graph = await BookingGraphCascade.CountForScreeningIdsAsync(_dbContext, screeningIds);
+        var reviewCount = await _dbContext.Reviews.CountAsync(r => r.MovieId == id);
+        var assetCount = await _dbContext.Assets.CountAsync(a => a.MovieId == id);
+
+        return BookingGraphCascade.BuildImpact(
+            movie.Id,
+            movie.Title,
+            ("Projections", graph.ScreeningCount),
+            ("Reservations", graph.ReservationCount),
+            ("Reserved seats", graph.ReservationSeatCount),
+            ("Reviews", reviewCount),
+            ("Assets", assetCount));
+    }
+
     public async Task DeleteAsync(int id)
     {
         var entity = await _dbContext.Movies.FindAsync(id)
             ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
 
-        if (await _dbContext.Screenings.AnyAsync(s => s.MovieId == id))
+        await using var tx = await _dbContext.Database.BeginTransactionAsync();
+        try
         {
-            throw new ClinetException(
-                "Cannot delete this movie because it has scheduled projections. Remove the projections first.");
+            var screeningIds = await _dbContext.Screenings
+                .Where(s => s.MovieId == id)
+                .Select(s => s.Id)
+                .ToListAsync();
+
+            await BookingGraphCascade.RemoveScreeningsAsync(
+                _dbContext,
+                screeningIds,
+                paymentIntentId => StripeRefundHelper.TryRefundAsync(_stripeSecretKey, paymentIntentId, _logger));
+
+            // Reviews/Assets cascade via FK; remove root after children that Restrict.
+            _dbContext.Movies.Remove(entity);
+            await _dbContext.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
         }
 
-        if (entity.MovieState == nameof(ActiveMovieState))
-        {
-            await MovieState.GetMovieState(nameof(ActiveMovieState)).DeactivateAsync(id);
-            entity = await _dbContext.Movies.FindAsync(id)
-                ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
-        }
-
-        var state = MovieState.GetMovieState(entity.MovieState);
-        await state.DeleteAsync(id);
+        await _analyticsNotifier.NotifyAnalyticsChangedAsync();
     }
 
     public async Task RegisterViewAsync(int id)
@@ -211,12 +265,12 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 
         if (string.IsNullOrWhiteSpace(request.PosterImageBase64))
         {
-            throw new ClinetException("Poster image is required.");
+            throw new ClientException("Poster image is required.");
         }
 
         if (!ImageContentValidator.TryValidateBase64(request.PosterImageBase64, out _, out var imageError))
         {
-            throw new ClinetException(imageError);
+            throw new ClientException(imageError);
         }
 
         entity.PosterImageBase64 = request.PosterImageBase64;

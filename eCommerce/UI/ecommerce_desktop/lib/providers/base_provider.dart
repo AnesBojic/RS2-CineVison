@@ -34,20 +34,15 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
     var response = await http.get(uri, headers: headers);
 
-    if (isValidResponse(response)) {
-      var data = jsonDecode(response.body);
+    validateResponse(response);
+    var data = jsonDecode(response.body);
 
-      var result = SearchResult<T>();
+    var result = SearchResult<T>();
 
-      result.totalCount = data['totalCount'];
-      result.items = List<T>.from(data["items"].map((e) => fromJson(e)));
+    result.totalCount = data['totalCount'];
+    result.items = List<T>.from(data["items"].map((e) => fromJson(e)));
 
-
-      return result;
-    } else {
-      throw new Exception("Unknown error");
-    }
-    // print("response: ${response.request} ${response.statusCode}, ${response.body}");
+    return result;
   }
 
   Future<T> getById(int id) async {
@@ -120,6 +115,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
       return;
     }
     if (response.statusCode == 401) {
+      AuthProvider.clearSessionOnUnauthorized();
       throw ApiClientException(
         'Your session has expired. Please sign in again.',
       );
@@ -132,7 +128,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
       );
     }
 
-    // 400 Bad Request — business rules (ClinetException), validation, etc.
+    // 400 Bad Request — business rules (ClientException), validation, etc.
     throw ApiClientException(
       parsed ?? 'Request could not be completed. Please try again.',
     );

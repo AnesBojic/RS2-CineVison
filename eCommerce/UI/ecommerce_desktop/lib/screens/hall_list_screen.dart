@@ -94,12 +94,13 @@ class _HallListScreenState extends State<HallListScreen> {
       child: DataCard(
         emptyMessage: _halls.isEmpty ? 'No halls found' : null,
         child: StyledDataTable(
+          key: ValueKey(_halls.map((h) => '${h.id}-${h.status}').join('|')),
           columns: const [
             DataColumn(label: Text('Hall Name')),
             DataColumn(label: Text('Layout')),
             DataColumn(label: Text('Screen Type')),
             DataColumn(label: Text('Status')),
-            DataColumn(label: Text('Actions')),
+            actionsDataColumn,
           ],
           rows: _halls.map(_buildRow).toList(),
         ),
@@ -129,35 +130,50 @@ class _HallListScreenState extends State<HallListScreen> {
         color: hallStatusColor(h.status),
         filled: true,
       )),
-      DataCell(Row(children: [
+      actionButtonsCell([
         ActionIconButton(
           icon: Icons.event_seat_outlined,
           color: AppColors.green,
+          tooltip: 'Seats',
           onPressed: () => _showSeatLayoutDialog(h),
         ),
-        const SizedBox(width: 8),
         ActionIconButton(
           icon: Icons.edit_outlined,
           color: AppColors.blue,
+          tooltip: 'Edit',
           onPressed: () => _showDialog(hall: h),
         ),
-        const SizedBox(width: 8),
         ActionIconButton(
           icon: Icons.delete_outline,
           color: AppColors.primary,
+          tooltip: 'Delete',
           onPressed: () => _delete(h),
         ),
-      ])),
+      ]),
     ]);
   }
 
   Future<void> _delete(Hall h) async {
-    final ok = await confirmDelete(context, 'Delete "${h.name}"?');
+    if (h.id == null) return;
+
+    Map<String, dynamic>? impact;
+    try {
+      impact = await _provider.getDeleteImpact(h.id!);
+    } on Exception catch (_) {}
+
+    if (!mounted) return;
+    final ok = await confirmDelete(
+      context,
+      buildCascadeDeleteWarning(
+        subjectLabel: '"${h.name}"',
+        impact: impact,
+      ),
+    );
     if (ok != true || !mounted) return;
     try {
       await _provider.remove(h.id!);
-      showAppSnackBar(context, 'Hall deleted');
-      _load();
+      showAppSnackBar(context, 'Hall and related data deleted');
+      await _load();
     } on ApiClientException catch (e) {
       if (mounted) showAppSnackBar(context, e.message, isError: true);
     } on Exception catch (e) {
@@ -203,7 +219,7 @@ class _HallListScreenState extends State<HallListScreen> {
                 if (context.mounted) {
                   Navigator.pop(context);
                   showAppSnackBar(this.context, 'Seat layout saved');
-                  _load();
+                  await _load();
                 }
               } on Exception catch (e) {
                 setDialogState(() => submitting = false);
@@ -269,7 +285,7 @@ class _HallListScreenState extends State<HallListScreen> {
               if (context.mounted) {
                 Navigator.pop(context);
                 showAppSnackBar(this.context, hall == null ? 'Hall added' : 'Hall updated');
-                _load();
+                await _load();
               }
             } on Exception catch (e) {
               setDialogState(() => submitting = false);

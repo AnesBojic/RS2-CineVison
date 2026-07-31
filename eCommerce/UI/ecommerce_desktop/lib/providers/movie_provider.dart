@@ -12,12 +12,16 @@ class MovieProvider extends BaseProvider<Movie> {
   @override
   Movie fromJson(data) => Movie.fromJson(data);
 
-  /// List fetch — strips poster base64 by default to keep responses lightweight.
+  /// List fetch — asks API for posters only when [includePoster] is true.
   Future<SearchResult<Movie>> get({
     dynamic filter,
     bool includePoster = false,
   }) async {
-    final result = await super.get(filter: filter);
+    final Map<String, dynamic> query = {
+      if (filter is Map) ...Map<String, dynamic>.from(filter),
+      'includePoster': includePoster,
+    };
+    final result = await super.get(filter: query);
     if (!includePoster && result.items != null) {
       result.items = result.items!.map((m) => m.withoutPoster()).toList();
     }
@@ -52,4 +56,12 @@ class MovieProvider extends BaseProvider<Movie> {
   }
 
   Future<Movie> getWithPoster(int id) => getById(id);
+
+  Future<Map<String, dynamic>> getDeleteImpact(int id) async {
+    final baseUrl = BaseProvider.baseUrl ?? 'http://localhost:5126/';
+    final uri = Uri.parse('${baseUrl}Movies/$id/DeleteImpact');
+    final response = await http.get(uri, headers: createHeaders());
+    validateResponse(response);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
 }

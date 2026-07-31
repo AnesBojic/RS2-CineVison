@@ -15,5 +15,8 @@ namespace eCommerce.Services
 
         /// <summary>Sets or clears the movie poster image.</summary>
         Task<MovieResponse> UpdatePosterAsync(int id, MoviePosterUpdateRequest request);
+
+        /// <summary>Preview of related rows removed by cascade delete.</summary>
+        Task<CascadeDeleteImpactResponse> GetDeleteImpactAsync(int id);
     }
 }

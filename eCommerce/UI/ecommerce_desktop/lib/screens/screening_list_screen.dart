@@ -57,6 +57,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
         'pageSize': _pageSize,
         'includeTotalCount': true,
         'includeSeatStats': false,
+        'includePoster': true,
       });
 
       if (!mounted) return;
@@ -165,13 +166,16 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
               emptyMessage:
                   _filtered.isEmpty ? 'No projections found' : null,
               child: StyledDataTable(
+                key: ValueKey(
+                  '${_page}_${_items.map((s) => '${s.id}-${s.isActive}').join('|')}',
+                ),
                 columns: const [
                   DataColumn(label: Text('Movie')),
                   DataColumn(label: Text('Hall')),
                   DataColumn(label: Text('Date')),
                   DataColumn(label: Text('Time')),
                   DataColumn(label: Text('Price')),
-                  DataColumn(label: Text('Actions')),
+                  actionsDataColumn,
                 ],
                 rows: _filtered.map(_buildRow).toList(),
               ),
@@ -224,32 +228,53 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
       DataCell(Text(formatDate(s.startTime))),
       DataCell(StatusBadge(label: formatTime(s.startTime), color: AppColors.green, filled: true)),
       DataCell(Text(formatCurrency(s.basePrice))),
-      DataCell(Row(children: [
+      actionButtonsCell([
         ActionIconButton(
           icon: Icons.edit_outlined,
           color: AppColors.blue,
+          tooltip: 'Edit',
           onPressed: () => _showDialog(screening: s),
         ),
-        const SizedBox(width: 8),
         ActionIconButton(
           icon: Icons.delete_outline,
           color: AppColors.primary,
+          tooltip: 'Delete',
           onPressed: () => _delete(s),
         ),
-      ])),
+      ]),
     ]);
   }
 
   Future<void> _delete(Screening s) async {
-    final ok = await confirmDelete(context, 'Delete this projection?');
+    if (s.id == null) return;
+
+    Map<String, dynamic>? impact;
+    try {
+      impact = await _provider.getDeleteImpact(s.id!);
+    } on Exception catch (_) {}
+
+    if (!mounted) return;
+    final label = s.movieTitle?.isNotEmpty == true
+        ? 'projection "${s.movieTitle}"'
+        : 'this projection';
+    final ok = await confirmDelete(
+      context,
+      buildCascadeDeleteWarning(subjectLabel: label, impact: impact),
+    );
     if (ok != true || !mounted) return;
     try {
       await _provider.remove(s.id!);
-      showAppSnackBar(context, 'Projection deleted');
-      if (_items.length == 1 && _page > 1) {
-        _page--;
-      }
-      _load();
+      if (!mounted) return;
+      showAppSnackBar(context, 'Projection and related bookings deleted');
+      // Optimistically remove so UI updates even before reload finishes.
+      setState(() {
+        _items = _items.where((x) => x.id != s.id).toList();
+        _totalCount = (_totalCount - 1).clamp(0, 1 << 30);
+        if (_items.isEmpty && _page > 1) {
+          _page--;
+        }
+      });
+      await _load();
     } on Exception catch (e) {
       if (mounted) alertBox(context, 'Error', e.toString());
     }
@@ -331,7 +356,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
               if (context.mounted) {
                 Navigator.pop(context);
                 showAppSnackBar(this.context, screening == null ? 'Projection added' : 'Projection updated');
-                _load();
+                await _load();
               }
             } on ApiClientException catch (e) {
               setDialogState(() => submitting = false);

@@ -16,7 +16,11 @@ class MovieProvider extends BaseProvider<Movie> {
     dynamic filter,
     bool includePoster = false,
   }) async {
-    final result = await super.get(filter: filter);
+    final Map<String, dynamic> query = {
+      if (filter is Map) ...Map<String, dynamic>.from(filter),
+      'includePoster': includePoster,
+    };
+    final result = await super.get(filter: query);
     if (!includePoster && result.items != null) {
       result.items = result.items!.map((m) => m.withoutPoster()).toList();
     }

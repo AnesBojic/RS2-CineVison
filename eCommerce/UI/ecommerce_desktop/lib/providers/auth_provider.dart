@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class AuthProvider extends ChangeNotifier {
+  static AuthProvider? _active;
+
   bool _isAuthenticated = false;
   static String? _accesstoken;
   String? _refreshtoken;
@@ -34,6 +36,7 @@ class AuthProvider extends ChangeNotifier {
   String _baseUrl = '';
 
   AuthProvider() {
+    _active = this;
     _baseUrl = const String.fromEnvironment(
       'BASE_URL',
       defaultValue: 'http://localhost:5126/Access',
@@ -193,6 +196,17 @@ class AuthProvider extends ChangeNotifier {
   void logout() {
     _clearSession();
     notifyListeners();
+  }
+
+  /// Clears tokens when any API call returns 401 (session expired / invalid JWT).
+  static void clearSessionOnUnauthorized() {
+    final active = _active;
+    if (active == null) {
+      _accesstoken = null;
+      return;
+    }
+    active._clearSession();
+    active.notifyListeners();
   }
 
   void _clearSession() {

@@ -102,6 +102,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
       return;
     }
     if (response.statusCode == 401) {
+      AuthProvider.clearSessionOnUnauthorized();
       throw ApiClientException(
         'Your session has expired. Please sign in again.',
       );
@@ -114,7 +115,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
       );
     }
 
-    // 400 Bad Request — business rules (ClinetException), validation, etc.
+    // 400 Bad Request — business rules (ClientException), validation, etc.
     throw ApiClientException(
       parsed ?? 'Request could not be completed. Please try again.',
     );

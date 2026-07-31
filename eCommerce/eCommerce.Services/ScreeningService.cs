@@ -12,8 +12,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using eCommerce.Model.Messages;
-using eCommerce.Services.ReservationStateMachine;
-using Stripe;
 using eCommerce.Services;
 
 namespace eCommerce.Services
@@ -22,9 +20,8 @@ namespace eCommerce.Services
     {
         private readonly IAnalyticsNotifier _analyticsNotifier;
         private readonly IEmailService _emailService;
-        private readonly IConfiguration _configuration;
+        private readonly string? _stripeSecretKey;
         private readonly ILogger<ScreeningService> _logger;
-        private readonly IAuthenticatedUserAccessor _userAccessor;
         private readonly INotificationService _notificationService;
 
         public ScreeningService(
@@ -36,15 +33,13 @@ namespace eCommerce.Services
             IEmailService emailService,
             IConfiguration configuration,
             ILogger<ScreeningService> logger,
-            IAuthenticatedUserAccessor userAccessor,
             INotificationService notificationService)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
             _analyticsNotifier = analyticsNotifier;
             _emailService = emailService;
-            _configuration = configuration;
+            _stripeSecretKey = configuration["Stripe:SecretKey"];
             _logger = logger;
-            _userAccessor = userAccessor;
             _notificationService = notificationService;
         }
 
@@ -57,8 +52,10 @@ namespace eCommerce.Services
         public override async Task<PageResult<ScreeningResponse>> GetAllAsync(ScreeningSearchObject? search = null)
         {
             search ??= new ScreeningSearchObject();
+            PagingLimits.Normalize(search);
 
             var includeSeatStats = search.IncludeSeatStats == true;
+            var includePoster = search.IncludePoster == true;
 
             IQueryable<Screening> query = _dbContext.Screenings
                 .AsNoTracking()
@@ -97,29 +94,29 @@ namespace eCommerce.Services
                 query = query.Where(s => s.StartTime >= now);
             }
 
+            // Soft-deleted projections stay in DB but are hidden from normal lists.
+            if (search.IncludeInactive != true)
+            {
+                query = query.Where(s => s.IsActive);
+            }
+
             int? totalCount = null;
             if (search.IncludeTotalCount ?? false)
             {
                 totalCount = await query.CountAsync();
             }
 
-            query = query.OrderBy(s => s.StartTime);
-
-            if (search.Page.HasValue && search.PageSize.HasValue)
-            {
-                query = query.Skip((search.Page.Value - 1) * search.PageSize.Value).Take(search.PageSize.Value);
-            }
-            else if (search.PageSize.HasValue)
-            {
-                query = query.Take(search.PageSize.Value);
-            }
+            query = query.OrderByDescending(s => s.StartTime)
+                .Skip((search.Page!.Value - 1) * search.PageSize!.Value)
+                .Take(search.PageSize.Value);
 
             var entities = await query.ToListAsync();
             var items = entities.Select(s => MapToResponse(
                 s,
                 search.IncludeMovie == true,
                 search.IncludeHall == true,
-                includeSeatStats)).ToList();
+                includeSeatStats,
+                includePoster)).ToList();
 
             return new PageResult<ScreeningResponse>
             {
@@ -138,7 +135,7 @@ namespace eCommerce.Services
                 .FirstOrDefaultAsync(s => s.Id == id)
                 ?? throw new KeyNotFoundException($"Screening with id {id} not found.");
 
-            return MapToResponse(entity, includeMovie: true, includeHall: true, includeSeatStats: true);
+            return MapToResponse(entity, includeMovie: true, includeHall: true, includeSeatStats: true, includePoster: true);
         }
 
         public override async Task<ScreeningResponse> InsertAsync(ScreeningInsertRequest request)
@@ -150,14 +147,14 @@ namespace eCommerce.Services
             }
 
             var movie = await _dbContext.Movies.FindAsync(request.MovieId)
-                ?? throw new ClinetException($"Movie {request.MovieId} was not found.");
+                ?? throw new ClientException($"Movie {request.MovieId} was not found.");
 
             var hall = await _dbContext.Halls.FindAsync(request.HallId)
-                ?? throw new ClinetException($"Hall {request.HallId} was not found.");
+                ?? throw new ClientException($"Hall {request.HallId} was not found.");
 
             if (hall.Status != HallStatus.Active)
             {
-                throw new ClinetException($"Hall '{hall.Name}' is not available (status: {hall.Status}). Projections can only be scheduled in active halls.");
+                throw new ClientException($"Hall '{hall.Name}' is not available (status: {hall.Status}). Projections can only be scheduled in active halls.");
             }
 
             var endTime = request.StartTime.AddMinutes(movie.DurationMinutes);
@@ -196,14 +193,14 @@ namespace eCommerce.Services
                 ?? throw new KeyNotFoundException($"Screening with id {id} not found.");
 
             var movie = await _dbContext.Movies.FindAsync(request.MovieId)
-                ?? throw new ClinetException($"Movie {request.MovieId} was not found.");
+                ?? throw new ClientException($"Movie {request.MovieId} was not found.");
 
             var hall = await _dbContext.Halls.FindAsync(request.HallId)
-                ?? throw new ClinetException($"Hall {request.HallId} was not found.");
+                ?? throw new ClientException($"Hall {request.HallId} was not found.");
 
             if (hall.Status != HallStatus.Active)
             {
-                throw new ClinetException($"Hall '{hall.Name}' is not available (status: {hall.Status}). Projections can only be scheduled in active halls.");
+                throw new ClientException($"Hall '{hall.Name}' is not available (status: {hall.Status}). Projections can only be scheduled in active halls.");
             }
 
             var endTime = request.StartTime.AddMinutes(movie.DurationMinutes);
@@ -226,11 +223,32 @@ namespace eCommerce.Services
             return await GetByIdAsync(entity.Id);
         }
 
+        public async Task<CascadeDeleteImpactResponse> GetDeleteImpactAsync(int id)
+        {
+            var screening = await _dbContext.Screenings
+                .AsNoTracking()
+                .Include(s => s.Movie)
+                .FirstOrDefaultAsync(s => s.Id == id)
+                ?? throw new KeyNotFoundException($"Screening with id {id} not found.");
+
+            var graph = await BookingGraphCascade.CountForScreeningIdsAsync(_dbContext, new[] { id });
+            var display = screening.Movie?.Title ?? $"Projection #{id}";
+
+            return BookingGraphCascade.BuildImpact(
+                screening.Id,
+                display,
+                ("Reservations", graph.ReservationCount),
+                ("Reserved seats", graph.ReservationSeatCount));
+        }
+
         public override async Task DeleteAsync(int id)
         {
-            // Soft-cancel the projection: keep reservation rows (Cancelled + audit), free seats,
-            // refund paid bookings, and deactivate the screening (no hard delete of bookings).
+            // Hard cascade: refund paid bookings, notify customers, then delete children then screening.
             await using var tx = await _dbContext.Database.BeginTransactionAsync();
+            List<Reservation> toNotify;
+            string movieTitle;
+            string hallName;
+            DateTime startTime;
             try
             {
                 var screening = await _dbContext.Screenings
@@ -244,85 +262,51 @@ namespace eCommerce.Services
                     .ThenInclude(rs => rs.Seat)
                     .ToListAsync();
 
-                var movieTitle = await _dbContext.Movies
+                movieTitle = await _dbContext.Movies
                     .Where(m => m.Id == screening.MovieId)
                     .Select(m => m.Title)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync() ?? string.Empty;
 
-                var hallName = await _dbContext.Halls
+                hallName = await _dbContext.Halls
                     .Where(h => h.Id == screening.HallId)
                     .Select(h => h.Name)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync() ?? string.Empty;
 
-                var actorUserId = _userAccessor.GetUserId();
-                var seatsToFree = new List<ReservationSeat>();
-                var justCancelled = new List<Reservation>();
+                startTime = screening.StartTime;
+                toNotify = reservations
+                    .Where(r => r.Status != ReservationStatus.Cancelled)
+                    .ToList();
 
-                foreach (var reservation in reservations)
-                {
-                    if (reservation.Status == ReservationStatus.Cancelled)
-                    {
-                        continue;
-                    }
-
-                    if (reservation.Status == ReservationStatus.Paid &&
-                        !string.IsNullOrWhiteSpace(reservation.PaymentTransactionId))
-                    {
-                        await TryRefundStripeAsync(reservation.PaymentTransactionId);
-                    }
-
-                    if (!ReservationStatusTransitions.CanTransition(reservation.Status, ReservationStatus.Cancelled))
-                    {
-                        continue;
-                    }
-
-                    ReservationStatusTransitions.Apply(
-                        reservation,
-                        ReservationStatus.Cancelled,
-                        cancelledByUserId: actorUserId,
-                        cancellationReason: "Screening cancelled by staff");
-
-                    seatsToFree.AddRange(reservation.ReservationSeats);
-                    justCancelled.Add(reservation);
-                }
-
-                if (seatsToFree.Count > 0)
-                {
-                    _dbContext.ReservationSeats.RemoveRange(seatsToFree);
-                }
-
-                screening.IsActive = false;
-                screening.UpdatedAt = DateTime.UtcNow;
+                await BookingGraphCascade.RemoveScreeningsAsync(
+                    _dbContext,
+                    new[] { id },
+                    paymentIntentId => StripeRefundHelper.TryRefundAsync(_stripeSecretKey, paymentIntentId, _logger));
 
                 await _dbContext.SaveChangesAsync();
                 await tx.CommitAsync();
-
-                await QueueCancellationEmailsAsync(
-                    justCancelled,
-                    movieTitle ?? string.Empty,
-                    hallName ?? string.Empty,
-                    screening.StartTime);
-
-                foreach (var reservation in justCancelled)
-                {
-                    try
-                    {
-                        await _notificationService.CreateAsync(
-                            reservation.UserId,
-                            "Screening cancelled",
-                            $"Your booking {reservation.ReservationNumber} was cancelled because the projection was removed by staff.",
-                            "Cancellation");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to notify user {UserId} about screening cancellation.", reservation.UserId);
-                    }
-                }
             }
             catch
             {
                 await tx.RollbackAsync();
                 throw;
+            }
+
+            await QueueCancellationEmailsAsync(toNotify, movieTitle, hallName, startTime);
+
+            foreach (var reservation in toNotify)
+            {
+                try
+                {
+                    await _notificationService.CreateAsync(
+                        reservation.UserId,
+                        "Screening cancelled",
+                        $"Your booking {reservation.ReservationNumber} was cancelled because the projection was removed by staff.",
+                        "Cancellation");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to notify user {UserId} about screening cancellation.", reservation.UserId);
+                }
             }
 
             await _analyticsNotifier.NotifyAnalyticsChangedAsync();
@@ -339,7 +323,7 @@ namespace eCommerce.Services
         {
             if (end <= start)
             {
-                throw new ClinetException("Screening end time must be after start time.");
+                throw new ClientException("Screening end time must be after start time.");
             }
 
             var query = _dbContext.Screenings.AsNoTracking()
@@ -360,33 +344,8 @@ namespace eCommerce.Services
 
             if (conflict != null)
             {
-                throw new ClinetException(
+                throw new ClientException(
                     $"Hall already has screening #{conflict.Id} from {conflict.StartTime:u} to {conflict.EndTime:u} (UTC). Choose another time or hall.");
-            }
-        }
-
-        private async Task TryRefundStripeAsync(string paymentIntentId)
-        {
-            try
-            {
-                var secretKey = _configuration["Stripe:SecretKey"];
-                if (string.IsNullOrWhiteSpace(secretKey))
-                {
-                    _logger.LogWarning("Stripe secret key missing; cannot refund payment intent {PaymentIntentId}.", paymentIntentId);
-                    return;
-                }
-
-                StripeConfiguration.ApiKey = secretKey;
-                var refundService = new RefundService();
-                await refundService.CreateAsync(new RefundCreateOptions
-                {
-                    PaymentIntent = paymentIntentId
-                });
-            }
-            catch (Exception ex)
-            {
-                // Deleting a screening should not fail just because Stripe refund fails.
-                _logger.LogWarning(ex, "Stripe refund failed for PaymentIntent {PaymentIntentId}.", paymentIntentId);
             }
         }
 
@@ -512,11 +471,12 @@ namespace eCommerce.Services
             Screening s,
             bool includeMovie,
             bool includeHall,
-            bool includeSeatStats)
+            bool includeSeatStats,
+            bool includePoster = false)
         {
             var response = _mapper.Map<ScreeningResponse>(s);
             response.MovieTitle = s.Movie?.Title ?? string.Empty;
-            response.MoviePosterBase64 = s.Movie?.PosterImageBase64;
+            response.MoviePosterBase64 = includePoster ? s.Movie?.PosterImageBase64 : null;
             response.HallName = s.Hall?.Name ?? string.Empty;
 
             if (includeSeatStats)

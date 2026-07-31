@@ -16,7 +16,7 @@ namespace eCommerce.Services
     public class RabbitMqEmailService : IEmailService
     {
         private readonly IRabbitMqConnection _connection;
-        private readonly IConfiguration _configuration;
+        private readonly string _queue;
         private readonly ILogger<RabbitMqEmailService> _logger;
 
         public RabbitMqEmailService(
@@ -25,20 +25,18 @@ namespace eCommerce.Services
             ILogger<RabbitMqEmailService> logger)
         {
             _connection = connection;
-            _configuration = configuration;
+            _queue = configuration["RabbitMq:Queue"] ?? "cinevision-emails";
             _logger = logger;
         }
 
         public Task QueueEmailAsync(EmailMessage message)
         {
-            var queue = _configuration["RabbitMq:Queue"] ?? "cinevision-emails";
-
             try
             {
                 using var channel = _connection.CreateChannel();
 
                 channel.QueueDeclare(
-                    queue: queue,
+                    queue: _queue,
                     durable: true,
                     exclusive: false,
                     autoDelete: false,
@@ -53,7 +51,7 @@ namespace eCommerce.Services
 
                 channel.BasicPublish(
                     exchange: string.Empty,
-                    routingKey: queue,
+                    routingKey: _queue,
                     basicProperties: properties,
                     body: body);
 
@@ -61,7 +59,7 @@ namespace eCommerce.Services
                     "Queued email to {To} with subject '{Subject}' on queue '{Queue}'.",
                     message.To,
                     message.Subject,
-                    queue);
+                    _queue);
             }
             catch (Exception ex)
             {

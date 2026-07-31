@@ -50,6 +50,7 @@ namespace eCommerce.Services
         public override async Task<PageResult<ReviewResponse>> GetAllAsync(ReviewSearchObject? search = null)
         {
             search ??= new ReviewSearchObject();
+            PagingLimits.Normalize(search);
 
             IQueryable<Review> query = _dbContext.Reviews
                 .AsNoTracking()
@@ -71,16 +72,9 @@ namespace eCommerce.Services
                 totalCount = await query.CountAsync();
             }
 
-            query = query.OrderByDescending(r => r.CreatedAt);
-
-            if (search.Page.HasValue && search.PageSize.HasValue)
-            {
-                query = query.Skip((search.Page.Value - 1) * search.PageSize.Value).Take(search.PageSize.Value);
-            }
-            else if (search.PageSize.HasValue)
-            {
-                query = query.Take(search.PageSize.Value);
-            }
+            query = query.OrderByDescending(r => r.CreatedAt)
+                .Skip((search.Page!.Value - 1) * search.PageSize!.Value)
+                .Take(search.PageSize.Value);
 
             var entities = await query.ToListAsync();
 
@@ -117,19 +111,19 @@ namespace eCommerce.Services
             var movieExists = await _dbContext.Movies.AnyAsync(m => m.Id == request.MovieId);
             if (!movieExists)
             {
-                throw new ClinetException($"Movie {request.MovieId} was not found.");
+                throw new ClientException($"Movie {request.MovieId} was not found.");
             }
 
             var alreadyReviewed = await _dbContext.Reviews
                 .AnyAsync(r => r.UserId == userId && r.MovieId == request.MovieId);
             if (alreadyReviewed)
             {
-                throw new ClinetException("You have already reviewed this movie.");
+                throw new ClientException("You have already reviewed this movie.");
             }
 
             if (!await UserCanReviewMovieAsync(userId, request.MovieId))
             {
-                throw new ClinetException(
+                throw new ClientException(
                     "You can only review a movie after attending a paid or confirmed screening.");
             }
 
@@ -166,7 +160,7 @@ namespace eCommerce.Services
 
             if (review.UserId != userId)
             {
-                throw new ClinetException("You can only edit your own review.");
+                throw new ClientException("You can only edit your own review.");
             }
 
             review.Rating = request.Rating;
@@ -191,7 +185,7 @@ namespace eCommerce.Services
             // Users may remove their own review; administrators may remove any review.
             if (review.UserId != userId && !_userAccessor.IsInRole(RoleNames.Admin))
             {
-                throw new ClinetException("You can only delete your own review.");
+                throw new ClientException("You can only delete your own review.");
             }
 
             _dbContext.Reviews.Remove(review);

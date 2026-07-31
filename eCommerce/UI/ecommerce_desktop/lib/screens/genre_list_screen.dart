@@ -64,7 +64,9 @@ class _GenreListScreenState extends State<GenreListScreen> {
     if (ok != true || item.id == null) return;
     try {
       await _provider.remove(item.id!);
+      if (!mounted) return;
       showAppSnackBar(context, 'Genre deleted');
+      setState(() => _items = _items.where((x) => x.id != item.id).toList());
       await _load();
     } on Exception catch (e) {
       if (mounted) showAppSnackBar(context, e.toString(), isError: true);
@@ -155,12 +157,10 @@ class _GenreListScreenState extends State<GenreListScreen> {
       isLoading: _loading,
       toolbar: Row(
         children: [
-          Expanded(
-            child: SearchField(
-              controller: _searchController,
-              hint: 'Search genres',
-              onSubmitted: (_) => _load(),
-            ),
+          SearchField(
+            controller: _searchController,
+            hint: 'Search genres',
+            onSubmitted: (_) => _load(),
           ),
           const SizedBox(width: 12),
           PrimaryButton(label: 'Refresh', onPressed: _load),

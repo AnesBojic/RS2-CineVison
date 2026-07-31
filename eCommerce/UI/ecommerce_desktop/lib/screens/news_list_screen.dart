@@ -65,6 +65,8 @@ class _NewsListScreenState extends State<NewsListScreen> {
 
     try {
       await _provider.remove(item.id!);
+      if (!mounted) return;
+      setState(() => _items = _items.where((x) => x.id != item.id).toList());
       await _load();
     } on Exception catch (e) {
       if (mounted) alertBox(context, 'Error', e.toString());
@@ -162,12 +164,10 @@ class _NewsListScreenState extends State<NewsListScreen> {
       isLoading: _loading,
       toolbar: Row(
         children: [
-          Expanded(
-            child: SearchField(
-              controller: _searchController,
-              hint: 'Search by title',
-              onSubmitted: (_) => _load(),
-            ),
+          SearchField(
+            controller: _searchController,
+            hint: 'Search by title',
+            onSubmitted: (_) => _load(),
           ),
           const SizedBox(width: 12),
           PrimaryButton(label: 'Refresh', onPressed: _load),
@@ -184,7 +184,7 @@ class _NewsListScreenState extends State<NewsListScreen> {
                 final item = _items[index];
                 final published = item.publishedAt?.toLocal();
                 return Card(
-                  color: AppColors.surface,
+                  color: AppColors.card,
                   child: ListTile(
                     title: Text(item.title ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: Text(

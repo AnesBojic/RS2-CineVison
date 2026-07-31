@@ -32,9 +32,19 @@ namespace eCommerce.Model.SearchObjects
         public bool? IncludeHall { get; set; }
 
         /// <summary>
+        /// When true, includes MoviePosterBase64 on list items. Default false.
+        /// </summary>
+        public bool? IncludePoster { get; set; }
+
+        /// <summary>
         /// When true, loads hall seats and reservation seats to compute availability.
         /// Leave false for admin list views to keep queries fast.
         /// </summary>
         public bool? IncludeSeatStats { get; set; }
+
+        /// <summary>
+        /// When true, includes soft-cancelled (IsActive=false) projections. Default false.
+        /// </summary>
+        public bool? IncludeInactive { get; set; }
     }
 }

@@ -25,5 +25,10 @@ namespace eCommerce.Model.SearchObjects
         public bool? IncludeGenre { get; set; }
 
         public bool? IncludeAssets { get; set; }
+
+        /// <summary>
+        /// When true, list items include PosterImageBase64. Default false keeps list payloads small.
+        /// </summary>
+        public bool? IncludePoster { get; set; }
     }
 }

@@ -17,7 +17,8 @@ namespace eCommerce.Services
     public abstract class BaseCRUDService<TEntity, TResponse, TSearch, TInsertRequest, TUpdateRequest>
         : BaseReadService<TEntity, TResponse, TSearch>
         where TEntity : class
-        where TSearch : BaseSearchObject
+        where TResponse : class
+        where TSearch : BaseSearchObject, new()
     {
 
         protected readonly IValidator<TInsertRequest> _insertValidator;

@@ -10,5 +10,8 @@ namespace eCommerce.Services
         /// Returns the full seat map of the screening's hall, flagging which seats are already taken.
         /// </summary>
         Task<List<ScreeningSeatResponse>> GetSeatsAsync(int screeningId);
+
+        /// <summary>Preview of related rows removed by cascade delete.</summary>
+        Task<CascadeDeleteImpactResponse> GetDeleteImpactAsync(int id);
     }
 }

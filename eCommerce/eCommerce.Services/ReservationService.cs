@@ -21,7 +21,8 @@ namespace eCommerce.Services
     public class ReservationService : BaseReadService<Reservation, ReservationResponse, ReservationSearchObject>, IReservationService
     {
         private readonly IAuthenticatedUserAccessor _userAccessor;
-        private readonly IConfiguration _configuration;
+        private readonly string _stripeSecretKey;
+        private readonly string _stripePublishableKey;
         private readonly IEmailService _emailService;
         private readonly ILogger<ReservationService> _logger;
         private readonly IAnalyticsNotifier _analyticsNotifier;
@@ -39,7 +40,10 @@ namespace eCommerce.Services
             : base(mapper, dbContext)
         {
             _userAccessor = userAccessor;
-            _configuration = configuration;
+            _stripeSecretKey = configuration["Stripe:SecretKey"]
+                ?? throw new InvalidOperationException("Stripe secret key is not configured.");
+            _stripePublishableKey = configuration["Stripe:PublishableKey"]
+                ?? throw new InvalidOperationException("Stripe publishable key is not configured.");
             _emailService = emailService;
             _logger = logger;
             _analyticsNotifier = analyticsNotifier;
@@ -58,6 +62,7 @@ namespace eCommerce.Services
         public override async Task<PageResult<ReservationResponse>> GetAllAsync(ReservationSearchObject? search = null)
         {
             search ??= new ReservationSearchObject();
+            PagingLimits.Normalize(search);
 
             var userId = _userAccessor.GetUserId();
             if (!userId.HasValue)
@@ -92,16 +97,9 @@ namespace eCommerce.Services
                 totalCount = await query.CountAsync();
             }
 
-            query = query.OrderByDescending(r => r.ReservationDate);
-
-            if (search.Page.HasValue && search.PageSize.HasValue)
-            {
-                query = query.Skip((search.Page.Value - 1) * search.PageSize.Value).Take(search.PageSize.Value);
-            }
-            else if (search.PageSize.HasValue)
-            {
-                query = query.Take(search.PageSize.Value);
-            }
+            query = query.OrderByDescending(r => r.ReservationDate)
+                .Skip((search.Page!.Value - 1) * search.PageSize!.Value)
+                .Take(search.PageSize.Value);
 
             var entities = await query.ToListAsync();
 
@@ -148,7 +146,7 @@ namespace eCommerce.Services
             var seatIds = (request.SeatIds ?? new List<int>()).Distinct().ToList();
             if (seatIds.Count == 0)
             {
-                throw new ClinetException("No seats were selected.");
+                throw new ClientException("No seats were selected.");
             }
 
             var paymentIntentId = string.IsNullOrWhiteSpace(request.PaymentIntentId)
@@ -163,7 +161,7 @@ namespace eCommerce.Services
                 {
                     if (existing.UserId != userId && !IsAdminOrStaff())
                     {
-                        throw new ClinetException("This payment was already used for another booking.");
+                        throw new ClientException("This payment was already used for another booking.");
                     }
 
                     return await GetByIdAsync(existing.Id);
@@ -176,16 +174,16 @@ namespace eCommerce.Services
                 var screening = await _dbContext.Screenings
                     .Include(s => s.Hall).ThenInclude(h => h.Seats)
                     .FirstOrDefaultAsync(s => s.Id == request.ScreeningId)
-                    ?? throw new ClinetException($"Screening {request.ScreeningId} was not found.");
+                    ?? throw new ClientException($"Screening {request.ScreeningId} was not found.");
 
                 if (!screening.IsActive)
                 {
-                    throw new ClinetException("This screening is not available for booking.");
+                    throw new ClientException("This screening is not available for booking.");
                 }
 
                 if (screening.StartTime <= DateTime.UtcNow)
                 {
-                    throw new ClinetException("This screening has already started.");
+                    throw new ClientException("This screening has already started.");
                 }
 
                 var hallSeats = screening.Hall.Seats.ToDictionary(s => s.Id);
@@ -194,7 +192,7 @@ namespace eCommerce.Services
                 {
                     if (!hallSeats.TryGetValue(seatId, out var seat) || !seat.IsActive)
                     {
-                        throw new ClinetException($"Seat {seatId} does not belong to this screening's hall or is not available.");
+                        throw new ClientException($"Seat {seatId} does not belong to this screening's hall or is not available.");
                     }
 
                     expandedSeatIds.Add(seatId);
@@ -202,7 +200,7 @@ namespace eCommerce.Services
                     {
                         if (!seat.PartnerSeatId.HasValue)
                         {
-                            throw new ClinetException($"Couple seat {seat.RowLabel}{seat.SeatNumber} is not configured correctly.");
+                            throw new ClientException($"Couple seat {seat.RowLabel}{seat.SeatNumber} is not configured correctly.");
                         }
 
                         expandedSeatIds.Add(seat.PartnerSeatId.Value);
@@ -217,7 +215,7 @@ namespace eCommerce.Services
 
                 if (alreadyTaken)
                 {
-                    throw new ClinetException("One or more of the selected seats are already reserved.");
+                    throw new ClientException("One or more of the selected seats are already reserved.");
                 }
 
                 var total = screening.BasePrice * expandedList.Count;
@@ -235,7 +233,7 @@ namespace eCommerce.Services
 
                 if (!ReservationStatusTransitions.IsValidInitialStatus(initialStatus))
                 {
-                    throw new ClinetException($"Invalid initial reservation status: {initialStatus}.");
+                    throw new ClientException($"Invalid initial reservation status: {initialStatus}.");
                 }
 
                 var reservation = new Reservation
@@ -279,7 +277,7 @@ namespace eCommerce.Services
                         return await GetByIdAsync(raced.Id);
                     }
 
-                    throw new ClinetException("This payment was already used for another booking.");
+                    throw new ClientException("This payment was already used for another booking.");
                 }
 
                 var response = await GetByIdAsync(reservation.Id);
@@ -291,7 +289,7 @@ namespace eCommerce.Services
 
                 return response;
             }
-            catch (ClinetException)
+            catch (ClientException)
             {
                 try { await tx.RollbackAsync(); } catch { /* already committed/rolled back */ }
                 throw;
@@ -330,25 +328,25 @@ namespace eCommerce.Services
             catch (StripeException ex)
             {
                 _logger.LogWarning(ex, "Stripe lookup failed for PaymentIntent {PaymentIntentId}.", paymentIntentId);
-                throw new ClinetException(
+                throw new ClientException(
                     ex.StripeError?.Message ?? "Could not verify payment with Stripe. Please try again.");
             }
 
             if (!string.Equals(intent.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
             {
-                throw new ClinetException(
+                throw new ClientException(
                     $"Payment is not completed (status: {intent.Status}). Complete payment before confirming the booking.");
             }
 
             if (intent.Amount != expectedAmountCents)
             {
-                throw new ClinetException(
+                throw new ClientException(
                     "Paid amount does not match the booking total. Payment was not accepted for these seats.");
             }
 
             if (!string.Equals(intent.Currency, "usd", StringComparison.OrdinalIgnoreCase))
             {
-                throw new ClinetException("Unexpected payment currency.");
+                throw new ClientException("Unexpected payment currency.");
             }
 
             // Metadata is set when the intent is created; reject mismatched intents.
@@ -358,23 +356,21 @@ namespace eCommerce.Services
                     int.TryParse(metaScreening, out var screeningId) &&
                     screeningId != expectedScreeningId)
                 {
-                    throw new ClinetException("Payment was created for a different screening.");
+                    throw new ClientException("Payment was created for a different screening.");
                 }
 
                 if (intent.Metadata.TryGetValue("userId", out var metaUser) &&
                     int.TryParse(metaUser, out var metaUserId) &&
                     metaUserId != expectedUserId)
                 {
-                    throw new ClinetException("Payment belongs to a different user.");
+                    throw new ClientException("Payment belongs to a different user.");
                 }
             }
         }
 
         private void ConfigureStripe()
         {
-            var secretKey = _configuration["Stripe:SecretKey"]
-                            ?? throw new InvalidOperationException("Stripe secret key is not configured.");
-            StripeConfiguration.ApiKey = secretKey;
+            StripeConfiguration.ApiKey = _stripeSecretKey;
         }
 
         private async Task SendConfirmationEmailAsync(Reservation reservation, ReservationResponse response)
@@ -442,7 +438,7 @@ namespace eCommerce.Services
 
             if (reservation.Status == ReservationStatus.Cancelled)
             {
-                throw new ClinetException("This reservation is already cancelled.");
+                throw new ClientException("This reservation is already cancelled.");
             }
 
             ReservationStatusTransitions.EnsureCanTransition(reservation.Status, ReservationStatus.Cancelled);
@@ -450,7 +446,7 @@ namespace eCommerce.Services
             // Customers must cancel at least 4h before showtime; Admin/Staff may cancel anytime.
             if (!isStaff && reservation.Screening.StartTime <= DateTime.UtcNow.AddHours(4))
             {
-                throw new ClinetException(
+                throw new ClientException(
                     "Tickets can only be refunded at least 4 hours before the screening starts.");
             }
 
@@ -491,7 +487,7 @@ namespace eCommerce.Services
         {
             if (!IsAdminOrStaff())
             {
-                throw new ClinetException("Only Admin or Staff can mark a reservation as completed.");
+                throw new ClientException("Only Admin or Staff can mark a reservation as completed.");
             }
 
             var reservation = await _dbContext.Reservations
@@ -527,7 +523,7 @@ namespace eCommerce.Services
             catch (StripeException ex)
             {
                 _logger.LogError(ex, "Stripe refund failed for PaymentIntent {PaymentIntentId}.", paymentIntentId);
-                throw new ClinetException(
+                throw new ClientException(
                     ex.StripeError?.Message ?? "Payment refund failed. Please try again or contact support.");
             }
         }
@@ -540,17 +536,17 @@ namespace eCommerce.Services
             var seatIds = (request.SeatIds ?? new List<int>()).Distinct().ToList();
             if (seatIds.Count == 0)
             {
-                throw new ClinetException("No seats were selected.");
+                throw new ClientException("No seats were selected.");
             }
 
             var screening = await _dbContext.Screenings
                 .Include(s => s.Hall).ThenInclude(h => h.Seats)
                 .FirstOrDefaultAsync(s => s.Id == request.ScreeningId)
-                ?? throw new ClinetException($"Screening {request.ScreeningId} was not found.");
+                ?? throw new ClientException($"Screening {request.ScreeningId} was not found.");
 
             if (!screening.IsActive)
             {
-                throw new ClinetException("This screening is not available for booking.");
+                throw new ClientException("This screening is not available for booking.");
             }
 
             var hallSeats = screening.Hall.Seats.ToDictionary(s => s.Id);
@@ -559,7 +555,7 @@ namespace eCommerce.Services
             {
                 if (!hallSeats.TryGetValue(seatId, out var seat) || !seat.IsActive)
                 {
-                    throw new ClinetException($"Seat {seatId} does not belong to this screening's hall or is not available.");
+                    throw new ClientException($"Seat {seatId} does not belong to this screening's hall or is not available.");
                 }
 
                 expandedCount += seat.SeatType == SeatType.Couple ? 2 : 1;
@@ -592,8 +588,7 @@ namespace eCommerce.Services
             {
                 PaymentIntentId = intent.Id,
                 ClientSecret = intent.ClientSecret ?? string.Empty,
-                PublishableKey = _configuration["Stripe:PublishableKey"]
-                                 ?? throw new InvalidOperationException("Stripe publishable key is not configured.")
+                PublishableKey = _stripePublishableKey
             };
         }
 

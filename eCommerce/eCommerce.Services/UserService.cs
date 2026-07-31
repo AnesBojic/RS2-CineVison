@@ -97,7 +97,7 @@ namespace eCommerce.Services
             if (!string.IsNullOrEmpty(profileImageBase64) &&
                 profileImageBase64.Length > MaxProfileImageBase64Length)
             {
-                throw new ClinetException(
+                throw new ClientException(
                     "Profile photo is too large. Please upload a smaller image (under ~300 KB).");
             }
         }
@@ -118,7 +118,7 @@ namespace eCommerce.Services
         private async Task AssignRoleAsync(int userId, string roleName)
         {
             var role = await _dbContext.Roles.FirstOrDefaultAsync(r => r.Name == roleName)
-                ?? throw new ClinetException($"Role '{roleName}' was not found.");
+                ?? throw new ClientException($"Role '{roleName}' was not found.");
 
             var existingRoles = await _dbContext.UserRoles.Where(ur => ur.UserId == userId).ToListAsync();
             if (existingRoles.Count == 1 && existingRoles[0].RoleId == role.Id)
@@ -137,37 +137,31 @@ namespace eCommerce.Services
 
         public override async Task<PageResult<UserResponse>> GetAllAsync(UserSearch? search = null)
         {
-            IEnumerable<User> query = _dbContext.Users;
+            search ??= new UserSearch();
+            PagingLimits.Normalize(search);
 
-            query = await IncludeRelatedEntitiesAsync(search, query.AsQueryable());
-            query = ApplyFilters(query, search);
+            IQueryable<User> query = _dbContext.Users.AsNoTracking();
+
+            query = await IncludeRelatedEntitiesAsync(search, query);
+            var entities = await query.ToListAsync();
+            IEnumerable<User> filtered = ApplyFilters(entities, search);
 
             int? totalCount = null;
-
-            if (search != null)
+            if (search.IncludeTotalCount ?? false)
             {
-                if (search.IncludeTotalCount ?? false)
-                {
-                    totalCount = query.Count();
-                }
-
-                if (!string.IsNullOrWhiteSpace(search.SortBy))
-                {
-                    query = query.AsQueryable().OrderBy(search.SortBy);
-                }
-
-                if (search.Page.HasValue && search.PageSize.HasValue)
-                {
-                    query = query.Skip((search.Page.Value - 1) * search.PageSize.Value);
-                }
-
-                if (search.PageSize.HasValue)
-                {
-                    query = query.Take(search.PageSize.Value);
-                }
+                totalCount = filtered.Count();
             }
 
-            var list = query.ToList().Select(u => MapUserResponse(u, includeProfileImage: false)).ToList();
+            if (!string.IsNullOrWhiteSpace(search.SortBy))
+            {
+                filtered = filtered.AsQueryable().OrderBy(search.SortBy);
+            }
+
+            filtered = filtered
+                .Skip((search.Page!.Value - 1) * search.PageSize!.Value)
+                .Take(search.PageSize.Value);
+
+            var list = filtered.Select(u => MapUserResponse(u, includeProfileImage: false)).ToList();
 
             return new PageResult<UserResponse>
             {
@@ -231,19 +225,19 @@ namespace eCommerce.Services
             // Check if email or username already exists
             if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email))
             {
-                throw new ClinetException($"Email '{request.Email}' is already in use.");
+                throw new ClientException($"Email '{request.Email}' is already in use.");
             }
 
             if (await _dbContext.Users.AnyAsync(u => u.Username == request.Username))
             {
-                throw new ClinetException($"Username '{request.Username}' is already in use.");
+                throw new ClientException($"Username '{request.Username}' is already in use.");
             }
 
             EnsureProfileImageSize(request.ProfileImageBase64);
             if (!string.IsNullOrWhiteSpace(request.ProfileImageBase64)
                 && !ImageContentValidator.TryValidateBase64(request.ProfileImageBase64, out _, out var imageError))
             {
-                throw new ClinetException(imageError);
+                throw new ClientException(imageError);
             }
 
             var entity = MapInsertRequestToEntity(request);
@@ -293,12 +287,12 @@ namespace eCommerce.Services
             // Check if email or username already exists
             if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email && u.Id != id))
             {
-                throw new ClinetException($"Email '{request.Email}' is already in use.");
+                throw new ClientException($"Email '{request.Email}' is already in use.");
             }
 
             if (await _dbContext.Users.AnyAsync(u => u.Username == request.Username && u.Id != id))
             {
-                throw new ClinetException($"Username '{request.Username}' is already in use.");
+                throw new ClientException($"Username '{request.Username}' is already in use.");
             }
 
             EnsureProfileImageSize(request.ProfileImageBase64);
@@ -341,7 +335,7 @@ namespace eCommerce.Services
             {
                 if (await _dbContext.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId))
                 {
-                    throw new ClinetException($"Email '{request.Email}' is already in use.");
+                    throw new ClientException($"Email '{request.Email}' is already in use.");
                 }
                 entity.Email = request.Email;
             }
@@ -365,7 +359,7 @@ namespace eCommerce.Services
                 if (!string.IsNullOrWhiteSpace(request.ProfileImageBase64)
                     && !ImageContentValidator.TryValidateBase64(request.ProfileImageBase64, out _, out var imageError))
                 {
-                    throw new ClinetException(imageError);
+                    throw new ClientException(imageError);
                 }
 
                 entity.ProfileImageBase64 = request.ProfileImageBase64;
@@ -550,7 +544,7 @@ namespace eCommerce.Services
                 !user.PasswordResetExpiresAt.HasValue ||
                 user.PasswordResetExpiresAt.Value < DateTime.UtcNow)
             {
-                throw new ClinetException("Invalid or expired reset code.");
+                throw new ClientException("Invalid or expired reset code.");
             }
 
             user.PasswordSalt = _cryptoService.GenerateSlat();

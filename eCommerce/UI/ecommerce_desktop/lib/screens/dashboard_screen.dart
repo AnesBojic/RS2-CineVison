@@ -250,27 +250,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required VoidCallback onEdit,
     required VoidCallback onDelete,
   }) {
-    return Row(children: [
-      ActionIconButton(
-        icon: Icons.edit_outlined,
-        color: AppColors.blue,
-        onPressed: onEdit,
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ActionIconButton(
+            icon: Icons.edit_outlined,
+            color: AppColors.blue,
+            onPressed: onEdit,
+          ),
+          const SizedBox(width: 8),
+          ActionIconButton(
+            icon: Icons.delete_outline,
+            color: AppColors.primary,
+            onPressed: onDelete,
+          ),
+        ],
       ),
-      const SizedBox(width: 8),
-      ActionIconButton(
-        icon: Icons.delete_outline,
-        color: AppColors.primary,
-        onPressed: onDelete,
-      ),
-    ]);
+    );
   }
 
   Future<void> _deleteMovie(Movie m) async {
-    final ok = await confirmDelete(context, 'Delete "${m.title}"?');
+    if (m.id == null) return;
+    final provider = context.read<MovieProvider>();
+    Map<String, dynamic>? impact;
+    try {
+      impact = await provider.getDeleteImpact(m.id!);
+    } on Exception catch (_) {}
+    if (!mounted) return;
+    final ok = await confirmDelete(
+      context,
+      buildCascadeDeleteWarning(subjectLabel: '"${m.title}"', impact: impact),
+    );
     if (ok != true || !mounted) return;
     try {
-      await context.read<MovieProvider>().remove(m.id!);
-      showAppSnackBar(context, 'Movie deleted');
+      await provider.remove(m.id!);
+      showAppSnackBar(context, 'Movie and related data deleted');
       _load();
     } on ApiClientException catch (e) {
       if (mounted) alertBox(context, 'Cannot delete', e.message);
@@ -280,11 +296,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _deleteHall(Hall h) async {
-    final ok = await confirmDelete(context, 'Delete "${h.name}"?');
+    if (h.id == null) return;
+    final provider = context.read<HallProvider>();
+    Map<String, dynamic>? impact;
+    try {
+      impact = await provider.getDeleteImpact(h.id!);
+    } on Exception catch (_) {}
+    if (!mounted) return;
+    final ok = await confirmDelete(
+      context,
+      buildCascadeDeleteWarning(subjectLabel: '"${h.name}"', impact: impact),
+    );
     if (ok != true || !mounted) return;
     try {
-      await context.read<HallProvider>().remove(h.id!);
-      showAppSnackBar(context, 'Hall deleted');
+      await provider.remove(h.id!);
+      showAppSnackBar(context, 'Hall and related data deleted');
       _load();
     } on ApiClientException catch (e) {
       if (mounted) showAppSnackBar(context, e.message, isError: true);
@@ -294,11 +320,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _deleteScreening(Screening s) async {
-    final ok = await confirmDelete(context, 'Delete this projection?');
+    if (s.id == null) return;
+    final provider = context.read<ScreeningProvider>();
+    Map<String, dynamic>? impact;
+    try {
+      impact = await provider.getDeleteImpact(s.id!);
+    } on Exception catch (_) {}
+    if (!mounted) return;
+    final label = s.movieTitle?.isNotEmpty == true
+        ? 'projection "${s.movieTitle}"'
+        : 'this projection';
+    final ok = await confirmDelete(
+      context,
+      buildCascadeDeleteWarning(subjectLabel: label, impact: impact),
+    );
     if (ok != true || !mounted) return;
     try {
-      await context.read<ScreeningProvider>().remove(s.id!);
-      showAppSnackBar(context, 'Projection deleted');
+      await provider.remove(s.id!);
+      showAppSnackBar(context, 'Projection and related bookings deleted');
       _load();
     } on Exception catch (e) {
       if (mounted) alertBox(context, 'Error', e.toString());
@@ -339,7 +378,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               DataColumn(label: Text('Duration')),
               DataColumn(label: Text('Release Date')),
               DataColumn(label: Text('Status')),
-              DataColumn(label: Text('Actions')),
+              actionsDataColumn,
             ],
             rows: _filteredMovies.map((m) {
               return DataRow(cells: [
@@ -401,7 +440,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               DataColumn(label: Text('Layout')),
               DataColumn(label: Text('Screen Type')),
               DataColumn(label: Text('Status')),
-              DataColumn(label: Text('Actions')),
+              actionsDataColumn,
             ],
             rows: _filteredHalls.map((h) {
               return DataRow(cells: [
@@ -470,7 +509,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               DataColumn(label: Text('Date')),
               DataColumn(label: Text('Time')),
               DataColumn(label: Text('Price')),
-              DataColumn(label: Text('Actions')),
+              actionsDataColumn,
             ],
             rows: _filteredScreenings.map((s) {
               final movie = _movieById(s.movieId);

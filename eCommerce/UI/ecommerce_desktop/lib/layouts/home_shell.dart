@@ -9,10 +9,9 @@ import 'package:ecommerce_desktop/providers/user_provider.dart';
 import 'package:ecommerce_desktop/screens/analytics_screen.dart';
 import 'package:ecommerce_desktop/screens/chatbot_screen.dart';
 import 'package:ecommerce_desktop/screens/dashboard_screen.dart';
-import 'package:ecommerce_desktop/screens/genre_list_screen.dart';
 import 'package:ecommerce_desktop/screens/hall_list_screen.dart';
 import 'package:ecommerce_desktop/screens/login_screen.dart';
-import 'package:ecommerce_desktop/screens/movie_list_screen.dart';
+import 'package:ecommerce_desktop/screens/movies_hub_screen.dart';
 import 'package:ecommerce_desktop/screens/news_list_screen.dart';
 import 'package:ecommerce_desktop/screens/screening_list_screen.dart';
 import 'package:ecommerce_desktop/screens/profile_screen.dart';
@@ -32,17 +31,20 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   late int _selectedIndex;
 
+  /// 0 Dashboard, 1 Movies(+Genres), 2 Halls, 3 Projections, 4 News,
+  /// 5 Users (admin), 6 Analytics, 7 Chatbot
   static const _allNavItems = [
     _NavItem('Dashboard', Icons.home_outlined, Icons.home, adminOnly: false),
     _NavItem('Movies', Icons.movie_outlined, Icons.movie, adminOnly: false),
     _NavItem('Halls', Icons.tv_outlined, Icons.tv, adminOnly: false),
     _NavItem('Projections', Icons.calendar_today_outlined, Icons.calendar_today, adminOnly: false),
     _NavItem('News', Icons.campaign_outlined, Icons.campaign, adminOnly: false),
-    _NavItem('Genres', Icons.category_outlined, Icons.category, adminOnly: false),
     _NavItem('Users', Icons.people_outline, Icons.people, adminOnly: true),
     _NavItem('Analytics', Icons.bar_chart_outlined, Icons.bar_chart, adminOnly: false),
     _NavItem('Chatbot', Icons.chat_bubble_outline, Icons.chat_bubble, adminOnly: false),
   ];
+
+  static const _chatbotIndex = 7;
 
   List<_NavItem> get _visibleNavItems {
     final auth = context.read<AuthProvider>();
@@ -63,7 +65,7 @@ class _HomeShellState extends State<HomeShell> {
 
   void _onNavTap(int index) {
     setState(() => _selectedIndex = index);
-    if (index == 8) {
+    if (index == _chatbotIndex) {
       context.read<NotificationProvider>().markAllRead(type: 'Message');
     } else {
       context.read<NotificationProvider>().refresh();
@@ -94,7 +96,7 @@ class _HomeShellState extends State<HomeShell> {
       _hallEditId = index == 2 ? editId : null;
       _screeningEditId = index == 3 ? editId : null;
     });
-    if (index == 8) {
+    if (index == _chatbotIndex) {
       context.read<NotificationProvider>().markAllRead(type: 'Message');
     } else {
       context.read<NotificationProvider>().refresh();
@@ -114,37 +116,38 @@ class _HomeShellState extends State<HomeShell> {
       case 0:
         return DashboardScreen(onNavigate: _navigateTo);
       case 1:
-        return MovieListScreen(
+        return MoviesHubScreen(
+          key: ValueKey('movies-${_movieEditId ?? 'list'}'),
           editId: _movieEditId,
           onEditConsumed: () => _clearEditId(1),
         );
       case 2:
         return HallListScreen(
+          key: ValueKey('halls-${_hallEditId ?? 'list'}'),
           editId: _hallEditId,
           onEditConsumed: () => _clearEditId(2),
         );
       case 3:
         return ScreeningListScreen(
+          key: ValueKey('screenings-${_screeningEditId ?? 'list'}'),
           editId: _screeningEditId,
           onEditConsumed: () => _clearEditId(3),
         );
       case 4:
-        return const NewsListScreen();
+        return const NewsListScreen(key: ValueKey('news'));
       case 5:
-        return const GenreListScreen();
+        return const UserList(key: ValueKey('users'));
       case 6:
-        return const UserList();
+        return const AnalyticsScreen(key: ValueKey('analytics'));
       case 7:
-        return const AnalyticsScreen();
-      case 8:
-        return const ChatBotScreen();
+        return const ChatBotScreen(key: ValueKey('chatbot'));
       default:
         return DashboardScreen(onNavigate: _navigateTo);
     }
   }
 
   String _titleForIndex(int index) {
-    if (index == 8) return 'Chatbot';
+    if (index == _chatbotIndex) return 'Chatbot';
     return 'Dashboard';
   }
 
@@ -168,7 +171,12 @@ class _HomeShellState extends State<HomeShell> {
             child: Column(
               children: [
                 TopBar(title: _titleForIndex(_selectedIndex)),
-                Expanded(child: _screenForIndex(_selectedIndex)),
+                Expanded(
+                  child: KeyedSubtree(
+                    key: ValueKey('nav-$_selectedIndex'),
+                    child: _screenForIndex(_selectedIndex),
+                  ),
+                ),
               ],
             ),
           ),
@@ -221,44 +229,50 @@ class _HomeShellState extends State<HomeShell> {
             ),
           ),
           const SizedBox(height: 28),
-          ...visibleItems.map((item) {
-            final index = _allNavItems.indexOf(item);
-            final selected = _selectedIndex == index;
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-              child: Material(
-                color: selected ? AppColors.primary : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  hoverColor: selected ? null : AppColors.cardHover,
-                  onTap: () => _onNavTap(index),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                    child: Row(
-                      children: [
-                        Icon(
-                          selected ? item.activeIcon : item.icon,
-                          color: selected ? Colors.white : AppColors.textSecondary,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 14),
-                        Text(
-                          item.label,
-                          style: TextStyle(
-                            color: selected ? Colors.white : AppColors.textSecondary,
-                            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                            fontSize: 14,
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                ...visibleItems.map((item) {
+                  final index = _allNavItems.indexOf(item);
+                  final selected = _selectedIndex == index;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+                    child: Material(
+                      color: selected ? AppColors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        hoverColor: selected ? null : AppColors.cardHover,
+                        onTap: () => _onNavTap(index),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                          child: Row(
+                            children: [
+                              Icon(
+                                selected ? item.activeIcon : item.icon,
+                                color: selected ? Colors.white : AppColors.textSecondary,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 14),
+                              Text(
+                                item.label,
+                                style: TextStyle(
+                                  color: selected ? Colors.white : AppColors.textSecondary,
+                                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            );
-          }),
-          const Spacer(),
+                  );
+                }),
+              ],
+            ),
+          ),
           _buildUserFooter(auth),
           const SizedBox(height: 12),
           Padding(
@@ -284,54 +298,54 @@ class _HomeShellState extends State<HomeShell> {
       onTap: () => showProfileDialog(context),
       borderRadius: BorderRadius.circular(12),
       child: Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            key: ValueKey(auth.profileImageBase64?.hashCode ?? 0),
-            radius: 20,
-            backgroundColor: AppColors.inputFill,
-            backgroundImage: auth.profileImageBase64 != null &&
-                    auth.profileImageBase64!.isNotEmpty
-                ? MemoryImage(base64Decode(auth.profileImageBase64!))
-                : null,
-            child: auth.profileImageBase64 == null || auth.profileImageBase64!.isEmpty
-                ? Text(
-                    auth.displayName.isNotEmpty ? auth.displayName[0].toUpperCase() : 'U',
-                    style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  auth.displayName,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  auth.role ?? 'Staff',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                ),
-              ],
+        margin: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              key: ValueKey(auth.profileImageBase64?.hashCode ?? 0),
+              radius: 20,
+              backgroundColor: AppColors.inputFill,
+              backgroundImage: auth.profileImageBase64 != null &&
+                      auth.profileImageBase64!.isNotEmpty
+                  ? MemoryImage(base64Decode(auth.profileImageBase64!))
+                  : null,
+              child: auth.profileImageBase64 == null || auth.profileImageBase64!.isEmpty
+                  ? Text(
+                      auth.displayName.isNotEmpty ? auth.displayName[0].toUpperCase() : 'U',
+                      style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700),
+                    )
+                  : null,
             ),
-          ),
-          const Icon(Icons.edit_outlined, color: AppColors.textSecondary, size: 16),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    auth.displayName,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    auth.role ?? 'Staff',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.edit_outlined, color: AppColors.textSecondary, size: 16),
+          ],
+        ),
       ),
-    ),
     );
   }
 

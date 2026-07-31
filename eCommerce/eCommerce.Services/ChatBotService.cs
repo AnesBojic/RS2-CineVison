@@ -55,7 +55,7 @@ namespace eCommerce.Services
             var apiKey = _configuration["OpenAI:ApiKey"];
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                throw new ClinetException("OpenAI API key is not configured. Add your key to OpenAI:ApiKey in appsettings.json or user secrets.");
+                throw new ClientException("OpenAI API key is not configured. Add your key to OpenAI:ApiKey in appsettings.json or user secrets.");
             }
 
             var model = _configuration["OpenAI:Model"] ?? "gpt-4o-mini";
@@ -101,14 +101,19 @@ namespace eCommerce.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to reach OpenAI API.");
-                throw new ClinetException("Could not reach the OpenAI service. Check your network connection and try again.");
+                throw new ClientException("Could not reach the OpenAI service. Check your network connection and try again.");
             }
 
             var body = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("OpenAI API returned {Status}: {Body}", response.StatusCode, body);
-                throw new ClinetException($"OpenAI request failed ({(int)response.StatusCode}). Verify your API key and model name.");
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    throw new ClientException(
+                        "OpenAI API key is invalid or expired. Update OpenAI__ApiKey in eCommerce/.env and restart the API.");
+                }
+                throw new ClientException($"OpenAI request failed ({(int)response.StatusCode}). Verify your API key and model name.");
             }
 
             var completion = JsonSerializer.Deserialize<OpenAiChatResponse>(body, JsonOptions);
@@ -116,7 +121,7 @@ namespace eCommerce.Services
 
             if (string.IsNullOrWhiteSpace(reply))
             {
-                throw new ClinetException("OpenAI returned an empty response.");
+                throw new ClientException("OpenAI returned an empty response.");
             }
 
             return new ChatResponse

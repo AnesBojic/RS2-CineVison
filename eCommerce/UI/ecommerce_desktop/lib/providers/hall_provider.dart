@@ -19,4 +19,12 @@ class HallProvider extends BaseProvider<Hall> {
     validateResponse(response);
     return fromJson(jsonDecode(response.body));
   }
+
+  Future<Map<String, dynamic>> getDeleteImpact(int id) async {
+    final baseUrl = BaseProvider.baseUrl ?? 'http://localhost:5126/';
+    final uri = Uri.parse('${baseUrl}Halls/$id/DeleteImpact');
+    final response = await http.get(uri, headers: createHeaders());
+    validateResponse(response);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
 }

@@ -17,7 +17,7 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
 if (-not (Test-Path ".env")) {
     if (Test-Path ".env.example") {
         Copy-Item ".env.example" ".env"
-        Write-Host "Created .env from .env.example — fill in secrets before relying on Stripe/SMTP/OpenAI." -ForegroundColor Yellow
+        Write-Host "Created .env from .env.example - fill in secrets before relying on Stripe/SMTP/OpenAI." -ForegroundColor Yellow
     }
     else {
         Write-Error "Missing .env next to docker-compose.yml. Copy .env.example to .env and fill secrets."
@@ -59,7 +59,7 @@ Write-Host "  Swagger/Scalar: http://localhost:5126/swagger  (or /scalar)"
 Write-Host "  Health:         http://localhost:5126/health"
 Write-Host "  RabbitMQ UI:    http://localhost:15672  (guest / guest)"
 Write-Host "  SQL Server:     localhost,1435  (sa / value from .env MSSQL_SA_PASSWORD)"
-Write-Host "  Config:         eCommerce/.env  (secrets — not committed)"
+Write-Host "  Config:         eCommerce/.env  (secrets - not committed)"
 Write-Host "  Email worker:   ecomm-fit-2026-worker (SMTP via RabbitMQ)"
 Write-Host ""
 Write-Host "Flutter apps still run on your PC (not in Docker):" -ForegroundColor Cyan
