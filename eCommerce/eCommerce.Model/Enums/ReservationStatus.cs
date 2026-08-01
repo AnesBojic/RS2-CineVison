@@ -1,4 +1,4 @@
-namespace eCommerce.Services.Enums
+namespace eCommerce.Model.Enums
 {
     /// <summary>Lifecycle of a booking; transitions are enforced by ReservationStatusTransitions.</summary>
     public enum ReservationStatus

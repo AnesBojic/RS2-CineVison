@@ -1,4 +1,4 @@
-namespace eCommerce.Services.Enums
+namespace eCommerce.Model.Enums
 {
     /// <summary>
     /// Persisted lifecycle state of a movie. The state machine's Initial state is a code-only

@@ -249,12 +249,24 @@ namespace eCommerce.Services
             var entity = MapInsertRequestToEntity(request);
             entity.CreatedAt = DateTime.UtcNow;
 
-            _dbContext.Users.Add(entity);
-            await _dbContext.SaveChangesAsync();
+            // The role row needs the generated user id, so this cannot be a single save.
+            // Both writes share a transaction so a failure can't leave a user without a role.
+            await using var tx = await _dbContext.Database.BeginTransactionAsync();
+            try
+            {
+                _dbContext.Users.Add(entity);
+                await _dbContext.SaveChangesAsync();
 
-            await AssignRoleAsync(entity.Id, request.Role);
+                await AssignRoleAsync(entity.Id, request.Role);
+                await _dbContext.SaveChangesAsync();
 
-            await _dbContext.SaveChangesAsync();
+                await tx.CommitAsync();
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
 
             return await GetByIdAsync(entity.Id);
         }

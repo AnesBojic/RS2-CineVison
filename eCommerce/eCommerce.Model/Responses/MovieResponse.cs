@@ -1,3 +1,5 @@
+using eCommerce.Model.Enums;
+
 namespace eCommerce.Model.Responses
 {
     public class MovieResponse
@@ -27,8 +29,8 @@ namespace eCommerce.Model.Responses
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
-        /// <summary>Name of the <c>MovieLifecycleState</c> value, e.g. "Draft" or "Active".</summary>
-        public string MovieState { get; set; } = string.Empty;
+        /// <summary>Serialized by name, so clients still receive "Draft" or "Active".</summary>
+        public MovieLifecycleState MovieState { get; set; }
         public GenreResponse? Genre { get; set; }
         public List<string> AllowedActions { get; set; } = new List<string>();
         public List<AssetResponse> Assets { get; set; } = new List<AssetResponse>();

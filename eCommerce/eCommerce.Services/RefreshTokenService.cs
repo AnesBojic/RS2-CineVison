@@ -43,5 +43,12 @@ namespace eCommerce.Services
             _refreshTokens.RemoveRange(_refreshTokens.Where(rt => rt.UserId == userId));
             return _context.SaveChangesAsync();
         }
+
+        public async Task ReplaceUserTokensAsync(int userId, RefreshToken newToken)
+        {
+            _refreshTokens.RemoveRange(_refreshTokens.Where(rt => rt.UserId == userId));
+            await _refreshTokens.AddAsync(newToken);
+            await _context.SaveChangesAsync();
+        }
     }
 }

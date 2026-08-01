@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Headers;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -12,7 +12,7 @@ using eCommerce.Services.MovieStateMachine;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using eCommerce.Services.Enums;
+using eCommerce.Model.Enums;
 
 namespace eCommerce.Services
 {
@@ -135,7 +135,7 @@ namespace eCommerce.Services
         private static string BuildSystemPrompt(string userRole, string contextSnapshot)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("You are the CineVision Cinema Assistant â€” a helpful internal tool for cinema staff.");
+            sb.AppendLine("You are the CineVision Cinema Assistant — a helpful internal tool for cinema staff.");
             sb.AppendLine($"The current user role is: {userRole}.");
             sb.AppendLine();
             sb.AppendLine("Answer questions about:");
@@ -152,7 +152,7 @@ namespace eCommerce.Services
             sb.AppendLine();
             sb.AppendLine("=== WORKFLOW CHEAT SHEET ===");
             sb.AppendLine("1. Movies: create in Draft â†’ Activate when ready. Poster via PosterImageBase64 or PUT /Movies/{id}/Poster.");
-            sb.AppendLine("2. Halls: create with RowsCount Ã— SeatsPerRow to auto-generate seats. Screen types: Standard, IMAX, 3D. Status: Active, Maintenance, Inactive.");
+            sb.AppendLine("2. Halls: create with RowsCount × SeatsPerRow to auto-generate seats. Screen types: Standard, IMAX, 3D. Status: Active, Maintenance, Inactive.");
             sb.AppendLine("3. Projections (Screenings): pick an existing Movie + an Active Hall + date/time + price. Cannot schedule in Maintenance/Inactive halls.");
             sb.AppendLine("4. Reservations: customers reserve seats on mobile; payment via Stripe. Admin/Staff manage content; only Admin manages user accounts.");
             sb.AppendLine("5. Analytics: dashboard shows revenue (Paid reservations), tickets sold, occupancy, hall utilization.");
@@ -231,10 +231,10 @@ namespace eCommerce.Services
             sb.AppendLine($"Movies: {movies.Count} total, {movies.Count(m => m.IsActive)} active, {movies.Count(m => m.MovieState == MovieLifecycleState.Active)} in Active state, {movies.Count(m => m.MovieState == MovieLifecycleState.Draft)} in Draft.");
             foreach (var m in movies.Where(m => m.IsActive).Take(12))
             {
-                var genre = m.Genre?.Name ?? "â€”";
+                var genre = m.Genre?.Name ?? "—";
                 var rating = avgRatings.FirstOrDefault(r => r.MovieId == m.Id);
                 var ratingText = rating != null ? $"{rating.Avg:F1} ({rating.Count} reviews)" : "no reviews";
-                sb.AppendLine($"  - {m.Title} | {genre} | {m.AgeRating?.Name ?? "â€”"} | {m.DurationMinutes} min | state={m.MovieState} | views={m.ViewCount} | avg rating={ratingText}");
+                sb.AppendLine($"  - {m.Title} | {genre} | {m.AgeRating?.Name ?? "—"} | {m.DurationMinutes} min | state={m.MovieState} | views={m.ViewCount} | avg rating={ratingText}");
             }
             if (movies.Count(m => m.IsActive) > 12)
             {
@@ -246,7 +246,7 @@ namespace eCommerce.Services
             foreach (var h in halls)
             {
                 var cap = h.Seats.Count(s => s.IsActive);
-                sb.AppendLine($"  - {h.Name} | {cap} seats | {h.ScreenType?.Name ?? "â€”"} | status={h.Status?.Name ?? "â€”"} | active={h.IsActive}");
+                sb.AppendLine($"  - {h.Name} | {cap} seats | {h.ScreenType?.Name ?? "—"} | status={h.Status?.Name ?? "—"} | active={h.IsActive}");
             }
 
             sb.AppendLine();

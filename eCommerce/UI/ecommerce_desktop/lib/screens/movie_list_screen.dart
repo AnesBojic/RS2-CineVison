@@ -67,7 +67,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
       if (_searchController.text.isNotEmpty) filter['title'] = _searchController.text;
       if (_genreFilter != null) filter['genreId'] = int.tryParse(_genreFilter!);
       if (_statusFilter != null) {
-        filter['movieState'] = MovieState.filterValueForLabel(_statusFilter!);
+        filter['movieState'] = _statusFilter;
       }
 
       final data = await _movieProvider.get(filter: filter, includePoster: true);
@@ -131,10 +131,10 @@ class _MovieListScreenState extends State<MovieListScreen> {
           FilterDropdown(
             hint: 'All Status',
             value: _statusFilter,
-            items: const [
-              DropdownMenuItem(value: null, child: Text('All Status')),
-              DropdownMenuItem(value: 'Active', child: Text('Active')),
-              DropdownMenuItem(value: 'Draft', child: Text('Draft')),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('All Status')),
+              for (final state in MovieState.all)
+                DropdownMenuItem(value: state, child: Text(state)),
             ],
             onChanged: (v) {
               setState(() => _statusFilter = v);
@@ -264,7 +264,8 @@ class _MovieListScreenState extends State<MovieListScreen> {
     int? languageId = fullMovie?.languageId;
     int? genreId = fullMovie?.genreId;
     DateTime? releaseDate = fullMovie?.releaseDate;
-    String statusSelection = fullMovie?.isActiveState == true ? 'Active' : 'Draft';
+    String statusSelection =
+        fullMovie?.isActiveState == true ? MovieState.active : MovieState.draft;
     String? posterBase64 = fullMovie?.posterImageBase64;
     String? originalPoster = fullMovie?.posterImageBase64;
     bool submitting = false;
@@ -300,12 +301,12 @@ class _MovieListScreenState extends State<MovieListScreen> {
               Movie saved;
               if (movie == null) {
                 saved = await _movieProvider.insert(payload.toInsertJson());
-                if (statusSelection == 'Active') {
+                if (statusSelection == MovieState.active) {
                   saved = await _movieProvider.activate(saved.id!);
                 }
               } else {
                 saved = await _movieProvider.update(movie.id!, payload.toUpdateJson());
-                final wantsActive = statusSelection == 'Active';
+                final wantsActive = statusSelection == MovieState.active;
                 if (wantsActive && !movie.isActiveState) {
                   saved = await _movieProvider.activate(movie.id!);
                 } else if (!wantsActive && movie.isActiveState) {
@@ -425,11 +426,12 @@ class _MovieListScreenState extends State<MovieListScreen> {
                     initialValue: statusSelection,
                     dropdownColor: AppColors.card,
                     decoration: const InputDecoration(labelText: 'Status'),
-                    items: const [
-                      DropdownMenuItem(value: 'Active', child: Text('Active')),
-                      DropdownMenuItem(value: 'Draft', child: Text('Draft')),
+                    items: [
+                      for (final state in MovieState.all)
+                        DropdownMenuItem(value: state, child: Text(state)),
                     ],
-                    onChanged: (v) => setDialogState(() => statusSelection = v ?? 'Draft'),
+                    onChanged: (v) =>
+                        setDialogState(() => statusSelection = v ?? MovieState.draft),
                   ),
                 ),
               ]),

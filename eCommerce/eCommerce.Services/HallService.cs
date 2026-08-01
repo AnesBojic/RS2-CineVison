@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,7 +11,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using eCommerce.Services.Enums;
+using eCommerce.Model.Enums;
 
 namespace eCommerce.Services
 {
@@ -246,7 +246,7 @@ namespace eCommerce.Services
                     screeningIds,
                     paymentIntentId => StripeRefundHelper.TryRefundAsync(_stripeSecretKey, paymentIntentId, _logger));
 
-                // PartnerSeat is Restrict â€” clear links before seats cascade with the hall.
+                // PartnerSeat is Restrict — clear links before seats cascade with the hall.
                 foreach (var seat in hall.Seats)
                 {
                     seat.PartnerSeatId = null;
@@ -297,15 +297,16 @@ namespace eCommerce.Services
                     throw new ClientException($"Seat {item.SeatId} does not belong to this hall.");
                 }
 
-                if (item.SeatType != 0 && item.SeatType != (int)SeatType.Couple)
+                if (item.SeatType != (int)SeatType.Regular && item.SeatType != (int)SeatType.Couple)
                 {
                     // Defensive: FluentValidation already rejects invalid types.
                     throw new ClientException($"Invalid seat type for seat {seat.RowLabel}{seat.SeatNumber}. Use Regular or Couple only.");
                 }
 
-                if (item.SeatType == 1)
+                // Layouts saved before VIP was retired still carry it; fold them back to Regular.
+                if (item.SeatType == (int)SeatType.VIP)
                 {
-                    item.SeatType = 0;
+                    item.SeatType = (int)SeatType.Regular;
                 }
 
                 seat.SeatType = (SeatType)item.SeatType;
@@ -329,7 +330,7 @@ namespace eCommerce.Services
                 if (index < 0 || index >= rowSeats.Count - 1)
                 {
                     throw new ClientException(
-                        $"Seat {seat.RowLabel}{seat.SeatNumber} cannot be a couple seat â€” there is no seat to the right.");
+                        $"Seat {seat.RowLabel}{seat.SeatNumber} cannot be a couple seat — there is no seat to the right.");
                 }
 
                 var partner = rowSeats[index + 1];

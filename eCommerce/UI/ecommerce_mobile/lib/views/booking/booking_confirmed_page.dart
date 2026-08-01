@@ -1,3 +1,4 @@
+import 'package:ecommerce_mobile/core/enums/api_enums.dart';
 import 'package:ecommerce_mobile/core/widgets/cine_app_bar.dart';
 import 'package:ecommerce_mobile/core/utils/date_formatters.dart';
 import 'package:ecommerce_mobile/core/constants/app_colors.dart';
@@ -23,7 +24,7 @@ class BookingConfirmedPage extends StatelessWidget {
   int get _seatCount {
     return reservation.seats.fold<int>(
       0,
-      (sum, s) => sum + (s.seatType == 2 ? 2 : 1),
+      (sum, s) => sum + SeatTypes.spotsOccupied(s.seatType),
     );
   }
 

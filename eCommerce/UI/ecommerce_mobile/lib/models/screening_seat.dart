@@ -1,3 +1,5 @@
+import '../core/enums/api_enums.dart';
+
 class ScreeningSeat {
   final int seatId;
   final int hallId;
@@ -35,7 +37,7 @@ class ScreeningSeat {
     );
   }
 
-  bool get isCouple => seatType == 2;
+  bool get isCouple => seatType == SeatTypes.couple;
 
   String get label => '$rowLabel$seatNumber';
 }

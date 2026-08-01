@@ -1,5 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import '../core/enums/api_enums.dart';
+
 part 'user.g.dart';
 
 @JsonSerializable()
@@ -37,4 +39,4 @@ class User {
   Map<String, dynamic> toJson() => _$UserToJson(this);
 }
 
-const userRoles = ['Admin', 'Staff', 'Customer'];
+const userRoles = UserRoles.all;

@@ -19,6 +19,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
 using System.Text;
+using System.Text.Json.Serialization;
 
 // Load eCommerce/.env before CreateBuilder so env vars override empty appsettings secrets.
 // Docker Compose already injects env; EnvFileLoader will not overwrite existing variables.
@@ -42,11 +43,15 @@ builder.Services.AddControllers(options =>
 }).AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
+    // Enums travel over the wire as their names, so a value like MovieLifecycleState.Active
+    // stays readable as "Active" instead of turning into a bare 1 the clients have to decode.
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
 builder.Services.AddSignalR().AddJsonProtocol(options =>
 {
     options.PayloadSerializerOptions.Converters.Add(new UtcDateTimeConverter());
+    options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
 // Add Entity Framework Core DbContext
@@ -72,8 +77,7 @@ TypeAdapterConfig<Language, LanguageResponse>.NewConfig().IgnoreNullValues(true)
 TypeAdapterConfig<Movie, MovieResponse>.NewConfig()
     .IgnoreNullValues(true)
     .Map(dest => dest.Language, src => src.Language != null ? src.Language.Name : null)
-    .Map(dest => dest.AgeRating, src => src.AgeRating != null ? src.AgeRating.Name : null)
-    .Map(dest => dest.MovieState, src => src.MovieState.ToString());
+    .Map(dest => dest.AgeRating, src => src.AgeRating != null ? src.AgeRating.Name : null);
 TypeAdapterConfig<MovieUpdateRequest, Movie>.NewConfig().IgnoreNullValues(true).Ignore(dest => dest.Assets);
 TypeAdapterConfig<Hall, HallResponse>.NewConfig()
     .IgnoreNullValues(true)
@@ -215,8 +219,8 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero,
         // Tell ASP.NET which JWT claims carry the user name and role so that
         // User.IsInRole(...) and [Authorize(Roles = RoleNames.Admin)] work off the token.
-        NameClaimType = "Id",
-        RoleClaimType = "Role"
+        NameClaimType = ClaimNames.Id,
+        RoleClaimType = ClaimNames.Role
     };
     o.Events = new JwtBearerEvents
     {

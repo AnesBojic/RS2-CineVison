@@ -11,7 +11,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using eCommerce.Services.Enums;
+using eCommerce.Model.Enums;
 
 namespace eCommerce.Services;
 
@@ -129,13 +129,9 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
             {
                 query = query.Where(m => m.GenreId == search.GenreId.Value);
             }
-            if (!string.IsNullOrWhiteSpace(search.MovieState))
+            if (search.MovieState.HasValue)
             {
-                var parsed = ParseMovieState(search.MovieState);
-                if (parsed.HasValue)
-                {
-                    query = query.Where(m => m.MovieState == parsed.Value);
-                }
+                query = query.Where(m => m.MovieState == search.MovieState.Value);
             }
         }
 
@@ -191,24 +187,6 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 
         var state = MovieState.GetMovieState(entity.MovieState);
         return await state.UpdateAsync(id, request);
-    }
-
-    /// <summary>
-    /// Accepts both the enum names ("Active") and the older state class names ("ActiveMovieState")
-    /// so clients built against the previous string column keep filtering correctly.
-    /// Returns null for anything unrecognised, which leaves the result set unfiltered.
-    /// </summary>
-    private static MovieLifecycleState? ParseMovieState(string value)
-    {
-        var trimmed = value.Trim();
-        if (trimmed.EndsWith("MovieState", StringComparison.OrdinalIgnoreCase))
-        {
-            trimmed = trimmed[..^"MovieState".Length];
-        }
-
-        return Enum.TryParse<MovieLifecycleState>(trimmed, ignoreCase: true, out var parsed)
-            ? parsed
-            : null;
     }
 
     /// <summary>

@@ -4,7 +4,7 @@ using eCommerce.Services.Database;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using eCommerce.Services.Enums;
+using eCommerce.Model.Enums;
 
 namespace eCommerce.Services.MovieStateMachine
 {

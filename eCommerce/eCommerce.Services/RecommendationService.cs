@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -8,7 +8,7 @@ using eCommerce.Services.Database;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using eCommerce.Services.Enums;
+using eCommerce.Model.Enums;
 
 namespace eCommerce.Services
 {
@@ -142,7 +142,7 @@ namespace eCommerce.Services
 
             int maxGenreWeight = genreWeights.Count > 0 ? genreWeights.Values.Max() : 0;
 
-            // ---- search-history profile (must be used â€” rows are written on search) -
+            // ---- search-history profile (must be used — rows are written on search) -
             var recentSearches = await _dbContext.SearchHistories
                 .AsNoTracking()
                 .Where(s => s.UserId == userId)
@@ -186,7 +186,7 @@ namespace eCommerce.Services
 
             int maxSearchGenreWeight = searchGenreWeights.Count > 0 ? searchGenreWeights.Values.Max() : 0;
 
-            // Cold start only when the user has nothing personal to go on â€” including no searches.
+            // Cold start only when the user has nothing personal to go on — including no searches.
             bool coldStart = !hasContentProfile && !hasSearchProfile;
 
             // ---- per-candidate raw signals ---------------------------------------

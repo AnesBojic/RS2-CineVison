@@ -1,3 +1,5 @@
+import '../core/enums/api_enums.dart';
+
 class Seat {
   final int? id;
   final int? hallId;
@@ -32,9 +34,10 @@ class Seat {
     );
   }
 
-  bool get isCouple => seatType == 2;
+  bool get isCouple => seatType == SeatTypes.couple;
 
-  int get normalizedType => seatType == 2 ? 2 : 0;
+  int get normalizedType =>
+      seatType == SeatTypes.couple ? SeatTypes.couple : SeatTypes.regular;
 }
 
-const seatTypeLabels = ['Regular', 'Couple'];
+const seatTypeLabels = SeatTypes.editableLabels;

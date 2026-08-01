@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,12 +16,18 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Stripe;
-using eCommerce.Services.Enums;
+using eCommerce.Model.Enums;
 
 namespace eCommerce.Services
 {
     public class ReservationService : BaseReadService<Reservation, ReservationResponse, ReservationSearchObject>, IReservationService
     {
+        /// <summary>Terminal Stripe PaymentIntent status that means the money actually cleared.</summary>
+        private const string StripeSucceededStatus = "succeeded";
+
+        /// <summary>The only currency booking payments are created and accepted in.</summary>
+        private const string StripeCurrency = "usd";
+
         private readonly IAuthenticatedUserAccessor _userAccessor;
         private readonly string _stripeSecretKey;
         private readonly string _stripePublishableKey;
@@ -341,7 +347,7 @@ namespace eCommerce.Services
                     ex.StripeError?.Message ?? "Could not verify payment with Stripe. Please try again.");
             }
 
-            if (!string.Equals(intent.Status, "succeeded", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(intent.Status, StripeSucceededStatus, StringComparison.OrdinalIgnoreCase))
             {
                 throw new ClientException(
                     $"Payment is not completed (status: {intent.Status}). Complete payment before confirming the booking.");
@@ -353,7 +359,7 @@ namespace eCommerce.Services
                     "Paid amount does not match the booking total. Payment was not accepted for these seats.");
             }
 
-            if (!string.Equals(intent.Currency, "usd", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(intent.Currency, StripeCurrency, StringComparison.OrdinalIgnoreCase))
             {
                 throw new ClientException("Unexpected payment currency.");
             }
@@ -580,7 +586,7 @@ namespace eCommerce.Services
             var options = new PaymentIntentCreateOptions
             {
                 Amount = amountCents,
-                Currency = "usd",
+                Currency = StripeCurrency,
                 AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                 {
                     Enabled = true,
@@ -623,7 +629,7 @@ namespace eCommerce.Services
                 await NotifySafeAsync(
                     response.UserId,
                     "Payment confirmed",
-                    $"Payment received for {response.ReservationNumber} â€” {response.MovieTitle}. Seats are reserved.",
+                    $"Payment received for {response.ReservationNumber} — {response.MovieTitle}. Seats are reserved.",
                     NotificationType.Payment);
             }
             else

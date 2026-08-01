@@ -1,4 +1,4 @@
-namespace eCommerce.Services.Enums
+namespace eCommerce.Model.Enums
 {
     /// <summary>Category of an in-app notification, used for filtering and for the client icon.</summary>
     public enum NotificationType

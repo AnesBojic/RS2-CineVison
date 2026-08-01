@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,7 +8,7 @@ using eCommerce.Model.SearchObjects;
 using eCommerce.Services.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using eCommerce.Services.Enums;
+using eCommerce.Model.Enums;
 
 namespace eCommerce.Services
 {
@@ -155,8 +155,8 @@ namespace eCommerce.Services
             var slots = new (string Label, Func<DateTime, bool> Match)[]
             {
                 ("Morning (before 12:00)", t => t.Hour < 12),
-                ("Afternoon (12:00â€“17:00)", t => t.Hour is >= 12 and < 17),
-                ("Evening (17:00â€“21:00)", t => t.Hour is >= 17 and < 21),
+                ("Afternoon (12:00–17:00)", t => t.Hour is >= 12 and < 17),
+                ("Evening (17:00–21:00)", t => t.Hour is >= 17 and < 21),
                 ("Night (after 21:00)", t => t.Hour >= 21)
             };
 

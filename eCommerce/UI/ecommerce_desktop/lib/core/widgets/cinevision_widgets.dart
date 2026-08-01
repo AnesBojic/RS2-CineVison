@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:ecommerce_desktop/core/enums/api_enums.dart';
 import 'package:ecommerce_desktop/core/theme/app_theme.dart';
 import 'package:ecommerce_desktop/models/notification.dart';
 import 'package:ecommerce_desktop/providers/auth_provider.dart';
@@ -168,7 +169,8 @@ class _NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isEmail = (notification.type ?? '').toLowerCase() == 'email';
+    final isEmail = (notification.type ?? '').toLowerCase() ==
+        NotificationTypes.email.toLowerCase();
     final icon = isEmail ? Icons.mail_outline : Icons.chat_bubble_outline;
     final color = isEmail ? AppColors.blue : AppColors.green;
     final time = notification.createdAt != null

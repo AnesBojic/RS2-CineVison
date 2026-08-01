@@ -1,31 +1,7 @@
+import '../core/enums/api_enums.dart';
 import 'genre.dart';
 
-/// Mirrors the API's MovieLifecycleState enum names.
-class MovieState {
-  static const active = 'Active';
-  static const draft = 'Draft';
-
-  static String displayLabel(String? movieState) {
-    if (movieState == null || movieState.isEmpty) return 'Draft';
-    if (movieState.toLowerCase().contains('active')) return 'Active';
-    if (movieState.toLowerCase().contains('draft')) return 'Draft';
-    return movieState;
-  }
-
-  static bool isActive(String? movieState) =>
-      movieState != null && movieState.toLowerCase().contains('active');
-
-  static String filterValueForLabel(String label) {
-    switch (label) {
-      case 'Active':
-        return active;
-      case 'Draft':
-        return draft;
-      default:
-        return label;
-    }
-  }
-}
+export '../core/enums/api_enums.dart' show MovieState;
 
 class Movie {
   final int? id;

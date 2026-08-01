@@ -1,4 +1,5 @@
 import 'package:ecommerce_mobile/core/components/app_back_button.dart';
+import 'package:ecommerce_mobile/core/enums/api_enums.dart';
 import 'package:ecommerce_mobile/core/constants/app_defaults.dart';
 import 'package:ecommerce_mobile/models/app_notification.dart';
 import 'package:ecommerce_mobile/providers/auth_provider.dart';
@@ -41,17 +42,17 @@ class _NotificationPageState extends State<NotificationPage> {
 
   IconData _iconForType(String? type) {
     switch (type) {
-      case 'Payment':
+      case NotificationTypes.payment:
         return Icons.payments_outlined;
-      case 'Cancellation':
+      case NotificationTypes.cancellation:
         return Icons.event_busy_outlined;
-      case 'Status':
+      case NotificationTypes.status:
         return Icons.flag_outlined;
-      case 'Reservation':
+      case NotificationTypes.reservation:
         return Icons.confirmation_number_outlined;
-      case 'Message':
+      case NotificationTypes.message:
         return Icons.chat_bubble_outline;
-      case 'Email':
+      case NotificationTypes.email:
         return Icons.mail_outline;
       default:
         return Icons.notifications_outlined;

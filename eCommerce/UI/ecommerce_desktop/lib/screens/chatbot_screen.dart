@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:ecommerce_desktop/core/enums/api_enums.dart';
 import 'package:ecommerce_desktop/core/theme/app_theme.dart';
 import 'package:ecommerce_desktop/models/chat_message.dart';
 import 'package:ecommerce_desktop/providers/auth_provider.dart';
@@ -237,7 +238,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       await _saveHistory();
       _scrollToBottom();
       if (mounted) {
-        context.read<NotificationProvider>().markAllRead(type: 'Message');
+        context.read<NotificationProvider>().markAllRead(
+              type: NotificationTypes.message,
+            );
       }
     } on Exception catch (e) {
       if (mounted) {

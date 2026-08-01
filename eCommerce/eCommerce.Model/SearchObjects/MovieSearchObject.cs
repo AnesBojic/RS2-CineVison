@@ -1,3 +1,5 @@
+using eCommerce.Model.Enums;
+
 namespace eCommerce.Model.SearchObjects
 {
     public class MovieSearchObject : BaseSearchObject
@@ -18,9 +20,10 @@ namespace eCommerce.Model.SearchObjects
         public int? GenreId { get; set; }
 
         /// <summary>
-        /// Filter movies by their current state machine state.
+        /// Filter movies by their current state machine state. Bound from the query string
+        /// by name ("Active") or by underlying value ("1").
         /// </summary>
-        public string? MovieState { get; set; }
+        public MovieLifecycleState? MovieState { get; set; }
 
         public bool? IncludeGenre { get; set; }
 

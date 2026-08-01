@@ -1,3 +1,5 @@
+import '../core/enums/api_enums.dart';
+
 class ReservationSeat {
   final int id;
   final int seatId;
@@ -106,11 +108,12 @@ class Reservation {
     );
   }
 
-  bool get isPaidOrConfirmed => status == 1 || status == 2;
+  bool get isPaidOrConfirmed =>
+      status == ReservationStatus.confirmed || status == ReservationStatus.paid;
 
-  bool get isCancelled => status == 3;
+  bool get isCancelled => status == ReservationStatus.cancelled;
 
-  bool get isPaid => status == 2;
+  bool get isPaid => status == ReservationStatus.paid;
 
   bool get isScreeningPast =>
       screeningEndTime.toUtc().isBefore(DateTime.now().toUtc());

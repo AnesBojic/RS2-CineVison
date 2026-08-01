@@ -1,4 +1,5 @@
 using eCommerce.Common.Services.CryptoService;
+using eCommerce.Model;
 using eCommerce.Model.Access;
 using eCommerce.Model.Exceptions;
 using eCommerce.Model.Responses;
@@ -15,6 +16,8 @@ namespace eCommerce.WebAPI.Services.AccessManager
 {
     public class AccessManager : IAccessManager
     {
+        private const int RefreshTokenLifetimeDays = 7;
+
         private readonly IUserService _userService;
         private readonly IConfiguration _configuration;
         private readonly ICryptoService _cryptoService;
@@ -63,7 +66,7 @@ namespace eCommerce.WebAPI.Services.AccessManager
             {
                 UserId = user.Id,
                 Token = refreshTokenValue,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
+                ExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenLifetimeDays)
             };
 
             await _refreshTokenService.InsertAsync(refreshToken);
@@ -103,8 +106,6 @@ namespace eCommerce.WebAPI.Services.AccessManager
                 throw new ClientException("User is not active");
             }
 
-            await _refreshTokenService.DeleteAllUserRefreshTokensAsync(user.Id);
-
             var accessToken = GenerateToken(user);
             var refreshTokenValue = GenerateRefreshToken();
 
@@ -112,10 +113,10 @@ namespace eCommerce.WebAPI.Services.AccessManager
             {
                 UserId = user.Id,
                 Token = refreshTokenValue,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
+                ExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenLifetimeDays)
             };
 
-            await _refreshTokenService.InsertAsync(token);
+            await _refreshTokenService.ReplaceUserTokensAsync(user.Id, token);
 
             return new UserLoginResponse
             {
@@ -142,7 +143,7 @@ namespace eCommerce.WebAPI.Services.AccessManager
                     new Claim(ClaimNames.FirstName, user.FirstName ?? string.Empty),
                     new Claim(ClaimNames.LastName, user.LastName ?? string.Empty),
                     new Claim(ClaimNames.Email, user.Email ?? string.Empty),
-                    new Claim(ClaimNames.Role, user.Role ?? "user"),
+                    new Claim(ClaimNames.Role, user.Role ?? RoleNames.Customer),
                     new Claim(ClaimNames.IsActive, user.IsActive.ToString())
                 }),
                 Expires = DateTime.UtcNow.AddMinutes(durationInMinutes),

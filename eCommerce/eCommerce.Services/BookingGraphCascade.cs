@@ -6,7 +6,7 @@ using eCommerce.Model;
 using eCommerce.Model.Responses;
 using eCommerce.Services.Database;
 using Microsoft.EntityFrameworkCore;
-using eCommerce.Services.Enums;
+using eCommerce.Model.Enums;
 
 namespace eCommerce.Services;
 

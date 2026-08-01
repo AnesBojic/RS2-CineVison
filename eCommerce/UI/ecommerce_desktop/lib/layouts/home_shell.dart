@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:ecommerce_desktop/core/enums/api_enums.dart';
 import 'package:ecommerce_desktop/core/theme/app_theme.dart';
 import 'package:ecommerce_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:ecommerce_desktop/providers/analytics_provider.dart';
@@ -68,7 +69,9 @@ class _HomeShellState extends State<HomeShell> {
   void _onNavTap(int index) {
     setState(() => _selectedIndex = index);
     if (index == _chatbotIndex) {
-      context.read<NotificationProvider>().markAllRead(type: 'Message');
+      context.read<NotificationProvider>().markAllRead(
+            type: NotificationTypes.message,
+          );
     } else {
       context.read<NotificationProvider>().refresh();
     }
@@ -99,7 +102,9 @@ class _HomeShellState extends State<HomeShell> {
       _screeningEditId = index == 3 ? editId : null;
     });
     if (index == _chatbotIndex) {
-      context.read<NotificationProvider>().markAllRead(type: 'Message');
+      context.read<NotificationProvider>().markAllRead(
+            type: NotificationTypes.message,
+          );
     } else {
       context.read<NotificationProvider>().refresh();
     }

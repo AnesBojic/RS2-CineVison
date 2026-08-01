@@ -1,4 +1,4 @@
-﻿using eCommerce.Model;
+using eCommerce.Model;
 using eCommerce.Model.Access;
 using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
@@ -7,7 +7,7 @@ using eCommerce.Services.Database;
 using eCommerce.WebAPI.Services.AccessManager;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using eCommerce.Services.Enums;
+using eCommerce.Model.Enums;
 
 namespace eCommerce.WebAPI.Controllers;
 
@@ -47,7 +47,7 @@ public class ChatBotController : ControllerBase
         var userId = _userAccessor.GetUserId();
         if (userId != null && !string.IsNullOrWhiteSpace(result.Reply))
         {
-            var preview = result.Reply.Length > 180 ? result.Reply[..180] + "â€¦" : result.Reply;
+            var preview = result.Reply.Length > 180 ? result.Reply[..180] + "…" : result.Reply;
             await _notificationService.CreateAsync(
                 userId.Value,
                 "Cinema Assistant replied",
