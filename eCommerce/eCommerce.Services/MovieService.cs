@@ -7,6 +7,7 @@ using eCommerce.Model.Responses;
 using eCommerce.Model.SearchObjects;
 using eCommerce.Services.Database;
 using eCommerce.Services.MovieStateMachine;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,7 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
     private readonly IAnalyticsNotifier _analyticsNotifier;
     private readonly string? _stripeSecretKey;
     private readonly ILogger<MovieService> _logger;
+    private readonly IValidator<MoviePosterUpdateRequest> _posterValidator;
 
     public MovieService(
         ECommerceDbContext dbContext,
@@ -28,7 +30,8 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         IAuthenticatedUserAccessor userAccessor,
         IAnalyticsNotifier analyticsNotifier,
         IConfiguration configuration,
-        ILogger<MovieService> logger)
+        ILogger<MovieService> logger,
+        IValidator<MoviePosterUpdateRequest> posterValidator)
         : base(mapper, dbContext)
     {
         MovieState = movieState;
@@ -36,6 +39,7 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         _analyticsNotifier = analyticsNotifier;
         _stripeSecretKey = configuration["Stripe:SecretKey"];
         _logger = logger;
+        _posterValidator = posterValidator;
     }
 
     public override async Task<PageResult<MovieResponse>> GetAllAsync(MovieSearchObject? search = null)
@@ -285,18 +289,10 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 
     public async Task<MovieResponse> UpdatePosterAsync(int id, MoviePosterUpdateRequest request)
     {
+        await _posterValidator.ValidateAndThrowAsync(request);
+
         var entity = await _dbContext.Movies.FindAsync(id)
             ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
-
-        if (string.IsNullOrWhiteSpace(request.PosterImageBase64))
-        {
-            throw new ClientException("Poster image is required.");
-        }
-
-        if (!ImageContentValidator.TryValidateBase64(request.PosterImageBase64, out _, out var imageError))
-        {
-            throw new ClientException(imageError);
-        }
 
         entity.PosterImageBase64 = request.PosterImageBase64;
         entity.UpdatedAt = DateTime.UtcNow;

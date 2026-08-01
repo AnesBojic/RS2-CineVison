@@ -28,6 +28,8 @@ namespace eCommerce.Services
         private readonly IValidator<UserProfileUpdateRequest> _profileValidator;
         private readonly IValidator<ForgotPasswordRequest> _forgotPasswordValidator;
         private readonly IValidator<ResetPasswordRequest> _resetPasswordValidator;
+        private readonly IValidator<UserRegisterRequest> _registerValidator;
+        private readonly IValidator<UserPasswordChangeRequest> _passwordChangeValidator;
         private readonly IEmailService _emailService;
 
         public UserService(
@@ -39,6 +41,8 @@ namespace eCommerce.Services
             IValidator<UserProfileUpdateRequest> profileValidator,
             IValidator<ForgotPasswordRequest> forgotPasswordValidator,
             IValidator<ResetPasswordRequest> resetPasswordValidator,
+            IValidator<UserRegisterRequest> registerValidator,
+            IValidator<UserPasswordChangeRequest> passwordChangeValidator,
             IEmailService emailService)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
@@ -46,6 +50,8 @@ namespace eCommerce.Services
             _profileValidator = profileValidator;
             _forgotPasswordValidator = forgotPasswordValidator;
             _resetPasswordValidator = resetPasswordValidator;
+            _registerValidator = registerValidator;
+            _passwordChangeValidator = passwordChangeValidator;
             _emailService = emailService;
         }
 
@@ -255,6 +261,8 @@ namespace eCommerce.Services
 
         public async Task<UserResponse> RegisterAsync(UserRegisterRequest request)
         {
+            await _registerValidator.ValidateAndThrowAsync(request);
+
             // Role is never taken from the client for public registration.
             return await InsertAsync(new UserInsertRequest
             {
@@ -474,20 +482,16 @@ namespace eCommerce.Services
 
         public async Task ChangePasswordAsync(UserPasswordChangeRequest request)
         {
-            var user = _dbContext.Users.FirstOrDefault(u => u.Id == request.Id);
+            await _passwordChangeValidator.ValidateAndThrowAsync(request);
 
-            if (user == null)
-                throw new Exception("User not found");
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == request.Id)
+                ?? throw new ClientException("User not found.");
 
             if (!_cryptoService.Verify(user.PasswordHash, user.PasswordSalt, request.Password))
-                throw new Exception("Wrong credential");
-
-            if (!request.NewPassword.Equals(request.ConfirmNewPassword))
-                throw new Exception("Password confimation doen't match new password");
+                throw new ClientException("Current password is incorrect.");
 
             user.PasswordSalt = _cryptoService.GenerateSlat();
             user.PasswordHash = _cryptoService.GenerateHash(request.NewPassword, user.PasswordSalt);
-
 
             _dbContext.Users.Update(user);
             await _dbContext.SaveChangesAsync();

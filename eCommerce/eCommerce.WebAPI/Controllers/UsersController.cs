@@ -6,6 +6,7 @@ using eCommerce.Model.Responses;
 using eCommerce.Model.SearchObjects;
 using eCommerce.Services;
 using eCommerce.WebAPI.Services.AccessManager;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,17 +20,20 @@ public class UsersController : BaseCRUDController<UserResponse, UserSearch, User
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
     private readonly IAuthenticatedUserAccessor _userAccessor;
+    private readonly IValidator<EmailSendRequest> _emailSendValidator;
 
     public UsersController(
         IUserService userService,
         IEmailService emailService,
         INotificationService notificationService,
-        IAuthenticatedUserAccessor userAccessor)
+        IAuthenticatedUserAccessor userAccessor,
+        IValidator<EmailSendRequest> emailSendValidator)
         : base(userService)
     {
         _emailService = emailService;
         _notificationService = notificationService;
         _userAccessor = userAccessor;
+        _emailSendValidator = emailSendValidator;
     }
 
     /// <summary>
@@ -50,6 +54,8 @@ public class UsersController : BaseCRUDController<UserResponse, UserSearch, User
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SendEmail(int id, [FromBody] EmailSendRequest request)
     {
+        await _emailSendValidator.ValidateAndThrowAsync(request);
+
         var email = await _service.GetEmailByIdAsync(id);
 
         await _emailService.QueueEmailAsync(new EmailMessage

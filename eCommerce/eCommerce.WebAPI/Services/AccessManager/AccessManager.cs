@@ -4,6 +4,7 @@ using eCommerce.Model.Exceptions;
 using eCommerce.Model.Responses;
 using eCommerce.Services;
 using eCommerce.Services.Database;
+using FluentValidation;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -18,29 +19,41 @@ namespace eCommerce.WebAPI.Services.AccessManager
         private readonly IConfiguration _configuration;
         private readonly ICryptoService _cryptoService;
         private readonly IRefreshTokenService _refreshTokenService;
+        private readonly IValidator<UserLoginRequest> _loginValidator;
+        private readonly IValidator<RefreshAccessTokenRequest> _refreshTokenValidator;
 
-        public AccessManager(IUserService userService, IConfiguration configuration, ICryptoService cryptoService, IRefreshTokenService refreshTokenService)
+        public AccessManager(
+            IUserService userService,
+            IConfiguration configuration,
+            ICryptoService cryptoService,
+            IRefreshTokenService refreshTokenService,
+            IValidator<UserLoginRequest> loginValidator,
+            IValidator<RefreshAccessTokenRequest> refreshTokenValidator)
         {
             _userService = userService;
             _configuration = configuration;
             _cryptoService = cryptoService;
             _refreshTokenService = refreshTokenService;
+            _loginValidator = loginValidator;
+            _refreshTokenValidator = refreshTokenValidator;
         }
 
         public async Task<UserLoginResponse> LoginAsync(UserLoginRequest request)
         {
+            await _loginValidator.ValidateAndThrowAsync(request);
+
             var user = await _userService.GetByUsernameAsync(request.Username);
 
 
             if (user == null)
             {
-                throw new Exception($"User with {request.Username} doesn't exist");
+                throw new ClientException("Invalid username or password.");
             }
 
             var validPassword = _cryptoService.Verify(user.PasswordHash, user.PasswordSalt, request.Password);
             if (!validPassword)
             {
-                throw new Exception("Wrong credential");
+                throw new ClientException("Invalid username or password.");
             }
 
             var accessToken = GenerateToken(user);
@@ -64,10 +77,7 @@ namespace eCommerce.WebAPI.Services.AccessManager
 
         public async Task<UserLoginResponse> LoginWithRefreshTokenAsync(RefreshAccessTokenRequest request)
         {
-            if (string.IsNullOrEmpty(request.RefreshToken))
-            {
-                throw new ClientException("Refresh token is required");
-            }
+            await _refreshTokenValidator.ValidateAndThrowAsync(request);
 
             var refreshToken = await _refreshTokenService.GetStoredTokenAsync(request.RefreshToken);
 

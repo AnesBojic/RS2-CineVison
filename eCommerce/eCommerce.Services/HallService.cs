@@ -19,17 +19,20 @@ namespace eCommerce.Services
         private readonly IAnalyticsNotifier _analyticsNotifier;
         private readonly string? _stripeSecretKey;
         private readonly ILogger<HallService> _logger;
+        private readonly IValidator<HallSeatLayoutUpdateRequest> _seatLayoutValidator;
 
         public HallService(
             ECommerceDbContext dbContext,
             MapsterMapper.IMapper mapper,
             IValidator<HallInsertRequest> insertValidator,
             IValidator<HallUpdateRequest> updateValidator,
+            IValidator<HallSeatLayoutUpdateRequest> seatLayoutValidator,
             IAnalyticsNotifier analyticsNotifier,
             IConfiguration configuration,
             ILogger<HallService> logger)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
+            _seatLayoutValidator = seatLayoutValidator;
             _analyticsNotifier = analyticsNotifier;
             _stripeSecretKey = configuration["Stripe:SecretKey"];
             _logger = logger;
@@ -263,10 +266,7 @@ namespace eCommerce.Services
 
         public async Task<HallResponse> UpdateSeatLayoutAsync(int hallId, HallSeatLayoutUpdateRequest request)
         {
-            if (request.Seats == null || request.Seats.Count == 0)
-            {
-                throw new ClientException("No seat layout was provided.");
-            }
+            await _seatLayoutValidator.ValidateAndThrowAsync(request);
 
             var hall = await _dbContext.Halls
                 .Include(h => h.Seats)
@@ -298,6 +298,7 @@ namespace eCommerce.Services
 
                 if (item.SeatType != 0 && item.SeatType != (int)SeatType.Couple)
                 {
+                    // Defensive: FluentValidation already rejects invalid types.
                     throw new ClientException($"Invalid seat type for seat {seat.RowLabel}{seat.SeatNumber}. Use Regular or Couple only.");
                 }
 

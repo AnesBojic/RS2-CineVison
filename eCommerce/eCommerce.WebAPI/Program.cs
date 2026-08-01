@@ -1,6 +1,7 @@
 using eCommerce.Common.Services.CryptoService;
 using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
+using eCommerce.Model.Access;
 using eCommerce.Services;
 using eCommerce.Services.Database;
 using eCommerce.Services.MovieStateMachine;
@@ -179,6 +180,15 @@ builder.Services.AddScoped<IValidator<ResetPasswordRequest>, ResetPasswordValida
 builder.Services.AddScoped<IValidator<ReviewInsertRequest>, ReviewInsertValidator>();
 builder.Services.AddScoped<IValidator<ReviewUpdateRequest>, ReviewUpdateValidator>();
 builder.Services.AddScoped<IValidator<ChatRequest>, ChatRequestValidator>();
+builder.Services.AddScoped<IValidator<ReservationCreateRequest>, ReservationCreateValidator>();
+builder.Services.AddScoped<IValidator<CreatePaymentIntentRequest>, CreatePaymentIntentValidator>();
+builder.Services.AddScoped<IValidator<ReservationCancelRequest>, ReservationCancelValidator>();
+builder.Services.AddScoped<IValidator<UserPasswordChangeRequest>, UserPasswordChangeValidator>();
+builder.Services.AddScoped<IValidator<UserLoginRequest>, UserLoginValidator>();
+builder.Services.AddScoped<IValidator<RefreshAccessTokenRequest>, RefreshAccessTokenValidator>();
+builder.Services.AddScoped<IValidator<HallSeatLayoutUpdateRequest>, HallSeatLayoutUpdateValidator>();
+builder.Services.AddScoped<IValidator<MoviePosterUpdateRequest>, MoviePosterUpdateValidator>();
+builder.Services.AddScoped<IValidator<EmailSendRequest>, EmailSendValidator>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();

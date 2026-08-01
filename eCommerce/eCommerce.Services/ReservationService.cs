@@ -10,6 +10,7 @@ using eCommerce.Model.Responses;
 using eCommerce.Model.SearchObjects;
 using eCommerce.Services.Database;
 using eCommerce.Services.ReservationStateMachine;
+using FluentValidation;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -27,6 +28,9 @@ namespace eCommerce.Services
         private readonly ILogger<ReservationService> _logger;
         private readonly IAnalyticsNotifier _analyticsNotifier;
         private readonly INotificationService _notificationService;
+        private readonly IValidator<ReservationCreateRequest> _createValidator;
+        private readonly IValidator<CreatePaymentIntentRequest> _paymentIntentValidator;
+        private readonly IValidator<ReservationCancelRequest> _cancelValidator;
 
         public ReservationService(
             ECommerceDbContext dbContext,
@@ -36,7 +40,10 @@ namespace eCommerce.Services
             IEmailService emailService,
             ILogger<ReservationService> logger,
             IAnalyticsNotifier analyticsNotifier,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IValidator<ReservationCreateRequest> createValidator,
+            IValidator<CreatePaymentIntentRequest> paymentIntentValidator,
+            IValidator<ReservationCancelRequest> cancelValidator)
             : base(mapper, dbContext)
         {
             _userAccessor = userAccessor;
@@ -48,6 +55,9 @@ namespace eCommerce.Services
             _logger = logger;
             _analyticsNotifier = analyticsNotifier;
             _notificationService = notificationService;
+            _createValidator = createValidator;
+            _paymentIntentValidator = paymentIntentValidator;
+            _cancelValidator = cancelValidator;
         }
 
         private bool IsAdminOrStaff() =>
@@ -140,14 +150,12 @@ namespace eCommerce.Services
 
         public async Task<ReservationResponse> CreateReservationAsync(ReservationCreateRequest request)
         {
+            await _createValidator.ValidateAndThrowAsync(request);
+
             var userId = _userAccessor.GetUserId()
                 ?? throw new InvalidOperationException("User id claim is missing.");
 
-            var seatIds = (request.SeatIds ?? new List<int>()).Distinct().ToList();
-            if (seatIds.Count == 0)
-            {
-                throw new ClientException("No seats were selected.");
-            }
+            var seatIds = request.SeatIds.Distinct().ToList();
 
             var paymentIntentId = string.IsNullOrWhiteSpace(request.PaymentIntentId)
                 ? null
@@ -420,6 +428,11 @@ namespace eCommerce.Services
 
         public async Task<ReservationResponse> CancelAsync(int id, ReservationCancelRequest? request = null)
         {
+            if (request != null)
+            {
+                await _cancelValidator.ValidateAndThrowAsync(request);
+            }
+
             var userId = _userAccessor.GetUserId()
                 ?? throw new InvalidOperationException("User id claim is missing.");
 
@@ -530,14 +543,12 @@ namespace eCommerce.Services
 
         public async Task<PaymentIntentResponse> CreatePaymentIntentAsync(CreatePaymentIntentRequest request)
         {
+            await _paymentIntentValidator.ValidateAndThrowAsync(request);
+
             var userId = _userAccessor.GetUserId()
                 ?? throw new InvalidOperationException("User id claim is missing.");
 
-            var seatIds = (request.SeatIds ?? new List<int>()).Distinct().ToList();
-            if (seatIds.Count == 0)
-            {
-                throw new ClientException("No seats were selected.");
-            }
+            var seatIds = request.SeatIds.Distinct().ToList();
 
             var screening = await _dbContext.Screenings
                 .Include(s => s.Hall).ThenInclude(h => h.Seats)
