@@ -32,8 +32,11 @@ namespace eCommerce.Services.Database
         [Column(TypeName = "decimal(18,2)")]
         public decimal BasePrice { get; set; }
 
-        [MaxLength(50)]
-        public string? Language { get; set; }
+        // Spoken language of this projection (reference table)
+        public int? LanguageId { get; set; }
+
+        [ForeignKey("LanguageId")]
+        public Language? Language { get; set; }
 
         public bool HasSubtitles { get; set; } = false;
 

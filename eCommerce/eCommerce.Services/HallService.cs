@@ -37,6 +37,11 @@ namespace eCommerce.Services
 
         protected override async Task<IQueryable<Hall>> IncludeRelatedEntitiesAsync(HallSearchObject? search, IQueryable<Hall> query = null!)
         {
+            // Screen type and status names are always part of the response.
+            query = query
+                .Include(h => h.ScreenType)
+                .Include(h => h.Status);
+
             if (search?.IncludeSeats == true)
             {
                 query = query.Include(h => h.Seats);
@@ -65,15 +70,17 @@ namespace eCommerce.Services
                 throw new ValidationException(validationResult.Errors);
             }
 
-            var status = (HallStatus)request.Status;
+            var screenType = await RequireScreenTypeAsync(request.ScreenTypeId);
+            var status = await RequireStatusAsync(request.StatusId);
+
             var hall = new Hall
             {
                 Name = request.Name,
                 Description = request.Description,
-                ScreenType = (ScreenType)request.ScreenType,
-                Status = status,
+                ScreenTypeId = screenType.Id,
+                StatusId = status.Id,
                 // Keep the legacy IsActive flag in sync with the richer status.
-                IsActive = status == HallStatus.Active,
+                IsActive = status.AllowsScreenings,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -107,6 +114,8 @@ namespace eCommerce.Services
 
             IQueryable<Hall> query = _dbContext.Halls
                 .AsNoTracking()
+                .Include(h => h.ScreenType)
+                .Include(h => h.Status)
                 .Include(h => h.Seats);
 
             if (!string.IsNullOrWhiteSpace(search.Name))
@@ -145,6 +154,8 @@ namespace eCommerce.Services
         {
             var hall = await _dbContext.Halls
                 .AsNoTracking()
+                .Include(h => h.ScreenType)
+                .Include(h => h.Status)
                 .Include(h => h.Seats)
                 .FirstOrDefaultAsync(h => h.Id == id);
 
@@ -165,16 +176,22 @@ namespace eCommerce.Services
             }
 
             var hall = await _dbContext.Halls
+                .Include(h => h.ScreenType)
+                .Include(h => h.Status)
                 .Include(h => h.Seats)
                 .FirstOrDefaultAsync(h => h.Id == id)
                 ?? throw new KeyNotFoundException($"Hall with id {id} not found.");
 
-            var status = (HallStatus)request.Status;
+            var screenType = await RequireScreenTypeAsync(request.ScreenTypeId);
+            var status = await RequireStatusAsync(request.StatusId);
+
             hall.Name = request.Name;
             hall.Description = request.Description;
-            hall.ScreenType = (ScreenType)request.ScreenType;
+            hall.ScreenType = screenType;
+            hall.ScreenTypeId = screenType.Id;
             hall.Status = status;
-            hall.IsActive = status == HallStatus.Active;
+            hall.StatusId = status.Id;
+            hall.IsActive = status.AllowsScreenings;
             hall.UpdatedAt = DateTime.UtcNow;
 
             await _dbContext.SaveChangesAsync();
@@ -332,11 +349,24 @@ namespace eCommerce.Services
             return BuildResponse(hall, includeSeats: true);
         }
 
+        private async Task<ScreenType> RequireScreenTypeAsync(int screenTypeId)
+        {
+            return await _dbContext.ScreenTypes.FirstOrDefaultAsync(s => s.Id == screenTypeId)
+                ?? throw new ClientException("The selected screen type no longer exists. Refresh and pick another one.");
+        }
+
+        private async Task<HallStatus> RequireStatusAsync(int statusId)
+        {
+            return await _dbContext.HallStatuses.FirstOrDefaultAsync(s => s.Id == statusId)
+                ?? throw new ClientException("The selected hall status no longer exists. Refresh and pick another one.");
+        }
+
         private HallResponse BuildResponse(Hall hall, bool includeSeats)
         {
             var response = _mapper.Map<HallResponse>(hall);
-            response.ScreenTypeName = ScreenTypeDisplayName(hall.ScreenType);
-            response.StatusName = hall.Status.ToString();
+            response.ScreenTypeName = hall.ScreenType?.Name ?? string.Empty;
+            response.StatusName = hall.Status?.Name ?? string.Empty;
+            response.AllowsScreenings = hall.Status?.AllowsScreenings ?? false;
             response.SeatCount = hall.Seats.Count(s => s.IsActive);
             response.Capacity = hall.Seats.Count(s => s.IsActive);
             var rowGroups = hall.Seats.GroupBy(s => s.RowLabel).ToList();
@@ -366,12 +396,6 @@ namespace eCommerce.Services
                 IsActive = s.IsActive,
             };
         }
-
-        private static string ScreenTypeDisplayName(ScreenType screenType) => screenType switch
-        {
-            ScreenType.ThreeD => "3D",
-            _ => screenType.ToString()
-        };
 
         private static string ToRowLabel(int index)
         {

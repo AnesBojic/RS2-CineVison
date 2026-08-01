@@ -461,7 +461,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 DataCell(Text(h.screenTypeName ?? '—')),
                 DataCell(StatusBadge(
                   label: h.statusName ?? 'Active',
-                  color: hallStatusColor(h.status),
+                  color: hallStatusColor(h),
                   filled: true,
                 )),
                 DataCell(_actionsCell(

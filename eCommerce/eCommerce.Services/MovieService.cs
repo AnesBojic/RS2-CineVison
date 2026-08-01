@@ -92,6 +92,11 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 
     protected override Task<IQueryable<Movie>> IncludeRelatedEntitiesAsync(MovieSearchObject? search, IQueryable<Movie> query = null!)
     {
+        // Language and age rating names are always part of the response.
+        query = query
+            .Include(m => m.Language)
+            .Include(m => m.AgeRating);
+
         if (search?.IncludeGenre == true)
         {
             query = query.Include(m => m.Genre);
@@ -173,10 +178,12 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         return state.GetAllowedActions();
     }
 
-    public Task<MovieResponse> InsertAsync(MovieInsertRequest request)
+    public async Task<MovieResponse> InsertAsync(MovieInsertRequest request)
     {
+        await EnsureReferencesExistAsync(request.LanguageId, request.AgeRatingId);
+
         var state = MovieState.GetMovieState(nameof(InitialMovieState));
-        return state.InsertAsync(request);
+        return await state.InsertAsync(request);
     }
 
     public async Task<MovieResponse> UpdateAsync(int id, MovieUpdateRequest request)
@@ -184,8 +191,26 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         var entity = await _dbContext.Movies.FindAsync(id)
             ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
 
+        await EnsureReferencesExistAsync(request.LanguageId, request.AgeRatingId);
+
         var state = MovieState.GetMovieState(entity.MovieState);
         return await state.UpdateAsync(id, request);
+    }
+
+    /// <summary>
+    /// Turns a stale reference-data selection into a readable 400 instead of a foreign key error.
+    /// </summary>
+    private async Task EnsureReferencesExistAsync(int? languageId, int? ageRatingId)
+    {
+        if (languageId.HasValue && !await _dbContext.Languages.AnyAsync(l => l.Id == languageId.Value))
+        {
+            throw new ClientException("The selected language no longer exists. Refresh and pick another one.");
+        }
+
+        if (ageRatingId.HasValue && !await _dbContext.AgeRatings.AnyAsync(a => a.Id == ageRatingId.Value))
+        {
+            throw new ClientException("The selected age rating no longer exists. Refresh and pick another one.");
+        }
     }
 
     public async Task<CascadeDeleteImpactResponse> GetDeleteImpactAsync(int id)
@@ -285,6 +310,8 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         var entity = await _dbContext.Movies
             .AsNoTracking()
             .Include(m => m.Genre)
+            .Include(m => m.Language)
+            .Include(m => m.AgeRating)
             .Include(m => m.Assets)
             .FirstOrDefaultAsync(m => m.Id == id)
             ?? throw new KeyNotFoundException($"Movie with id {id} not found.");

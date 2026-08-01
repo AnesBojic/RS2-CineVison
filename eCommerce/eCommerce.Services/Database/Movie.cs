@@ -24,11 +24,17 @@ namespace eCommerce.Services.Database
 
         public DateTime? ReleaseDate { get; set; }
 
-        [MaxLength(50)]
-        public string? Language { get; set; }
+        // Spoken language (reference table)
+        public int? LanguageId { get; set; }
 
-        [MaxLength(20)]
-        public string? AgeRating { get; set; }
+        [ForeignKey("LanguageId")]
+        public Language? Language { get; set; }
+
+        // Content/age rating (reference table)
+        public int? AgeRatingId { get; set; }
+
+        [ForeignKey("AgeRatingId")]
+        public AgeRating? AgeRating { get; set; }
 
         [MaxLength(500)]
         public string? TrailerUrl { get; set; }

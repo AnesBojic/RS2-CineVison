@@ -2,6 +2,7 @@ using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Services.Database;
 using MapsterMapper;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace eCommerce.Services.MovieStateMachine
@@ -42,6 +43,20 @@ namespace eCommerce.Services.MovieStateMachine
         public virtual Task<MovieResponse> DeleteAsync(int id)
         {
             throw new InvalidOperationException("Cannot delete a movie in its current state.");
+        }
+
+        /// <summary>
+        /// Maps a just-saved movie to a response with its reference rows loaded, so the genre,
+        /// language and age rating labels are present instead of null.
+        /// </summary>
+        protected async Task<MovieResponse> MapWithReferencesAsync(Movie entity)
+        {
+            var entry = DbContext.Entry(entity);
+            await entry.Reference(m => m.Genre).LoadAsync();
+            await entry.Reference(m => m.Language).LoadAsync();
+            await entry.Reference(m => m.AgeRating).LoadAsync();
+
+            return Mapper.Map<MovieResponse>(entity);
         }
 
         public BaseMovieState GetMovieState(string stateName)

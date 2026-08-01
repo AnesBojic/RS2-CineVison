@@ -8,6 +8,9 @@ class Screening {
   final DateTime? startTime;
   final DateTime? endTime;
   final num? basePrice;
+
+  /// Reference table id used by the edit form, plus the name flattened for display.
+  final int? languageId;
   final String? language;
   final bool? hasSubtitles;
   final bool? isActive;
@@ -24,6 +27,7 @@ class Screening {
     this.startTime,
     this.endTime,
     this.basePrice,
+    this.languageId,
     this.language,
     this.hasSubtitles,
     this.isActive,
@@ -55,6 +59,7 @@ class Screening {
       startTime: _parseUtcAsLocal(json['startTime']),
       endTime: _parseUtcAsLocal(json['endTime']),
       basePrice: json['basePrice'] as num?,
+      languageId: json['languageId'] as int?,
       language: json['language'] as String?,
       hasSubtitles: json['hasSubtitles'] as bool?,
       isActive: json['isActive'] as bool?,
@@ -68,7 +73,7 @@ class Screening {
         'hallId': hallId,
         'startTime': _toUtcApi(startTime),
         'basePrice': basePrice,
-        'language': language,
+        'languageId': languageId,
         'hasSubtitles': hasSubtitles ?? false,
         'isActive': isActive ?? true,
       };

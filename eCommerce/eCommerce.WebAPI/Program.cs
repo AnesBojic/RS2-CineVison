@@ -59,12 +59,29 @@ builder.Services.AddMapster();
 
 // Mapster configuration for the cinema domain.
 TypeAdapterConfig<Genre, GenreResponse>.NewConfig().IgnoreNullValues(true);
-TypeAdapterConfig<Movie, MovieResponse>.NewConfig().IgnoreNullValues(true);
+
+// Reference (lookup) tables. Navigation collections must never be mapped onto responses.
+TypeAdapterConfig<ScreenType, ScreenTypeResponse>.NewConfig().IgnoreNullValues(true);
+TypeAdapterConfig<HallStatus, HallStatusResponse>.NewConfig().IgnoreNullValues(true);
+TypeAdapterConfig<AgeRating, AgeRatingResponse>.NewConfig().IgnoreNullValues(true);
+TypeAdapterConfig<Language, LanguageResponse>.NewConfig().IgnoreNullValues(true);
+
+// Lookup names are flattened into the movie/screening/hall responses so clients can render
+// a label without fetching the reference tables.
+TypeAdapterConfig<Movie, MovieResponse>.NewConfig()
+    .IgnoreNullValues(true)
+    .Map(dest => dest.Language, src => src.Language != null ? src.Language.Name : null)
+    .Map(dest => dest.AgeRating, src => src.AgeRating != null ? src.AgeRating.Name : null);
 TypeAdapterConfig<MovieUpdateRequest, Movie>.NewConfig().IgnoreNullValues(true).Ignore(dest => dest.Assets);
-TypeAdapterConfig<Hall, HallResponse>.NewConfig().IgnoreNullValues(true);
+TypeAdapterConfig<Hall, HallResponse>.NewConfig()
+    .IgnoreNullValues(true)
+    .Map(dest => dest.ScreenTypeName, src => src.ScreenType != null ? src.ScreenType.Name : string.Empty)
+    .Map(dest => dest.StatusName, src => src.Status != null ? src.Status.Name : string.Empty)
+    .Map(dest => dest.AllowsScreenings, src => src.Status != null && src.Status.AllowsScreenings);
 TypeAdapterConfig<Seat, SeatResponse>.NewConfig().IgnoreNullValues(true);
 TypeAdapterConfig<Screening, ScreeningResponse>.NewConfig()
     .IgnoreNullValues(true)
+    .Map(dest => dest.Language, src => src.Language != null ? src.Language.Name : null)
     .Ignore(dest => dest.Movie)
     .Ignore(dest => dest.Hall);
 TypeAdapterConfig<Asset, AssetResponse>.NewConfig().IgnoreNullValues(true);
@@ -81,6 +98,13 @@ builder.Services.AddScoped<ActiveMovieState>();
 
 // cinema domain services
 builder.Services.AddScoped<IGenreService, GenreService>();
+
+// reference (lookup) data services
+builder.Services.AddScoped<IScreenTypeService, ScreenTypeService>();
+builder.Services.AddScoped<IHallStatusService, HallStatusService>();
+builder.Services.AddScoped<IAgeRatingService, AgeRatingService>();
+builder.Services.AddScoped<ILanguageService, LanguageService>();
+
 builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<IHallService, HallService>();
 builder.Services.AddScoped<ISeatService, SeatService>();
@@ -123,6 +147,17 @@ else
 // validators
 builder.Services.AddScoped<IValidator<GenreInsertRequest>, GenreInsertValidator>();
 builder.Services.AddScoped<IValidator<GenreUpdateRequest>, GenreUpdateValidator>();
+
+// reference data: screen types and hall statuses only need the shared name/description rules
+builder.Services.AddScoped<IValidator<ScreenTypeInsertRequest>, LookupRequestValidator<ScreenTypeInsertRequest>>();
+builder.Services.AddScoped<IValidator<ScreenTypeUpdateRequest>, LookupRequestValidator<ScreenTypeUpdateRequest>>();
+builder.Services.AddScoped<IValidator<HallStatusInsertRequest>, LookupRequestValidator<HallStatusInsertRequest>>();
+builder.Services.AddScoped<IValidator<HallStatusUpdateRequest>, LookupRequestValidator<HallStatusUpdateRequest>>();
+builder.Services.AddScoped<IValidator<AgeRatingInsertRequest>, AgeRatingInsertValidator>();
+builder.Services.AddScoped<IValidator<AgeRatingUpdateRequest>, AgeRatingUpdateValidator>();
+builder.Services.AddScoped<IValidator<LanguageInsertRequest>, LanguageInsertValidator>();
+builder.Services.AddScoped<IValidator<LanguageUpdateRequest>, LanguageUpdateValidator>();
+
 builder.Services.AddScoped<IValidator<NewsInsertRequest>, NewsInsertValidator>();
 builder.Services.AddScoped<IValidator<NewsUpdateRequest>, NewsUpdateValidator>();
 builder.Services.AddScoped<IValidator<MovieInsertRequest>, MovieInsertValidator>();

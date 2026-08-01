@@ -11,13 +11,13 @@ namespace eCommerce.Model.Requests
         [MaxLength(500)]
         public string Description { get; set; } = string.Empty;
 
-        /// <summary>Screen technology: 0 = Standard, 1 = IMAX, 2 = 3D.</summary>
-        public int ScreenType { get; set; } = 0;
+        /// <summary>Id of a row in the ScreenTypes reference table.</summary>
+        [Required]
+        public int ScreenTypeId { get; set; }
 
-        /// <summary>Operational status: 0 = Active, 1 = Maintenance, 2 = Inactive.</summary>
-        public int Status { get; set; } = 0;
-
-        public bool IsActive { get; set; } = true;
+        /// <summary>Id of a row in the HallStatuses reference table.</summary>
+        [Required]
+        public int StatusId { get; set; }
 
         /// <summary>
         /// When greater than zero, the hall is created with an auto-generated seat grid:

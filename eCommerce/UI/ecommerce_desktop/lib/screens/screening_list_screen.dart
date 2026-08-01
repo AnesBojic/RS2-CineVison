@@ -1,10 +1,12 @@
 import 'package:ecommerce_desktop/core/theme/app_theme.dart';
 import 'package:ecommerce_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:ecommerce_desktop/models/hall.dart';
+import 'package:ecommerce_desktop/models/lookup_item.dart';
 import 'package:ecommerce_desktop/models/movie.dart';
 import 'package:ecommerce_desktop/models/screening.dart';
 import 'package:ecommerce_desktop/models/search_result.dart';
 import 'package:ecommerce_desktop/providers/hall_provider.dart';
+import 'package:ecommerce_desktop/providers/language_provider.dart';
 import 'package:ecommerce_desktop/providers/movie_provider.dart';
 import 'package:ecommerce_desktop/providers/screening_provider.dart';
 import 'package:ecommerce_desktop/utils/api_client_exception.dart';
@@ -27,6 +29,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
   List<Screening> _items = [];
   List<Movie> _movies = [];
   List<Hall> _halls = [];
+  List<LookupItem> _languages = [];
   bool _loading = true;
   static const int _pageSize = 10;
   int _page = 1;
@@ -76,20 +79,23 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
   }
 
   Future<void> _ensurePickerData() async {
-    if (_movies.isNotEmpty && _halls.isNotEmpty) return;
+    if (_movies.isNotEmpty && _halls.isNotEmpty && _languages.isNotEmpty) return;
 
     final movieProvider = context.read<MovieProvider>();
     final hallProvider = context.read<HallProvider>();
+    final languageProvider = context.read<LanguageProvider>();
 
     final results = await Future.wait([
       movieProvider.get(filter: {'pageSize': 500}),
       hallProvider.get(filter: {'pageSize': 500}),
+      languageProvider.get(filter: {'pageSize': 100, 'isActive': true}),
     ]);
 
     if (!mounted) return;
     setState(() {
       _movies = (results[0] as SearchResult<Movie>).items ?? [];
       _halls = (results[1] as SearchResult<Hall>).items ?? [];
+      _languages = (results[2] as SearchResult<LookupItem>).items ?? [];
     });
   }
 
@@ -299,6 +305,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
 
     int? movieId = screening?.movieId;
     int? hallId = screening?.hallId;
+    int? languageId = screening?.languageId;
     final localStart = screening?.startTime?.toLocal();
     DateTime? date = localStart;
     TimeOfDay? time =
@@ -343,6 +350,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
             final entity = Screening(
               movieId: movieId,
               hallId: hallId,
+              languageId: languageId,
               startTime: startTime,
               basePrice: num.tryParse(priceCtrl.text.replaceAll('\$', '')) ?? 0,
               isActive: true,
@@ -390,9 +398,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
                 items: _halls
                     .map((h) => DropdownMenuItem(
                           value: h.id,
-                          child: Text(
-                            '${h.name ?? ''} (${hallStatuses[h.status ?? 0]})',
-                          ),
+                          child: Text('${h.name ?? ''} (${h.statusName ?? '—'})'),
                         ))
                     .toList(),
                 onChanged: (v) {
@@ -445,6 +451,17 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
                   ),
                 ),
               ]),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                initialValue: languageId,
+                dropdownColor: AppColors.card,
+                decoration: const InputDecoration(labelText: 'Language'),
+                items: _languages
+                    .map((l) => DropdownMenuItem(value: l.id, child: Text(l.name ?? '')))
+                    .toList(),
+                onChanged: (v) => setDialogState(() => languageId = v),
+                validator: (v) => v == null ? 'Language is required' : null,
+              ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: priceCtrl,

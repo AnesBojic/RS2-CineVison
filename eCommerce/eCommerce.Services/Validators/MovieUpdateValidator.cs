@@ -17,9 +17,6 @@ namespace eCommerce.Services.Validators
             RuleFor(x => x.DurationMinutes)
                 .GreaterThan(0).WithMessage("Duration must be greater than 0 minutes.")
                 .LessThanOrEqualTo(600).WithMessage("Duration cannot exceed 600 minutes.");
-
-            RuleFor(x => x.AgeRating)
-                .MaximumLength(20).WithMessage("Age rating cannot exceed 20 characters.");
         }
     }
 }

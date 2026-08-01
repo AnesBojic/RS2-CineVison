@@ -573,6 +573,7 @@ class ActionIconButton extends StatelessWidget {
     required this.color,
     required this.onPressed,
     this.tooltip,
+    this.enabled = true,
   });
 
   final IconData icon;
@@ -580,23 +581,69 @@ class ActionIconButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String? tooltip;
 
+  /// When false the button is greyed out and ignores taps. Pair it with a
+  /// [tooltip] that explains why the action is unavailable.
+  final bool enabled;
+
   @override
   Widget build(BuildContext context) {
+    final effectiveColor = enabled ? color : AppColors.textSecondary;
     final button = Material(
-      color: color.withValues(alpha: 0.12),
+      color: effectiveColor.withValues(alpha: enabled ? 0.12 : 0.06),
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
-        onTap: onPressed,
+        onTap: enabled ? onPressed : null,
         child: SizedBox(
           width: 34,
           height: 34,
-          child: Icon(icon, color: color, size: 18),
+          child: Icon(
+            icon,
+            color: enabled ? effectiveColor : effectiveColor.withValues(alpha: 0.5),
+            size: 18,
+          ),
         ),
       ),
     );
     if (tooltip == null || tooltip!.isEmpty) return button;
     return Tooltip(message: tooltip!, child: button);
+  }
+}
+
+/// Chip used to switch between sections inside a single page (e.g. reference data).
+class SectionChip extends StatelessWidget {
+  const SectionChip({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.primary : AppColors.inputFill,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : AppColors.textSecondary,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -1000,7 +1047,7 @@ String buildCascadeDeleteWarning({
   final items = impact?['items'];
   if (total > 0 && items is List && items.isNotEmpty) {
     buffer.writeln(
-      'Warning: this will permanently cascade-delete $total related row(s):',
+      'Warning: this will also permanently remove $total related record(s):',
     );
     for (final item in items) {
       if (item is! Map) continue;
@@ -1010,11 +1057,9 @@ String buildCascadeDeleteWarning({
         buffer.writeln('• $count $name');
       }
     }
-    buffer.writeln();
-    buffer.writeln('Children are removed first, then this record.');
   } else {
     buffer.writeln(
-      'No related bookings were found. The record will still be removed permanently.',
+      'No related bookings were found. This will still be removed permanently.',
     );
   }
 

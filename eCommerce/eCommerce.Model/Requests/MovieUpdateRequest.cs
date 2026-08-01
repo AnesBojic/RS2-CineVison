@@ -20,11 +20,11 @@ namespace eCommerce.Model.Requests
 
         public DateTime? ReleaseDate { get; set; }
 
-        [MaxLength(50)]
-        public string? Language { get; set; }
+        /// <summary>Id of a row in the Languages reference table.</summary>
+        public int? LanguageId { get; set; }
 
-        [MaxLength(20)]
-        public string? AgeRating { get; set; }
+        /// <summary>Id of a row in the AgeRatings reference table.</summary>
+        public int? AgeRatingId { get; set; }
 
         [MaxLength(500)]
         public string? TrailerUrl { get; set; }

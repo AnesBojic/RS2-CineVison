@@ -19,7 +19,7 @@ namespace eCommerce.Services.MovieStateMachine
             entity.CreatedAt = DateTime.UtcNow;
             DbContext.Movies.Add(entity);
             await DbContext.SaveChangesAsync();
-            return Mapper.Map<MovieResponse>(entity);
+            return await MapWithReferencesAsync(entity);
         }
 
         public override List<string> GetAllowedActions()

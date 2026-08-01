@@ -8,6 +8,10 @@ namespace eCommerce.Services.Database
         private void CreateSeed(ModelBuilder modelBuilder)
         {
             SeedGenres(modelBuilder);
+            SeedScreenTypes(modelBuilder);
+            SeedHallStatuses(modelBuilder);
+            SeedAgeRatings(modelBuilder);
+            SeedLanguages(modelBuilder);
             SeedHalls(modelBuilder);
             SeedSeats(modelBuilder);
             SeedMovies(modelBuilder);
@@ -33,11 +37,50 @@ namespace eCommerce.Services.Database
             );
         }
 
+        private void SeedScreenTypes(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ScreenType>().HasData(
+                new { Id = 1, Name = "Standard", Description = "Standard 2D digital projection", IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 2, Name = "IMAX", Description = "Large-format IMAX screen", IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 3, Name = "3D", Description = "Stereoscopic 3D projection", IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+            );
+        }
+
+        private void SeedHallStatuses(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<HallStatus>().HasData(
+                new { Id = 1, Name = "Active", Description = "Hall is open and can host projections", AllowsScreenings = true, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 2, Name = "Maintenance", Description = "Temporarily closed for maintenance", AllowsScreenings = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 3, Name = "Inactive", Description = "Permanently out of use", AllowsScreenings = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+            );
+        }
+
+        private void SeedAgeRatings(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<AgeRating>().HasData(
+                new { Id = 1, Name = "G", Description = "General audiences — all ages admitted", MinimumAge = (int?)0, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 2, Name = "PG", Description = "Parental guidance suggested", MinimumAge = (int?)8, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 3, Name = "PG-13", Description = "Some material may be inappropriate for children under 13", MinimumAge = (int?)13, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 4, Name = "R", Description = "Restricted — under 17 requires an accompanying adult", MinimumAge = (int?)17, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 5, Name = "NC-17", Description = "No one 17 and under admitted", MinimumAge = (int?)18, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+            );
+        }
+
+        private void SeedLanguages(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Language>().HasData(
+                new { Id = 1, Name = "English", Code = (string?)"en", Description = "English audio", IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 2, Name = "Bosnian", Code = (string?)"bs", Description = "Bosnian audio", IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 3, Name = "German", Code = (string?)"de", Description = "German audio", IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 4, Name = "Spanish", Code = (string?)"es", Description = "Spanish audio", IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+            );
+        }
+
         private void SeedHalls(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Hall>().HasData(
-                new { Id = 1, Name = "Hall A", Description = "Main auditorium with 40 seats", ScreenType = ScreenType.IMAX, Status = HallStatus.Active, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 2, Name = "Hall B", Description = "Smaller auditorium with 24 seats", ScreenType = ScreenType.Standard, Status = HallStatus.Active, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+                new { Id = 1, Name = "Hall A", Description = "Main auditorium with 40 seats", ScreenTypeId = 2, StatusId = 1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 2, Name = "Hall B", Description = "Smaller auditorium with 24 seats", ScreenTypeId = 1, StatusId = 1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
             );
         }
 
@@ -87,23 +130,23 @@ namespace eCommerce.Services.Database
         {
             // PosterImageBase64 is filled on first API startup by MoviePosterSeed (SeedAssets/poster-{id}.jpg).
             modelBuilder.Entity<Movie>().HasData(
-                new { Id = 1, Title = "Edge of Tomorrow", Description = "A soldier relives the same brutal battle in a loop against an alien invasion.", DurationMinutes = 113, Director = "Doug Liman", ReleaseDate = (DateTime?)new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc), Language = "English", AgeRating = "PG-13", TrailerUrl = (string?)null, IsActive = true, ViewCount = 320, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(ActiveMovieState), GenreId = (int?)4 },
-                new { Id = 2, Title = "The Last Laugh", Description = "An ageing comedian gets one final shot at the spotlight.", DurationMinutes = 98, Director = "Greta Park", ReleaseDate = (DateTime?)new DateTime(2026, 2, 10, 0, 0, 0, DateTimeKind.Utc), Language = "English", AgeRating = "PG", TrailerUrl = (string?)null, IsActive = true, ViewCount = 140, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(ActiveMovieState), GenreId = (int?)3 },
-                new { Id = 3, Title = "Silent Shadows", Description = "A family moves into a house that hides a terrifying secret.", DurationMinutes = 105, Director = "Mark Reyes", ReleaseDate = (DateTime?)new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc), Language = "English", AgeRating = "R", TrailerUrl = (string?)null, IsActive = true, ViewCount = 210, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(ActiveMovieState), GenreId = (int?)5 },
-                new { Id = 4, Title = "Broken Roads", Description = "Two strangers cross the country and find unexpected friendship.", DurationMinutes = 127, Director = "Lena Holt", ReleaseDate = (DateTime?)new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc), Language = "English", AgeRating = "PG-13", TrailerUrl = (string?)null, IsActive = true, ViewCount = 90, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(ActiveMovieState), GenreId = (int?)2 },
-                new { Id = 5, Title = "Final Strike", Description = "An elite agent races to stop a global catastrophe.", DurationMinutes = 118, Director = "Sam Okafor", ReleaseDate = (DateTime?)new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc), Language = "English", AgeRating = "PG-13", TrailerUrl = (string?)null, IsActive = true, ViewCount = 260, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(ActiveMovieState), GenreId = (int?)1 },
-                new { Id = 6, Title = "Quantum Drift", Description = "A physicist discovers a way to travel between parallel worlds.", DurationMinutes = 134, Director = "Iris Vance", ReleaseDate = (DateTime?)new DateTime(2026, 6, 12, 0, 0, 0, DateTimeKind.Utc), Language = "English", AgeRating = "PG-13", TrailerUrl = (string?)null, IsActive = true, ViewCount = 60, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(DraftMovieState), GenreId = (int?)4 }
+                new { Id = 1, Title = "Edge of Tomorrow", Description = "A soldier relives the same brutal battle in a loop against an alien invasion.", DurationMinutes = 113, Director = "Doug Liman", ReleaseDate = (DateTime?)new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)3, TrailerUrl = (string?)null, IsActive = true, ViewCount = 320, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(ActiveMovieState), GenreId = (int?)4 },
+                new { Id = 2, Title = "The Last Laugh", Description = "An ageing comedian gets one final shot at the spotlight.", DurationMinutes = 98, Director = "Greta Park", ReleaseDate = (DateTime?)new DateTime(2026, 2, 10, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)2, TrailerUrl = (string?)null, IsActive = true, ViewCount = 140, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(ActiveMovieState), GenreId = (int?)3 },
+                new { Id = 3, Title = "Silent Shadows", Description = "A family moves into a house that hides a terrifying secret.", DurationMinutes = 105, Director = "Mark Reyes", ReleaseDate = (DateTime?)new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)4, TrailerUrl = (string?)null, IsActive = true, ViewCount = 210, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(ActiveMovieState), GenreId = (int?)5 },
+                new { Id = 4, Title = "Broken Roads", Description = "Two strangers cross the country and find unexpected friendship.", DurationMinutes = 127, Director = "Lena Holt", ReleaseDate = (DateTime?)new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)3, TrailerUrl = (string?)null, IsActive = true, ViewCount = 90, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(ActiveMovieState), GenreId = (int?)2 },
+                new { Id = 5, Title = "Final Strike", Description = "An elite agent races to stop a global catastrophe.", DurationMinutes = 118, Director = "Sam Okafor", ReleaseDate = (DateTime?)new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)3, TrailerUrl = (string?)null, IsActive = true, ViewCount = 260, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(ActiveMovieState), GenreId = (int?)1 },
+                new { Id = 6, Title = "Quantum Drift", Description = "A physicist discovers a way to travel between parallel worlds.", DurationMinutes = 134, Director = "Iris Vance", ReleaseDate = (DateTime?)new DateTime(2026, 6, 12, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)3, TrailerUrl = (string?)null, IsActive = true, ViewCount = 60, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = nameof(DraftMovieState), GenreId = (int?)4 }
             );
         }
 
         private void SeedScreenings(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Screening>().HasData(
-                new { Id = 1, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 18, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 5, 19, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, Language = "English", HasSubtitles = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 2, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 21, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 5, 22, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, Language = "English", HasSubtitles = true, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 3, MovieId = 2, HallId = 1, StartTime = new DateTime(2026, 7, 6, 17, 30, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 6, 19, 8, 0, DateTimeKind.Utc), BasePrice = 7.00m, Language = "English", HasSubtitles = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 4, MovieId = 3, HallId = 2, StartTime = new DateTime(2026, 7, 6, 20, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 6, 21, 45, 0, DateTimeKind.Utc), BasePrice = 9.00m, Language = "English", HasSubtitles = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 5, MovieId = 5, HallId = 2, StartTime = new DateTime(2026, 7, 7, 19, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 7, 20, 58, 0, DateTimeKind.Utc), BasePrice = 10.00m, Language = "English", HasSubtitles = true, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+                new { Id = 1, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 18, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 5, 19, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, HasSubtitles = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 2, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 21, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 5, 22, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, HasSubtitles = true, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 3, MovieId = 2, HallId = 1, StartTime = new DateTime(2026, 7, 6, 17, 30, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 6, 19, 8, 0, DateTimeKind.Utc), BasePrice = 7.00m, LanguageId = (int?)1, HasSubtitles = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 4, MovieId = 3, HallId = 2, StartTime = new DateTime(2026, 7, 6, 20, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 6, 21, 45, 0, DateTimeKind.Utc), BasePrice = 9.00m, LanguageId = (int?)1, HasSubtitles = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 5, MovieId = 5, HallId = 2, StartTime = new DateTime(2026, 7, 7, 19, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 7, 20, 58, 0, DateTimeKind.Utc), BasePrice = 10.00m, LanguageId = (int?)1, HasSubtitles = true, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
             );
         }
 

@@ -6,12 +6,53 @@ namespace eCommerce.Services.Database
     {
         private void CreateConfiguration(ModelBuilder modelBuilder)
         {
+            // Reference (lookup) tables: names are unique so staff cannot create duplicates.
+            modelBuilder.Entity<Genre>().HasIndex(g => g.Name).IsUnique();
+            modelBuilder.Entity<ScreenType>().HasIndex(s => s.Name).IsUnique();
+            modelBuilder.Entity<HallStatus>().HasIndex(s => s.Name).IsUnique();
+            modelBuilder.Entity<AgeRating>().HasIndex(a => a.Name).IsUnique();
+            modelBuilder.Entity<Language>().HasIndex(l => l.Name).IsUnique();
+
             // A movie belongs to an optional genre; deleting a genre must not cascade-delete movies.
             modelBuilder.Entity<Movie>()
                 .HasOne(m => m.Genre)
                 .WithMany(g => g.Movies)
                 .HasForeignKey(m => m.GenreId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            // Age rating / language are optional descriptors; clearing the lookup row must not
+            // delete movies, so the FK is set to NULL instead.
+            modelBuilder.Entity<Movie>()
+                .HasOne(m => m.AgeRating)
+                .WithMany(a => a.Movies)
+                .HasForeignKey(m => m.AgeRatingId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Movie>()
+                .HasOne(m => m.Language)
+                .WithMany(l => l.Movies)
+                .HasForeignKey(m => m.LanguageId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Screening>()
+                .HasOne(s => s.Language)
+                .WithMany(l => l.Screenings)
+                .HasForeignKey(s => s.LanguageId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // A hall must always have a screen type and a status; Restrict makes the database
+            // reject deleting a lookup row that halls still reference.
+            modelBuilder.Entity<Hall>()
+                .HasOne(h => h.ScreenType)
+                .WithMany(s => s.Halls)
+                .HasForeignKey(h => h.ScreenTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Hall>()
+                .HasOne(h => h.Status)
+                .WithMany(s => s.Halls)
+                .HasForeignKey(h => h.StatusId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Posters/assets are removed together with their movie.
             modelBuilder.Entity<Asset>()

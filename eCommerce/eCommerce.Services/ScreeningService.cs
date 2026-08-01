@@ -59,17 +59,23 @@ namespace eCommerce.Services
 
             IQueryable<Screening> query = _dbContext.Screenings
                 .AsNoTracking()
-                .Include(s => s.Movie);
+                .Include(s => s.Language)
+                .Include(s => s.Movie).ThenInclude(m => m.Language)
+                .Include(s => s.Movie).ThenInclude(m => m.AgeRating);
 
             if (includeSeatStats)
             {
                 query = query
                     .Include(s => s.Hall).ThenInclude(h => h.Seats)
+                    .Include(s => s.Hall).ThenInclude(h => h.ScreenType)
+                    .Include(s => s.Hall).ThenInclude(h => h.Status)
                     .Include(s => s.ReservationSeats);
             }
             else
             {
-                query = query.Include(s => s.Hall);
+                query = query
+                    .Include(s => s.Hall).ThenInclude(h => h.ScreenType)
+                    .Include(s => s.Hall).ThenInclude(h => h.Status);
             }
 
             if (search.MovieId.HasValue)
@@ -129,8 +135,13 @@ namespace eCommerce.Services
         {
             var entity = await _dbContext.Screenings
                 .AsNoTracking()
+                .Include(s => s.Language)
                 .Include(s => s.Movie).ThenInclude(m => m.Genre)
+                .Include(s => s.Movie).ThenInclude(m => m.Language)
+                .Include(s => s.Movie).ThenInclude(m => m.AgeRating)
                 .Include(s => s.Hall).ThenInclude(h => h.Seats)
+                .Include(s => s.Hall).ThenInclude(h => h.ScreenType)
+                .Include(s => s.Hall).ThenInclude(h => h.Status)
                 .Include(s => s.ReservationSeats)
                 .FirstOrDefaultAsync(s => s.Id == id)
                 ?? throw new KeyNotFoundException($"Screening with id {id} not found.");
@@ -149,13 +160,8 @@ namespace eCommerce.Services
             var movie = await _dbContext.Movies.FindAsync(request.MovieId)
                 ?? throw new ClientException($"Movie {request.MovieId} was not found.");
 
-            var hall = await _dbContext.Halls.FindAsync(request.HallId)
-                ?? throw new ClientException($"Hall {request.HallId} was not found.");
-
-            if (hall.Status != HallStatus.Active)
-            {
-                throw new ClientException($"Hall '{hall.Name}' is not available (status: {hall.Status}). Projections can only be scheduled in active halls.");
-            }
+            await EnsureHallCanBeScheduledAsync(request.HallId);
+            await EnsureLanguageExistsAsync(request.LanguageId);
 
             var endTime = request.StartTime.AddMinutes(movie.DurationMinutes);
             await EnsureNoHallOverlapAsync(request.HallId, request.StartTime, endTime);
@@ -167,7 +173,7 @@ namespace eCommerce.Services
                 StartTime = request.StartTime,
                 EndTime = endTime,
                 BasePrice = request.BasePrice,
-                Language = request.Language,
+                LanguageId = request.LanguageId,
                 HasSubtitles = request.HasSubtitles,
                 IsActive = request.IsActive,
                 CreatedAt = DateTime.UtcNow
@@ -195,13 +201,8 @@ namespace eCommerce.Services
             var movie = await _dbContext.Movies.FindAsync(request.MovieId)
                 ?? throw new ClientException($"Movie {request.MovieId} was not found.");
 
-            var hall = await _dbContext.Halls.FindAsync(request.HallId)
-                ?? throw new ClientException($"Hall {request.HallId} was not found.");
-
-            if (hall.Status != HallStatus.Active)
-            {
-                throw new ClientException($"Hall '{hall.Name}' is not available (status: {hall.Status}). Projections can only be scheduled in active halls.");
-            }
+            await EnsureHallCanBeScheduledAsync(request.HallId);
+            await EnsureLanguageExistsAsync(request.LanguageId);
 
             var endTime = request.StartTime.AddMinutes(movie.DurationMinutes);
             await EnsureNoHallOverlapAsync(request.HallId, request.StartTime, endTime, excludeScreeningId: id);
@@ -211,7 +212,7 @@ namespace eCommerce.Services
             entity.StartTime = request.StartTime;
             entity.EndTime = endTime;
             entity.BasePrice = request.BasePrice;
-            entity.Language = request.Language;
+            entity.LanguageId = request.LanguageId;
             entity.HasSubtitles = request.HasSubtitles;
             entity.IsActive = request.IsActive;
             entity.UpdatedAt = DateTime.UtcNow;
@@ -315,6 +316,39 @@ namespace eCommerce.Services
         /// <summary>
         /// Ensures no other active screening in the same hall overlaps [start, end).
         /// </summary>
+        /// <summary>
+        /// A projection can only be scheduled in a hall whose status allows it. The rule lives on
+        /// the HallStatuses row, so staff can add statuses without touching this check.
+        /// </summary>
+        private async Task EnsureHallCanBeScheduledAsync(int hallId)
+        {
+            var hall = await _dbContext.Halls
+                .Include(h => h.Status)
+                .FirstOrDefaultAsync(h => h.Id == hallId)
+                ?? throw new ClientException($"Hall {hallId} was not found.");
+
+            if (hall.Status?.AllowsScreenings != true)
+            {
+                var statusName = hall.Status?.Name ?? "unknown";
+                throw new ClientException(
+                    $"Hall '{hall.Name}' is not available (status: {statusName}). Projections can only be scheduled in halls whose status allows it.");
+            }
+        }
+
+        private async Task EnsureLanguageExistsAsync(int? languageId)
+        {
+            if (languageId == null)
+            {
+                return;
+            }
+
+            var exists = await _dbContext.Languages.AnyAsync(l => l.Id == languageId.Value);
+            if (!exists)
+            {
+                throw new ClientException("The selected language no longer exists. Refresh and pick another one.");
+            }
+        }
+
         private async Task EnsureNoHallOverlapAsync(
             int hallId,
             DateTime start,

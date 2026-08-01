@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace eCommerce.Services.Database
 {
@@ -16,9 +17,17 @@ namespace eCommerce.Services.Database
         [MaxLength(500)]
         public string Description { get; set; } = string.Empty;
 
-        public ScreenType ScreenType { get; set; } = ScreenType.Standard;
+        // Screen technology (reference table)
+        public int ScreenTypeId { get; set; }
 
-        public HallStatus Status { get; set; } = HallStatus.Active;
+        [ForeignKey("ScreenTypeId")]
+        public ScreenType? ScreenType { get; set; }
+
+        // Operational status (reference table)
+        public int StatusId { get; set; }
+
+        [ForeignKey("StatusId")]
+        public HallStatus? Status { get; set; }
 
         public bool IsActive { get; set; } = true;
 
@@ -31,21 +40,5 @@ namespace eCommerce.Services.Database
 
         // Navigation property for screenings scheduled in this hall
         public ICollection<Screening> Screenings { get; set; } = new List<Screening>();
-    }
-
-    public enum ScreenType
-    {
-        Standard,
-        IMAX,
-
-        /// <summary>Displayed as "3D" in the apps.</summary>
-        ThreeD
-    }
-
-    public enum HallStatus
-    {
-        Active,
-        Maintenance,
-        Inactive
     }
 }

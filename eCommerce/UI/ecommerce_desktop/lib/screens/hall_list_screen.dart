@@ -2,7 +2,10 @@ import 'package:ecommerce_desktop/core/theme/app_theme.dart';
 import 'package:ecommerce_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:ecommerce_desktop/core/widgets/seat_layout_editor.dart';
 import 'package:ecommerce_desktop/models/hall.dart';
+import 'package:ecommerce_desktop/models/lookup_item.dart';
 import 'package:ecommerce_desktop/providers/hall_provider.dart';
+import 'package:ecommerce_desktop/providers/hall_status_provider.dart';
+import 'package:ecommerce_desktop/providers/screen_type_provider.dart';
 import 'package:ecommerce_desktop/utils/api_client_exception.dart';
 import 'package:ecommerce_desktop/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +23,11 @@ class HallListScreen extends StatefulWidget {
 
 class _HallListScreenState extends State<HallListScreen> {
   late HallProvider _provider;
+  late ScreenTypeProvider _screenTypeProvider;
+  late HallStatusProvider _hallStatusProvider;
   List<Hall> _halls = [];
+  List<LookupItem> _screenTypes = [];
+  List<LookupItem> _hallStatuses = [];
   bool _loading = true;
   final _searchController = TextEditingController();
 
@@ -28,7 +35,24 @@ class _HallListScreenState extends State<HallListScreen> {
   void initState() {
     super.initState();
     _provider = context.read<HallProvider>();
+    _screenTypeProvider = context.read<ScreenTypeProvider>();
+    _hallStatusProvider = context.read<HallStatusProvider>();
     _load();
+  }
+
+  /// Screen types and statuses are reference data, so the form offers whatever the
+  /// database currently holds instead of a hardcoded list.
+  Future<void> _loadLookups() async {
+    const filter = {'pageSize': 100, 'isActive': true};
+    final results = await Future.wait([
+      _screenTypeProvider.get(filter: filter),
+      _hallStatusProvider.get(filter: filter),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _screenTypes = results[0].items ?? [];
+      _hallStatuses = results[1].items ?? [];
+    });
   }
 
   @override
@@ -43,6 +67,7 @@ class _HallListScreenState extends State<HallListScreen> {
       final filter = <String, dynamic>{'pageSize': 50};
       if (_searchController.text.isNotEmpty) filter['name'] = _searchController.text;
       final data = await _provider.get(filter: filter);
+      await _loadLookups();
       if (!mounted) return;
       setState(() {
         _halls = data.items ?? [];
@@ -94,7 +119,7 @@ class _HallListScreenState extends State<HallListScreen> {
       child: DataCard(
         emptyMessage: _halls.isEmpty ? 'No halls found' : null,
         child: StyledDataTable(
-          key: ValueKey(_halls.map((h) => '${h.id}-${h.status}').join('|')),
+          key: ValueKey(_halls.map((h) => '${h.id}-${h.statusId}').join('|')),
           columns: const [
             DataColumn(label: Text('Hall Name')),
             DataColumn(label: Text('Layout')),
@@ -124,10 +149,10 @@ class _HallListScreenState extends State<HallListScreen> {
         Text(h.name ?? '—', style: const TextStyle(fontWeight: FontWeight.w500)),
       ])),
       DataCell(Text(hallLayoutLabel(h))),
-      DataCell(Text(h.screenTypeName ?? hallScreenTypes[h.screenType ?? 0])),
+      DataCell(Text(h.screenTypeName ?? '—')),
       DataCell(StatusBadge(
-        label: h.statusName ?? hallStatuses[h.status ?? 0],
-        color: hallStatusColor(h.status),
+        label: h.statusName ?? '—',
+        color: hallStatusColor(h),
         filled: true,
       )),
       actionButtonsCell([
@@ -239,6 +264,16 @@ class _HallListScreenState extends State<HallListScreen> {
   }
 
   Future<void> _showDialog({Hall? hall}) async {
+    if (_screenTypes.isEmpty || _hallStatuses.isEmpty) {
+      alertBox(
+        context,
+        'Reference data missing',
+        'Add at least one screen type and one hall status under Reference Data '
+            'before creating or editing a hall.',
+      );
+      return;
+    }
+
     final nameCtrl = TextEditingController(text: hall?.name ?? '');
     final rowsCtrl = TextEditingController(
       text: hall != null ? '${hall.rowCount ?? derivedRowCount(hall)}' : '5',
@@ -246,8 +281,8 @@ class _HallListScreenState extends State<HallListScreen> {
     final colsCtrl = TextEditingController(
       text: hall != null ? '${hall.seatsPerRow ?? derivedSeatsPerRow(hall)}' : '8',
     );
-    int screenType = hall?.screenType ?? 0;
-    int status = hall?.status ?? 0;
+    int screenTypeId = hall?.screenTypeId ?? _screenTypes.first.id!;
+    int statusId = hall?.statusId ?? _hallStatuses.first.id!;
     bool submitting = false;
     final isEdit = hall != null;
 
@@ -272,9 +307,8 @@ class _HallListScreenState extends State<HallListScreen> {
             setDialogState(() => submitting = true);
             final entity = Hall(
               name: nameCtrl.text.trim(),
-              screenType: screenType,
-              status: status,
-              isActive: status == 0,
+              screenTypeId: screenTypeId,
+              statusId: statusId,
             );
             try {
               if (hall == null) {
@@ -330,27 +364,26 @@ class _HallListScreenState extends State<HallListScreen> {
               Row(children: [
                 Expanded(
                   child: DropdownButtonFormField<int>(
-                    initialValue: screenType,
+                    initialValue: screenTypeId,
                     dropdownColor: AppColors.card,
                     decoration: const InputDecoration(labelText: 'Screen Type'),
-                    items: List.generate(
-                      hallScreenTypes.length,
-                      (i) => DropdownMenuItem(value: i, child: Text(hallScreenTypes[i])),
-                    ),
-                    onChanged: (v) => setDialogState(() => screenType = v ?? 0),
+                    items: _screenTypes
+                        .map((t) => DropdownMenuItem(value: t.id, child: Text(t.name ?? '')))
+                        .toList(),
+                    onChanged: (v) =>
+                        setDialogState(() => screenTypeId = v ?? screenTypeId),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<int>(
-                    initialValue: status,
+                    initialValue: statusId,
                     dropdownColor: AppColors.card,
                     decoration: const InputDecoration(labelText: 'Status'),
-                    items: List.generate(
-                      hallStatuses.length,
-                      (i) => DropdownMenuItem(value: i, child: Text(hallStatuses[i])),
-                    ),
-                    onChanged: (v) => setDialogState(() => status = v ?? 0),
+                    items: _hallStatuses
+                        .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name ?? '')))
+                        .toList(),
+                    onChanged: (v) => setDialogState(() => statusId = v ?? statusId),
                   ),
                 ),
               ]),

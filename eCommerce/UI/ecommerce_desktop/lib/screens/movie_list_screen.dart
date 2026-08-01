@@ -1,8 +1,11 @@
 import 'package:ecommerce_desktop/core/theme/app_theme.dart';
 import 'package:ecommerce_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:ecommerce_desktop/models/genre.dart';
+import 'package:ecommerce_desktop/models/lookup_item.dart';
 import 'package:ecommerce_desktop/models/movie.dart';
+import 'package:ecommerce_desktop/providers/age_rating_provider.dart';
 import 'package:ecommerce_desktop/providers/genre_provider.dart';
+import 'package:ecommerce_desktop/providers/language_provider.dart';
 import 'package:ecommerce_desktop/providers/movie_provider.dart';
 import 'package:ecommerce_desktop/utils/field_validators.dart';
 import 'package:ecommerce_desktop/utils/image_utils.dart';
@@ -24,8 +27,13 @@ class MovieListScreen extends StatefulWidget {
 
 class _MovieListScreenState extends State<MovieListScreen> {
   late MovieProvider _movieProvider;
+  late GenreProvider _genreProvider;
+  late AgeRatingProvider _ageRatingProvider;
+  late LanguageProvider _languageProvider;
   List<Movie> _movies = [];
   List<Genre> _genres = [];
+  List<LookupItem> _ageRatings = [];
+  List<LookupItem> _languages = [];
   bool _loading = true;
   final _searchController = TextEditingController();
   String? _genreFilter;
@@ -35,6 +43,9 @@ class _MovieListScreenState extends State<MovieListScreen> {
   void initState() {
     super.initState();
     _movieProvider = context.read<MovieProvider>();
+    _genreProvider = context.read<GenreProvider>();
+    _ageRatingProvider = context.read<AgeRatingProvider>();
+    _languageProvider = context.read<LanguageProvider>();
     _load();
   }
 
@@ -47,7 +58,11 @@ class _MovieListScreenState extends State<MovieListScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final genres = await context.read<GenreProvider>().get(filter: {'pageSize': 100});
+      const lookupFilter = {'pageSize': 100, 'isActive': true};
+      final genres = await _genreProvider.get(filter: {'pageSize': 100});
+      final ageRatings = await _ageRatingProvider.get(filter: lookupFilter);
+      final languages = await _languageProvider.get(filter: lookupFilter);
+
       final filter = <String, dynamic>{'includeGenre': true, 'pageSize': 50};
       if (_searchController.text.isNotEmpty) filter['title'] = _searchController.text;
       if (_genreFilter != null) filter['genreId'] = int.tryParse(_genreFilter!);
@@ -61,6 +76,8 @@ class _MovieListScreenState extends State<MovieListScreen> {
       movies.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
       setState(() {
         _genres = genres.items ?? [];
+        _ageRatings = ageRatings.items ?? [];
+        _languages = languages.items ?? [];
         _movies = movies;
         _loading = false;
       });
@@ -216,6 +233,21 @@ class _MovieListScreenState extends State<MovieListScreen> {
   }
 
   Future<void> _showMovieDialog({Movie? movie}) async {
+    final missing = <String>[
+      if (_genres.isEmpty) 'genre',
+      if (_ageRatings.isEmpty) 'age rating',
+      if (_languages.isEmpty) 'language',
+    ];
+    if (missing.isNotEmpty) {
+      alertBox(
+        context,
+        'Reference data missing',
+        'A movie needs a ${missing.join(', a ')} to be selected. '
+            'Add at least one of each under Reference Data first.',
+      );
+      return;
+    }
+
     Movie? fullMovie = movie;
     if (movie?.id != null) {
       try {
@@ -228,7 +260,8 @@ class _MovieListScreenState extends State<MovieListScreen> {
 
     final titleCtrl = TextEditingController(text: fullMovie?.title ?? '');
     final durationCtrl = TextEditingController(text: '${fullMovie?.durationMinutes ?? ''}');
-    final ratingCtrl = TextEditingController(text: fullMovie?.ageRating ?? '');
+    int? ageRatingId = fullMovie?.ageRatingId;
+    int? languageId = fullMovie?.languageId;
     int? genreId = fullMovie?.genreId;
     DateTime? releaseDate = fullMovie?.releaseDate;
     String statusSelection = fullMovie?.isActiveState == true ? 'Active' : 'Draft';
@@ -260,7 +293,8 @@ class _MovieListScreenState extends State<MovieListScreen> {
               durationMinutes: int.tryParse(durationCtrl.text) ?? 0,
               genreId: genreId,
               releaseDate: releaseDate,
-              ageRating: ratingCtrl.text.trim(),
+              ageRatingId: ageRatingId,
+              languageId: languageId,
             );
             try {
               Movie saved;
@@ -335,9 +369,15 @@ class _MovieListScreenState extends State<MovieListScreen> {
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(
-                  child: TextField(
-                    controller: ratingCtrl,
-                    decoration: const InputDecoration(labelText: 'Rating', hintText: 'e.g., PG-13'),
+                  child: DropdownButtonFormField<int>(
+                    initialValue: ageRatingId,
+                    dropdownColor: AppColors.card,
+                    decoration: const InputDecoration(labelText: 'Age Rating'),
+                    items: _ageRatings
+                        .map((r) => DropdownMenuItem(value: r.id, child: Text(r.name ?? '')))
+                        .toList(),
+                    onChanged: (v) => setDialogState(() => ageRatingId = v),
+                    validator: (v) => v == null ? 'Age rating is required' : null,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -349,6 +389,17 @@ class _MovieListScreenState extends State<MovieListScreen> {
                   ),
                 ),
               ]),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                initialValue: languageId,
+                dropdownColor: AppColors.card,
+                decoration: const InputDecoration(labelText: 'Language'),
+                items: _languages
+                    .map((l) => DropdownMenuItem(value: l.id, child: Text(l.name ?? '')))
+                    .toList(),
+                onChanged: (v) => setDialogState(() => languageId = v),
+                validator: (v) => v == null ? 'Language is required' : null,
+              ),
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(

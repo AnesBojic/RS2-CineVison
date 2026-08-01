@@ -10,6 +10,10 @@ namespace eCommerce.Services.Database
 
         // DbSets for all entities
         public DbSet<Genre> Genres { get; set; }
+        public DbSet<ScreenType> ScreenTypes { get; set; }
+        public DbSet<HallStatus> HallStatuses { get; set; }
+        public DbSet<AgeRating> AgeRatings { get; set; }
+        public DbSet<Language> Languages { get; set; }
         public DbSet<Movie> Movies { get; set; }
         public DbSet<Hall> Halls { get; set; }
         public DbSet<Seat> Seats { get; set; }

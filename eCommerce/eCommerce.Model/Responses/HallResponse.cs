@@ -6,11 +6,14 @@ namespace eCommerce.Model.Responses
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
 
-        public int ScreenType { get; set; }
+        public int ScreenTypeId { get; set; }
         public string ScreenTypeName { get; set; } = string.Empty;
 
-        public int Status { get; set; }
+        public int StatusId { get; set; }
         public string StatusName { get; set; } = string.Empty;
+
+        /// <summary>Copied from the hall's status so clients can tell whether it can be scheduled.</summary>
+        public bool AllowsScreenings { get; set; }
 
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }

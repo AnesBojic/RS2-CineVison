@@ -22,6 +22,91 @@ namespace eCommerce.Services.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("eCommerce.Services.Database.AgeRating", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("MinimumAge")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("AgeRatings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "General audiences — all ages admitted",
+                            IsActive = true,
+                            MinimumAge = 0,
+                            Name = "G"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Parental guidance suggested",
+                            IsActive = true,
+                            MinimumAge = 8,
+                            Name = "PG"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Some material may be inappropriate for children under 13",
+                            IsActive = true,
+                            MinimumAge = 13,
+                            Name = "PG-13"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Restricted — under 17 requires an accompanying adult",
+                            IsActive = true,
+                            MinimumAge = 17,
+                            Name = "R"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "No one 17 and under admitted",
+                            IsActive = true,
+                            MinimumAge = 18,
+                            Name = "NC-17"
+                        });
+                });
+
             modelBuilder.Entity("eCommerce.Services.Database.Asset", b =>
                 {
                     b.Property<int>("Id")
@@ -84,6 +169,9 @@ namespace eCommerce.Services.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("Genres");
 
@@ -154,16 +242,20 @@ namespace eCommerce.Services.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("ScreenType")
+                    b.Property<int>("ScreenTypeId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Status")
+                    b.Property<int>("StatusId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ScreenTypeId");
+
+                    b.HasIndex("StatusId");
 
                     b.ToTable("Halls");
 
@@ -175,8 +267,8 @@ namespace eCommerce.Services.Migrations
                             Description = "Main auditorium with 40 seats",
                             IsActive = true,
                             Name = "Hall A",
-                            ScreenType = 1,
-                            Status = 0
+                            ScreenTypeId = 2,
+                            StatusId = 1
                         },
                         new
                         {
@@ -185,8 +277,152 @@ namespace eCommerce.Services.Migrations
                             Description = "Smaller auditorium with 24 seats",
                             IsActive = true,
                             Name = "Hall B",
-                            ScreenType = 0,
-                            Status = 0
+                            ScreenTypeId = 1,
+                            StatusId = 1
+                        });
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.HallStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("AllowsScreenings")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("HallStatuses");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            AllowsScreenings = true,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Hall is open and can host projections",
+                            IsActive = true,
+                            Name = "Active"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            AllowsScreenings = false,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Temporarily closed for maintenance",
+                            IsActive = true,
+                            Name = "Maintenance"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            AllowsScreenings = false,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Permanently out of use",
+                            IsActive = true,
+                            Name = "Inactive"
+                        });
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.Language", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Languages");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "en",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "English audio",
+                            IsActive = true,
+                            Name = "English"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "bs",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Bosnian audio",
+                            IsActive = true,
+                            Name = "Bosnian"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Code = "de",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "German audio",
+                            IsActive = true,
+                            Name = "German"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Code = "es",
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Spanish audio",
+                            IsActive = true,
+                            Name = "Spanish"
                         });
                 });
 
@@ -198,9 +434,8 @@ namespace eCommerce.Services.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AgeRating")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                    b.Property<int?>("AgeRatingId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -223,9 +458,8 @@ namespace eCommerce.Services.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<string>("Language")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<int?>("LanguageId")
+                        .HasColumnType("int");
 
                     b.Property<string>("MovieState")
                         .IsRequired()
@@ -255,7 +489,11 @@ namespace eCommerce.Services.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AgeRatingId");
+
                     b.HasIndex("GenreId");
+
+                    b.HasIndex("LanguageId");
 
                     b.ToTable("Movies");
 
@@ -263,14 +501,14 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 1,
-                            AgeRating = "PG-13",
+                            AgeRatingId = 3,
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "A soldier relives the same brutal battle in a loop against an alien invasion.",
                             Director = "Doug Liman",
                             DurationMinutes = 113,
                             GenreId = 4,
                             IsActive = true,
-                            Language = "English",
+                            LanguageId = 1,
                             MovieState = "ActiveMovieState",
                             ReleaseDate = new DateTime(2026, 1, 15, 0, 0, 0, 0, DateTimeKind.Utc),
                             Title = "Edge of Tomorrow",
@@ -279,14 +517,14 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 2,
-                            AgeRating = "PG",
+                            AgeRatingId = 2,
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "An ageing comedian gets one final shot at the spotlight.",
                             Director = "Greta Park",
                             DurationMinutes = 98,
                             GenreId = 3,
                             IsActive = true,
-                            Language = "English",
+                            LanguageId = 1,
                             MovieState = "ActiveMovieState",
                             ReleaseDate = new DateTime(2026, 2, 10, 0, 0, 0, 0, DateTimeKind.Utc),
                             Title = "The Last Laugh",
@@ -295,14 +533,14 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 3,
-                            AgeRating = "R",
+                            AgeRatingId = 4,
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "A family moves into a house that hides a terrifying secret.",
                             Director = "Mark Reyes",
                             DurationMinutes = 105,
                             GenreId = 5,
                             IsActive = true,
-                            Language = "English",
+                            LanguageId = 1,
                             MovieState = "ActiveMovieState",
                             ReleaseDate = new DateTime(2026, 3, 5, 0, 0, 0, 0, DateTimeKind.Utc),
                             Title = "Silent Shadows",
@@ -311,14 +549,14 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 4,
-                            AgeRating = "PG-13",
+                            AgeRatingId = 3,
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Two strangers cross the country and find unexpected friendship.",
                             Director = "Lena Holt",
                             DurationMinutes = 127,
                             GenreId = 2,
                             IsActive = true,
-                            Language = "English",
+                            LanguageId = 1,
                             MovieState = "ActiveMovieState",
                             ReleaseDate = new DateTime(2026, 4, 20, 0, 0, 0, 0, DateTimeKind.Utc),
                             Title = "Broken Roads",
@@ -327,14 +565,14 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 5,
-                            AgeRating = "PG-13",
+                            AgeRatingId = 3,
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "An elite agent races to stop a global catastrophe.",
                             Director = "Sam Okafor",
                             DurationMinutes = 118,
                             GenreId = 1,
                             IsActive = true,
-                            Language = "English",
+                            LanguageId = 1,
                             MovieState = "ActiveMovieState",
                             ReleaseDate = new DateTime(2026, 5, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Title = "Final Strike",
@@ -343,14 +581,14 @@ namespace eCommerce.Services.Migrations
                         new
                         {
                             Id = 6,
-                            AgeRating = "PG-13",
+                            AgeRatingId = 3,
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "A physicist discovers a way to travel between parallel worlds.",
                             Director = "Iris Vance",
                             DurationMinutes = 134,
                             GenreId = 4,
                             IsActive = true,
-                            Language = "English",
+                            LanguageId = 1,
                             MovieState = "DraftMovieState",
                             ReleaseDate = new DateTime(2026, 6, 12, 0, 0, 0, 0, DateTimeKind.Utc),
                             Title = "Quantum Drift",
@@ -961,6 +1199,67 @@ namespace eCommerce.Services.Migrations
                         });
                 });
 
+            modelBuilder.Entity("eCommerce.Services.Database.ScreenType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("ScreenTypes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Standard 2D digital projection",
+                            IsActive = true,
+                            Name = "Standard"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Large-format IMAX screen",
+                            IsActive = true,
+                            Name = "IMAX"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Stereoscopic 3D projection",
+                            IsActive = true,
+                            Name = "3D"
+                        });
+                });
+
             modelBuilder.Entity("eCommerce.Services.Database.Screening", b =>
                 {
                     b.Property<int>("Id")
@@ -987,9 +1286,8 @@ namespace eCommerce.Services.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<string>("Language")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<int?>("LanguageId")
+                        .HasColumnType("int");
 
                     b.Property<int>("MovieId")
                         .HasColumnType("int");
@@ -1003,6 +1301,8 @@ namespace eCommerce.Services.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("HallId");
+
+                    b.HasIndex("LanguageId");
 
                     b.HasIndex("MovieId");
 
@@ -1018,7 +1318,7 @@ namespace eCommerce.Services.Migrations
                             HallId = 1,
                             HasSubtitles = false,
                             IsActive = true,
-                            Language = "English",
+                            LanguageId = 1,
                             MovieId = 1,
                             StartTime = new DateTime(2026, 7, 5, 18, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -1031,7 +1331,7 @@ namespace eCommerce.Services.Migrations
                             HallId = 1,
                             HasSubtitles = true,
                             IsActive = true,
-                            Language = "English",
+                            LanguageId = 1,
                             MovieId = 1,
                             StartTime = new DateTime(2026, 7, 5, 21, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -1044,7 +1344,7 @@ namespace eCommerce.Services.Migrations
                             HallId = 1,
                             HasSubtitles = false,
                             IsActive = true,
-                            Language = "English",
+                            LanguageId = 1,
                             MovieId = 2,
                             StartTime = new DateTime(2026, 7, 6, 17, 30, 0, 0, DateTimeKind.Utc)
                         },
@@ -1057,7 +1357,7 @@ namespace eCommerce.Services.Migrations
                             HallId = 2,
                             HasSubtitles = false,
                             IsActive = true,
-                            Language = "English",
+                            LanguageId = 1,
                             MovieId = 3,
                             StartTime = new DateTime(2026, 7, 6, 20, 0, 0, 0, DateTimeKind.Utc)
                         },
@@ -1070,7 +1370,7 @@ namespace eCommerce.Services.Migrations
                             HallId = 2,
                             HasSubtitles = true,
                             IsActive = true,
-                            Language = "English",
+                            LanguageId = 1,
                             MovieId = 5,
                             StartTime = new DateTime(2026, 7, 7, 19, 0, 0, 0, DateTimeKind.Utc)
                         });
@@ -1965,14 +2265,47 @@ namespace eCommerce.Services.Migrations
                     b.Navigation("Movie");
                 });
 
+            modelBuilder.Entity("eCommerce.Services.Database.Hall", b =>
+                {
+                    b.HasOne("eCommerce.Services.Database.ScreenType", "ScreenType")
+                        .WithMany("Halls")
+                        .HasForeignKey("ScreenTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("eCommerce.Services.Database.HallStatus", "Status")
+                        .WithMany("Halls")
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ScreenType");
+
+                    b.Navigation("Status");
+                });
+
             modelBuilder.Entity("eCommerce.Services.Database.Movie", b =>
                 {
+                    b.HasOne("eCommerce.Services.Database.AgeRating", "AgeRating")
+                        .WithMany("Movies")
+                        .HasForeignKey("AgeRatingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("eCommerce.Services.Database.Genre", "Genre")
                         .WithMany("Movies")
                         .HasForeignKey("GenreId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("eCommerce.Services.Database.Language", "Language")
+                        .WithMany("Movies")
+                        .HasForeignKey("LanguageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AgeRating");
+
                     b.Navigation("Genre");
+
+                    b.Navigation("Language");
                 });
 
             modelBuilder.Entity("eCommerce.Services.Database.RefreshToken", b =>
@@ -2066,6 +2399,11 @@ namespace eCommerce.Services.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("eCommerce.Services.Database.Language", "Language")
+                        .WithMany("Screenings")
+                        .HasForeignKey("LanguageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("eCommerce.Services.Database.Movie", "Movie")
                         .WithMany("Screenings")
                         .HasForeignKey("MovieId")
@@ -2073,6 +2411,8 @@ namespace eCommerce.Services.Migrations
                         .IsRequired();
 
                     b.Navigation("Hall");
+
+                    b.Navigation("Language");
 
                     b.Navigation("Movie");
                 });
@@ -2143,6 +2483,11 @@ namespace eCommerce.Services.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("eCommerce.Services.Database.AgeRating", b =>
+                {
+                    b.Navigation("Movies");
+                });
+
             modelBuilder.Entity("eCommerce.Services.Database.Genre", b =>
                 {
                     b.Navigation("Movies");
@@ -2153,6 +2498,18 @@ namespace eCommerce.Services.Migrations
                     b.Navigation("Screenings");
 
                     b.Navigation("Seats");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.HallStatus", b =>
+                {
+                    b.Navigation("Halls");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.Language", b =>
+                {
+                    b.Navigation("Movies");
+
+                    b.Navigation("Screenings");
                 });
 
             modelBuilder.Entity("eCommerce.Services.Database.Movie", b =>
@@ -2172,6 +2529,11 @@ namespace eCommerce.Services.Migrations
             modelBuilder.Entity("eCommerce.Services.Database.Role", b =>
                 {
                     b.Navigation("UserRoles");
+                });
+
+            modelBuilder.Entity("eCommerce.Services.Database.ScreenType", b =>
+                {
+                    b.Navigation("Halls");
                 });
 
             modelBuilder.Entity("eCommerce.Services.Database.Screening", b =>

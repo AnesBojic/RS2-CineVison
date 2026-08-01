@@ -11,8 +11,9 @@ import 'package:ecommerce_desktop/screens/chatbot_screen.dart';
 import 'package:ecommerce_desktop/screens/dashboard_screen.dart';
 import 'package:ecommerce_desktop/screens/hall_list_screen.dart';
 import 'package:ecommerce_desktop/screens/login_screen.dart';
-import 'package:ecommerce_desktop/screens/movies_hub_screen.dart';
+import 'package:ecommerce_desktop/screens/movie_list_screen.dart';
 import 'package:ecommerce_desktop/screens/news_list_screen.dart';
+import 'package:ecommerce_desktop/screens/reference_data_hub_screen.dart';
 import 'package:ecommerce_desktop/screens/screening_list_screen.dart';
 import 'package:ecommerce_desktop/screens/profile_screen.dart';
 import 'package:ecommerce_desktop/screens/user_list.dart';
@@ -31,20 +32,21 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   late int _selectedIndex;
 
-  /// 0 Dashboard, 1 Movies(+Genres), 2 Halls, 3 Projections, 4 News,
-  /// 5 Users (admin), 6 Analytics, 7 Chatbot
+  /// 0 Dashboard, 1 Movies, 2 Halls, 3 Projections, 4 News, 5 Reference data,
+  /// 6 Users (admin), 7 Analytics, 8 Chatbot
   static const _allNavItems = [
     _NavItem('Dashboard', Icons.home_outlined, Icons.home, adminOnly: false),
     _NavItem('Movies', Icons.movie_outlined, Icons.movie, adminOnly: false),
     _NavItem('Halls', Icons.tv_outlined, Icons.tv, adminOnly: false),
     _NavItem('Projections', Icons.calendar_today_outlined, Icons.calendar_today, adminOnly: false),
     _NavItem('News', Icons.campaign_outlined, Icons.campaign, adminOnly: false),
+    _NavItem('Reference Data', Icons.list_alt_outlined, Icons.list_alt, adminOnly: false),
     _NavItem('Users', Icons.people_outline, Icons.people, adminOnly: true),
     _NavItem('Analytics', Icons.bar_chart_outlined, Icons.bar_chart, adminOnly: false),
     _NavItem('Chatbot', Icons.chat_bubble_outline, Icons.chat_bubble, adminOnly: false),
   ];
 
-  static const _chatbotIndex = 7;
+  static const _chatbotIndex = 8;
 
   List<_NavItem> get _visibleNavItems {
     final auth = context.read<AuthProvider>();
@@ -116,7 +118,7 @@ class _HomeShellState extends State<HomeShell> {
       case 0:
         return DashboardScreen(onNavigate: _navigateTo);
       case 1:
-        return MoviesHubScreen(
+        return MovieListScreen(
           key: ValueKey('movies-${_movieEditId ?? 'list'}'),
           editId: _movieEditId,
           onEditConsumed: () => _clearEditId(1),
@@ -136,10 +138,12 @@ class _HomeShellState extends State<HomeShell> {
       case 4:
         return const NewsListScreen(key: ValueKey('news'));
       case 5:
-        return const UserList(key: ValueKey('users'));
+        return const ReferenceDataHubScreen(key: ValueKey('reference-data'));
       case 6:
-        return const AnalyticsScreen(key: ValueKey('analytics'));
+        return const UserList(key: ValueKey('users'));
       case 7:
+        return const AnalyticsScreen(key: ValueKey('analytics'));
+      case 8:
         return const ChatBotScreen(key: ValueKey('chatbot'));
       default:
         return DashboardScreen(onNavigate: _navigateTo);

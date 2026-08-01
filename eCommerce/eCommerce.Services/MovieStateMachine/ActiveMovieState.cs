@@ -23,7 +23,7 @@ namespace eCommerce.Services.MovieStateMachine
             entity.MovieState = nameof(DraftMovieState);
             await DbContext.SaveChangesAsync();
 
-            return Mapper.Map<MovieResponse>(entity);
+            return await MapWithReferencesAsync(entity);
         }
 
         public override async Task<MovieResponse> UpdateAsync(int id, MovieUpdateRequest request)
@@ -38,7 +38,7 @@ namespace eCommerce.Services.MovieStateMachine
             entity.UpdatedAt = DateTime.UtcNow;
             await DbContext.SaveChangesAsync();
 
-            return Mapper.Map<MovieResponse>(entity);
+            return await MapWithReferencesAsync(entity);
         }
 
         public override List<string> GetAllowedActions()

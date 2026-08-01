@@ -193,13 +193,18 @@ class _GenreListScreenState extends State<GenreListScreen> {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
+                        ActionIconButton(
+                          icon: Icons.edit_outlined,
+                          color: AppColors.blue,
+                          tooltip: 'Edit',
                           onPressed: () => _showEditor(existing: item),
-                          icon: const Icon(Icons.edit_outlined),
                         ),
-                        IconButton(
+                        const SizedBox(width: 8),
+                        ActionIconButton(
+                          icon: Icons.delete_outline,
+                          color: AppColors.primary,
+                          tooltip: 'Delete',
                           onPressed: () => _delete(item),
-                          icon: const Icon(Icons.delete_outline),
                         ),
                       ],
                     ),

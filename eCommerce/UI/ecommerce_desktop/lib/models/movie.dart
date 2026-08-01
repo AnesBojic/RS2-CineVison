@@ -34,6 +34,12 @@ class Movie {
   final int? genreId;
   final String? director;
   final DateTime? releaseDate;
+
+  /// Reference table ids used by the edit form.
+  final int? languageId;
+  final int? ageRatingId;
+
+  /// Names flattened by the API for display.
   final String? language;
   final String? ageRating;
   final String? trailerUrl;
@@ -53,6 +59,8 @@ class Movie {
     this.genreId,
     this.director,
     this.releaseDate,
+    this.languageId,
+    this.ageRatingId,
     this.language,
     this.ageRating,
     this.trailerUrl,
@@ -77,6 +85,8 @@ class Movie {
         genreId: genreId,
         director: director,
         releaseDate: releaseDate,
+        languageId: languageId,
+        ageRatingId: ageRatingId,
         language: language,
         ageRating: ageRating,
         trailerUrl: trailerUrl,
@@ -112,6 +122,8 @@ class Movie {
       genreId: json['genreId'] as int?,
       director: json['director'] as String?,
       releaseDate: _parseDateOnly(json['releaseDate']),
+      languageId: json['languageId'] as int?,
+      ageRatingId: json['ageRatingId'] as int?,
       language: json['language'] as String?,
       ageRating: json['ageRating'] as String?,
       trailerUrl: json['trailerUrl'] as String?,
@@ -139,8 +151,8 @@ class Movie {
         'genreId': genreId,
         'director': director,
         'releaseDate': _toDateOnlyApi(releaseDate),
-        'language': language,
-        'ageRating': ageRating,
+        'languageId': languageId,
+        'ageRatingId': ageRatingId,
         'trailerUrl': trailerUrl,
         'isActive': true,
       };

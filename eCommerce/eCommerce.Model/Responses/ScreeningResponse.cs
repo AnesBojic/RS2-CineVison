@@ -11,6 +11,10 @@ namespace eCommerce.Model.Responses
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
         public decimal BasePrice { get; set; }
+
+        public int? LanguageId { get; set; }
+
+        /// <summary>Name of the referenced language, flattened for display.</summary>
         public string? Language { get; set; }
         public bool HasSubtitles { get; set; }
         public bool IsActive { get; set; }

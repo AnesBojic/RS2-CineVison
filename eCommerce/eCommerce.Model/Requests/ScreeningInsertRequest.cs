@@ -18,8 +18,8 @@ namespace eCommerce.Model.Requests
         [Required]
         public decimal BasePrice { get; set; }
 
-        [MaxLength(50)]
-        public string? Language { get; set; }
+        /// <summary>Id of a row in the Languages reference table.</summary>
+        public int? LanguageId { get; set; }
 
         public bool HasSubtitles { get; set; } = false;
 

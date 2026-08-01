@@ -170,12 +170,15 @@ namespace eCommerce.Services
             var movies = await _dbContext.Movies
                 .AsNoTracking()
                 .Include(m => m.Genre)
+                .Include(m => m.AgeRating)
                 .OrderBy(m => m.Title)
                 .ToListAsync();
 
             var halls = await _dbContext.Halls
                 .AsNoTracking()
                 .Include(h => h.Seats)
+                .Include(h => h.ScreenType)
+                .Include(h => h.Status)
                 .OrderBy(h => h.Name)
                 .ToListAsync();
 
@@ -230,7 +233,7 @@ namespace eCommerce.Services
                 var genre = m.Genre?.Name ?? "—";
                 var rating = avgRatings.FirstOrDefault(r => r.MovieId == m.Id);
                 var ratingText = rating != null ? $"{rating.Avg:F1} ({rating.Count} reviews)" : "no reviews";
-                sb.AppendLine($"  - {m.Title} | {genre} | {m.AgeRating ?? "—"} | {m.DurationMinutes} min | state={m.MovieState} | views={m.ViewCount} | avg rating={ratingText}");
+                sb.AppendLine($"  - {m.Title} | {genre} | {m.AgeRating?.Name ?? "—"} | {m.DurationMinutes} min | state={m.MovieState} | views={m.ViewCount} | avg rating={ratingText}");
             }
             if (movies.Count(m => m.IsActive) > 12)
             {
@@ -242,7 +245,7 @@ namespace eCommerce.Services
             foreach (var h in halls)
             {
                 var cap = h.Seats.Count(s => s.IsActive);
-                sb.AppendLine($"  - {h.Name} | {cap} seats | {h.ScreenType} | status={h.Status} | active={h.IsActive}");
+                sb.AppendLine($"  - {h.Name} | {cap} seats | {h.ScreenType?.Name ?? "—"} | status={h.Status?.Name ?? "—"} | active={h.IsActive}");
             }
 
             sb.AppendLine();
