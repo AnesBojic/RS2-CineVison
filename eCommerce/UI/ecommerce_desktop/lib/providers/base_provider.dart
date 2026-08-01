@@ -98,17 +98,6 @@ abstract class BaseProvider<T> with ChangeNotifier {
     throw Exception("Method not implemented");
   }
 
-  bool isValidResponse(Response response) {
-    if (response.statusCode < 299) {
-      return true;
-    } else if (response.statusCode == 401) {
-      throw new Exception("Unauthorized");
-    } else {
-      print(response.body);
-      throw new Exception("Something bad happened please try again");
-    }
-  }
-
   /// Throws [ApiClientException] with a message from the API when status is not successful.
   void validateResponse(Response response) {
     if (response.statusCode < 299) {

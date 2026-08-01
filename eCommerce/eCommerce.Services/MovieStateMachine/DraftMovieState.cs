@@ -1,7 +1,8 @@
-using eCommerce.Model.Requests;
+﻿using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Services.Database;
 using MapsterMapper;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.Services.MovieStateMachine
 {

@@ -1,5 +1,6 @@
-using eCommerce.Services.MovieStateMachine;
+﻿using eCommerce.Services.MovieStateMachine;
 using Microsoft.EntityFrameworkCore;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.Services.Database
 {
@@ -58,10 +59,10 @@ namespace eCommerce.Services.Database
         private void SeedAgeRatings(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<AgeRating>().HasData(
-                new { Id = 1, Name = "G", Description = "General audiences — all ages admitted", MinimumAge = (int?)0, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 1, Name = "G", Description = "General audiences â€” all ages admitted", MinimumAge = (int?)0, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 2, Name = "PG", Description = "Parental guidance suggested", MinimumAge = (int?)8, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 3, Name = "PG-13", Description = "Some material may be inappropriate for children under 13", MinimumAge = (int?)13, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 4, Name = "R", Description = "Restricted — under 17 requires an accompanying adult", MinimumAge = (int?)17, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 4, Name = "R", Description = "Restricted â€” under 17 requires an accompanying adult", MinimumAge = (int?)17, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 5, Name = "NC-17", Description = "No one 17 and under admitted", MinimumAge = (int?)18, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
             );
         }
@@ -346,7 +347,7 @@ namespace eCommerce.Services.Database
                 {
                     Id = 2,
                     Title = "Student discount weekdays",
-                    Content = "Show your student ID Monday–Thursday for 20% off base ticket prices.",
+                    Content = "Show your student ID Mondayâ€“Thursday for 20% off base ticket prices.",
                     ImageBase64 = (string?)null,
                     PublishedAt = new DateTime(2026, 6, 20, 9, 0, 0, DateTimeKind.Utc),
                     IsActive = true,
@@ -359,33 +360,33 @@ namespace eCommerce.Services.Database
         private void SeedReservationSeats(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<ReservationSeat>().HasData(
-                // R-SEED-001 — Edge of Tomorrow, 18:00 screening
+                // R-SEED-001 â€” Edge of Tomorrow, 18:00 screening
                 new { Id = 1, ReservationId = 1, SeatId = 1, ScreeningId = 1, Price = 8.50m },
                 new { Id = 2, ReservationId = 1, SeatId = 2, ScreeningId = 1, Price = 8.50m },
                 new { Id = 3, ReservationId = 1, SeatId = 3, ScreeningId = 1, Price = 8.50m },
-                // R-SEED-002 — same screening, different seats
+                // R-SEED-002 â€” same screening, different seats
                 new { Id = 4, ReservationId = 2, SeatId = 4, ScreeningId = 1, Price = 8.50m },
                 new { Id = 5, ReservationId = 2, SeatId = 5, ScreeningId = 1, Price = 8.50m },
-                // R-SEED-003 — The Last Laugh, afternoon slot
+                // R-SEED-003 â€” The Last Laugh, afternoon slot
                 new { Id = 6, ReservationId = 3, SeatId = 20, ScreeningId = 3, Price = 7.00m },
                 new { Id = 7, ReservationId = 3, SeatId = 21, ScreeningId = 3, Price = 7.00m },
                 new { Id = 8, ReservationId = 3, SeatId = 22, ScreeningId = 3, Price = 7.00m },
-                // R-SEED-004 — Silent Shadows, Hall B
+                // R-SEED-004 â€” Silent Shadows, Hall B
                 new { Id = 9, ReservationId = 4, SeatId = 41, ScreeningId = 4, Price = 9.00m },
                 new { Id = 10, ReservationId = 4, SeatId = 42, ScreeningId = 4, Price = 9.00m },
                 new { Id = 11, ReservationId = 4, SeatId = 43, ScreeningId = 4, Price = 9.00m },
                 new { Id = 12, ReservationId = 4, SeatId = 44, ScreeningId = 4, Price = 9.00m },
-                // R-SEED-005 — Final Strike
+                // R-SEED-005 â€” Final Strike
                 new { Id = 13, ReservationId = 5, SeatId = 47, ScreeningId = 5, Price = 10.00m },
                 new { Id = 14, ReservationId = 5, SeatId = 48, ScreeningId = 5, Price = 10.00m },
                 new { Id = 15, ReservationId = 5, SeatId = 49, ScreeningId = 5, Price = 10.00m },
                 new { Id = 16, ReservationId = 5, SeatId = 50, ScreeningId = 5, Price = 10.00m },
-                // R-SEED-006 — Edge of Tomorrow, 21:00 screening (9 PM time slot)
+                // R-SEED-006 â€” Edge of Tomorrow, 21:00 screening (9 PM time slot)
                 new { Id = 17, ReservationId = 6, SeatId = 9, ScreeningId = 2, Price = 8.50m },
                 new { Id = 18, ReservationId = 6, SeatId = 10, ScreeningId = 2, Price = 8.50m },
                 new { Id = 19, ReservationId = 6, SeatId = 11, ScreeningId = 2, Price = 8.50m },
                 new { Id = 20, ReservationId = 6, SeatId = 12, ScreeningId = 2, Price = 8.50m },
-                // R-SEED-007 — unpaid hold on late screening
+                // R-SEED-007 â€” unpaid hold on late screening
                 new { Id = 21, ReservationId = 7, SeatId = 13, ScreeningId = 2, Price = 8.50m }
             );
         }

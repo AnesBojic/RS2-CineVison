@@ -1,6 +1,5 @@
 import 'package:ecommerce_mobile/core/components/base64_image.dart';
 import 'package:ecommerce_mobile/core/constants/app_colors.dart';
-import 'package:ecommerce_mobile/core/constants/app_defaults.dart';
 import 'package:ecommerce_mobile/core/routes/app_routes.dart';
 import 'package:ecommerce_mobile/providers/movie_provider.dart';
 import 'package:ecommerce_mobile/models/movie.dart';

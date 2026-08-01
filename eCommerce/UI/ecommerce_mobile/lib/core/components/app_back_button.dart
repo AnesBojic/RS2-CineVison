@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-
-import '../constants/constants.dart';
 
 class AppBackButton extends StatelessWidget {
-  /// Custom Back labelLarge with a custom ICON for this app
+  /// Custom back button used by the pages that are pushed on top of the entry point.
   const AppBackButton({
     super.key,
   });
@@ -12,7 +9,7 @@ class AppBackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: SvgPicture.asset(AppIcons.arrowBackward),
+      icon: const Icon(Icons.arrow_back),
       onPressed: () => Navigator.pop(context),
     );
   }

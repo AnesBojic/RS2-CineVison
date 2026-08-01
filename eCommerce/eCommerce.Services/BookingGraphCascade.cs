@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -6,6 +6,7 @@ using eCommerce.Model;
 using eCommerce.Model.Responses;
 using eCommerce.Services.Database;
 using Microsoft.EntityFrameworkCore;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.Services;
 

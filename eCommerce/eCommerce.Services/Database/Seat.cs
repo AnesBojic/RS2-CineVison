@@ -1,6 +1,7 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.Services.Database
 {
@@ -35,12 +36,5 @@ namespace eCommerce.Services.Database
 
         // Navigation property for reservation seats referencing this seat
         public ICollection<ReservationSeat> ReservationSeats { get; set; } = new List<ReservationSeat>();
-    }
-
-    public enum SeatType
-    {
-        Regular,
-        VIP,
-        Couple
     }
 }

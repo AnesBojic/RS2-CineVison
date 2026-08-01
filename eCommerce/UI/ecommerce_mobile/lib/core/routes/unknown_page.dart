@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../components/app_back_button.dart';
-import '../components/network_image.dart';
 import '../constants/constants.dart';
 import 'app_routes.dart';
 
@@ -18,29 +17,14 @@ class UnknownPage extends StatelessWidget {
       body: Column(
         children: [
           const Spacer(flex: 2),
-          Padding(
-            padding: const EdgeInsets.all(AppDefaults.padding),
-            child: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.7,
-              child: const AspectRatio(
-                aspectRatio: 1 / 1,
-                child: NetworkImageWithLoader(
-                  'https://i.imgur.com/mVeoFh5.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
+          const Icon(Icons.error_outline, size: 96),
           Padding(
             padding: const EdgeInsets.all(AppDefaults.padding),
             child: Column(
               children: [
                 Text(
-                  'oppss!! something wrong',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
+                  'Something went wrong',
+                  style: Theme.of(context).textTheme.titleLarge,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -48,7 +32,7 @@ class UnknownPage extends StatelessWidget {
                   padding:
                       EdgeInsets.symmetric(horizontal: AppDefaults.padding),
                   child: Text(
-                    'Sorry, something went wrong\nplease try again .',
+                    'This page could not be opened.\nPlease try again.',
                     textAlign: TextAlign.center,
                   ),
                 ),

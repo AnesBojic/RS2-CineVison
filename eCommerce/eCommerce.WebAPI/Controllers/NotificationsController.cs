@@ -1,9 +1,10 @@
-using eCommerce.Model.Access;
+﻿using eCommerce.Model.Access;
 using eCommerce.Model.Responses;
 using eCommerce.Services;
 using eCommerce.Services.Database;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.WebAPI.Controllers;
 

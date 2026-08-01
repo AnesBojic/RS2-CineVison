@@ -1,59 +1,19 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 
-dynamic dateEncode(dynamic item) {
-  if (item is DateTime) {
-    return item.toUtc().toIso8601String();
-  }
-  return item;
-}
-
 void alertBox(BuildContext context, String title, String content) {
-     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(content),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text("OK"),
-          ),
-        ],
-      ),
-    );
-  }
-
-void alertBoxMoveBack(BuildContext context, String title, String content) {
   showDialog(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-            title: Text(title),
-            content: Text(content),
-            actions: [
-              TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Ok')),
-            ],
-          ));
-}
-
-Image imageFromBase64String(String base64Image) {
-  return Image.memory(
-    base64Decode(base64Image),
-    height: 400,
-    width: 400,
-    fit: BoxFit.cover,
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: Text(content),
+      actions: [
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: const Text("OK"),
+        ),
+      ],
+    ),
   );
 }
-
-
- const String mField = "This filed is mandatory";
-
-const String numericField = "This filed is numeric";

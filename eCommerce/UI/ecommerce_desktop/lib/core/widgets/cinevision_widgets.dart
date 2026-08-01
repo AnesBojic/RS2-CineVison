@@ -535,11 +535,10 @@ class DataCard extends StatelessWidget {
 }
 
 class SectionHeader extends StatelessWidget {
-  const SectionHeader({super.key, required this.title, this.action, this.onTitleTap});
+  const SectionHeader({super.key, required this.title, this.action});
 
   final String title;
   final Widget? action;
-  final VoidCallback? onTitleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -547,15 +546,12 @@ class SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: onTitleTap,
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-              ),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const Spacer(),

@@ -1,6 +1,5 @@
-using eCommerce.Model.Requests;
+﻿using eCommerce.Model.Requests;
 using FluentValidation;
-
 namespace eCommerce.Services.Validators
 {
     public class SeatInsertValidator : AbstractValidator<SeatInsertRequest>

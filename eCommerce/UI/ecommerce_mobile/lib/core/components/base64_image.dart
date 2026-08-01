@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:ecommerce_mobile/utils/base64_image_cache.dart';
 import 'package:flutter/material.dart';
 

@@ -1,6 +1,7 @@
-using System;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.Services.Database
 {
@@ -58,14 +59,5 @@ namespace eCommerce.Services.Database
         public DateTime? CompletedAt { get; set; }
 
         public ICollection<ReservationSeat> ReservationSeats { get; set; } = new List<ReservationSeat>();
-    }
-
-    public enum ReservationStatus
-    {
-        Pending = 0,
-        Confirmed = 1,
-        Paid = 2,
-        Cancelled = 3,
-        Completed = 4
     }
 }

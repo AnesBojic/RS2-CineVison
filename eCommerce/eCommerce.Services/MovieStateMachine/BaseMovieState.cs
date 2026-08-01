@@ -1,9 +1,10 @@
-using eCommerce.Model.Requests;
+﻿using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Services.Database;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.Services.MovieStateMachine
 {

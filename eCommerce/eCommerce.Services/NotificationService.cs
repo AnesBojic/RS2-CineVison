@@ -1,7 +1,8 @@
-using eCommerce.Model.Responses;
+﻿using eCommerce.Model.Responses;
 using eCommerce.Services.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.Services
 {

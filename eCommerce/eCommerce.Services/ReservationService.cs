@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,6 +16,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Stripe;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.Services
 {
@@ -161,7 +162,7 @@ namespace eCommerce.Services
                 ? null
                 : request.PaymentIntentId.Trim();
 
-            // Idempotent confirm: same PaymentIntent already booked → return existing reservation.
+            // Idempotent confirm: same PaymentIntent already booked â†’ return existing reservation.
             if (paymentIntentId != null)
             {
                 var existing = await FindByPaymentIntentAsync(paymentIntentId);
@@ -622,7 +623,7 @@ namespace eCommerce.Services
                 await NotifySafeAsync(
                     response.UserId,
                     "Payment confirmed",
-                    $"Payment received for {response.ReservationNumber} — {response.MovieTitle}. Seats are reserved.",
+                    $"Payment received for {response.ReservationNumber} â€” {response.MovieTitle}. Seats are reserved.",
                     NotificationType.Payment);
             }
             else

@@ -1,4 +1,4 @@
-using eCommerce.Model;
+﻿using eCommerce.Model;
 using eCommerce.Model.Access;
 using eCommerce.Model.Messages;
 using eCommerce.Model.Requests;
@@ -10,6 +10,7 @@ using eCommerce.WebAPI.Services.AccessManager;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.WebAPI.Controllers;
 
@@ -68,7 +69,7 @@ public class UsersController : BaseCRUDController<UserResponse, UserSearch, User
         });
 
         var senderName = User.FindFirst(ClaimNames.FirstName)?.Value ?? "Admin";
-        var preview = request.Body.Length > 180 ? request.Body[..180] + "…" : request.Body;
+        var preview = request.Body.Length > 180 ? request.Body[..180] + "â€¦" : request.Body;
         await _notificationService.CreateAsync(
             id,
             $"New email: {request.Subject}",

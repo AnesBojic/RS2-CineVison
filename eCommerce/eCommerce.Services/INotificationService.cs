@@ -1,5 +1,6 @@
-using eCommerce.Model.Responses;
+﻿using eCommerce.Model.Responses;
 using eCommerce.Services.Database;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.Services
 {

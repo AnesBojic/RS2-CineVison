@@ -1,5 +1,6 @@
-using eCommerce.Model.Exceptions;
+﻿using eCommerce.Model.Exceptions;
 using eCommerce.Services.Database;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.Services.ReservationStateMachine;
 

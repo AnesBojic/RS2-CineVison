@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,6 +11,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using eCommerce.Services.Enums;
 
 namespace eCommerce.Services
 {
@@ -245,7 +246,7 @@ namespace eCommerce.Services
                     screeningIds,
                     paymentIntentId => StripeRefundHelper.TryRefundAsync(_stripeSecretKey, paymentIntentId, _logger));
 
-                // PartnerSeat is Restrict — clear links before seats cascade with the hall.
+                // PartnerSeat is Restrict â€” clear links before seats cascade with the hall.
                 foreach (var seat in hall.Seats)
                 {
                     seat.PartnerSeatId = null;
@@ -328,7 +329,7 @@ namespace eCommerce.Services
                 if (index < 0 || index >= rowSeats.Count - 1)
                 {
                     throw new ClientException(
-                        $"Seat {seat.RowLabel}{seat.SeatNumber} cannot be a couple seat — there is no seat to the right.");
+                        $"Seat {seat.RowLabel}{seat.SeatNumber} cannot be a couple seat â€” there is no seat to the right.");
                 }
 
                 var partner = rowSeats[index + 1];

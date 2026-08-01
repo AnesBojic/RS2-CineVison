@@ -18,7 +18,6 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      fontFamily: 'Gilroy',
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColors.scaffoldBackground,
       textTheme: const TextTheme(
@@ -42,7 +41,6 @@ class AppTheme {
           color: AppColors.textPrimary,
           fontWeight: FontWeight.bold,
           fontSize: 20,
-          fontFamily: 'Gilroy',
         ),
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarBrightness: Brightness.dark,
