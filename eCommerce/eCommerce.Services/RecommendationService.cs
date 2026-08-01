@@ -12,12 +12,12 @@ using Microsoft.Extensions.Configuration;
 namespace eCommerce.Services
 {
     /// <summary>
-    /// Hybrid movie recommender (project spec §8). Combines a catalog-wide popularity score
-    /// (reservations, views and ratings) with a personalized content score (preferred genres and
-    /// description-keyword overlap built from the user's reservations and high ratings). The two are
-    /// blended into a final score: FinalScore = PopularityWeight * Popularity + ContentWeight * Content.
-    /// New users with no history get a pure popularity ("cold start") ranking. Scoring runs in memory
-    /// after projecting only the needed columns from EF; no external ML packages are used.
+    /// Hybrid movie recommender (project spec §8). Combines catalog-wide popularity
+    /// (reservations, views, ratings), personalized content affinity (genres + description
+    /// keywords from bookings/high ratings), and search-history affinity (genres + query tokens
+    /// from <see cref="SearchHistory"/> rows written by movie search). Final score:
+    /// PopularityWeight * Popularity + ContentWeight * Content + SearchWeight * Search.
+    /// Users with no bookings, ratings, or searches get a pure popularity ("cold start") ranking.
     /// </summary>
     public class RecommendationService : IRecommendationService
     {
@@ -26,13 +26,19 @@ namespace eCommerce.Services
         private readonly IAuthenticatedUserAccessor _userAccessor;
         private readonly double _popularityWeight;
         private readonly double _contentWeight;
+        private readonly double _searchWeight;
 
         // Sub-weights for the two content signals (genre match vs description-keyword overlap).
         private const double GenreSubWeight = 0.6;
         private const double KeywordSubWeight = 0.4;
 
-        // A rating at or above this counts as a "liked" movie for building the taste profile.
+        // Sub-weights for search-history affinity.
+        private const double SearchGenreSubWeight = 0.5;
+        private const double SearchKeywordSubWeight = 0.3;
+        private const double SearchTitleSubWeight = 0.2;
+
         private const int LikedRatingThreshold = 4;
+        private const int MaxRecentSearches = 40;
 
         public RecommendationService(
             ECommerceDbContext dbContext,
@@ -43,8 +49,9 @@ namespace eCommerce.Services
             _dbContext = dbContext;
             _mapper = mapper;
             _userAccessor = userAccessor;
-            _popularityWeight = ReadWeight(configuration["Recommendations:PopularityWeight"], 0.5);
-            _contentWeight = ReadWeight(configuration["Recommendations:ContentWeight"], 0.5);
+            _popularityWeight = ReadWeight(configuration["Recommendations:PopularityWeight"], 0.4);
+            _contentWeight = ReadWeight(configuration["Recommendations:ContentWeight"], 0.4);
+            _searchWeight = ReadWeight(configuration["Recommendations:SearchWeight"], 0.2);
         }
 
         private static double ReadWeight(string? raw, double fallback)
@@ -64,7 +71,6 @@ namespace eCommerce.Services
             var userId = _userAccessor.GetUserId()
                 ?? throw new InvalidOperationException("User id claim is missing.");
 
-            // Candidate pool: active movies only, with the data needed to build MovieResponse.
             var movies = await _dbContext.Movies
                 .AsNoTracking()
                 .Include(m => m.Genre)
@@ -78,8 +84,6 @@ namespace eCommerce.Services
             }
 
             // ---- popularity signals (catalog-wide) --------------------------------
-            // Reservations: count reserved seats for each movie's screenings, ignoring cancelled
-            // reservations (consistent with AnalyticsService, whose "tickets sold" excludes cancelled).
             var reservationCounts = (await _dbContext.ReservationSeats
                     .Where(rs => rs.Reservation.Status != ReservationStatus.Cancelled)
                     .Select(rs => new { rs.Screening.MovieId })
@@ -93,7 +97,7 @@ namespace eCommerce.Services
                 .GroupBy(x => x.MovieId)
                 .ToDictionary(g => g.Key, g => g.Average(x => (double)x.Rating));
 
-            // ---- user taste profile ----------------------------------------------
+            // ---- user taste profile (bookings + high ratings) ---------------------
             var reservedMovieIds = (await _dbContext.Reservations
                     .Where(r => r.UserId == userId && r.Status != ReservationStatus.Cancelled)
                     .Select(r => r.Screening.MovieId)
@@ -108,17 +112,16 @@ namespace eCommerce.Services
                     .ToListAsync())
                 .ToHashSet();
 
-            bool coldStart = reservedMovieIds.Count == 0 && likedRatedMovieIds.Count == 0;
-
-            // Genre + keyword profile derived from the movies the user reserved or rated highly.
-            var profileMovieIds = new HashSet<int>(reservedMovieIds);
-            profileMovieIds.UnionWith(likedRatedMovieIds);
+            var hasContentProfile = reservedMovieIds.Count > 0 || likedRatedMovieIds.Count > 0;
 
             var genreWeights = new Dictionary<int, int>();
             var profileKeywords = new HashSet<string>();
 
-            if (profileMovieIds.Count > 0)
+            if (hasContentProfile)
             {
+                var profileMovieIds = new HashSet<int>(reservedMovieIds);
+                profileMovieIds.UnionWith(likedRatedMovieIds);
+
                 var profileMovies = await _dbContext.Movies
                     .AsNoTracking()
                     .Where(m => profileMovieIds.Contains(m.Id))
@@ -138,8 +141,54 @@ namespace eCommerce.Services
 
             int maxGenreWeight = genreWeights.Count > 0 ? genreWeights.Values.Max() : 0;
 
+            // ---- search-history profile (must be used — rows are written on search) -
+            var recentSearches = await _dbContext.SearchHistories
+                .AsNoTracking()
+                .Where(s => s.UserId == userId)
+                .OrderByDescending(s => s.SearchedAt)
+                .Take(MaxRecentSearches)
+                .Select(s => new { s.Query, s.GenreId, s.SearchedAt })
+                .ToListAsync();
+
+            var hasSearchProfile = recentSearches.Count > 0;
+            var searchGenreWeights = new Dictionary<int, int>();
+            var searchKeywords = new HashSet<string>();
+            var searchTitlePhrases = new List<string>();
+
+            foreach (var search in recentSearches)
+            {
+                int? genreId = search.GenreId;
+                if (!genreId.HasValue &&
+                    search.Query.StartsWith("genre:", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(search.Query.AsSpan("genre:".Length), out var parsedGenreId))
+                {
+                    genreId = parsedGenreId;
+                }
+
+                if (genreId.HasValue)
+                {
+                    searchGenreWeights.TryGetValue(genreId.Value, out var count);
+                    searchGenreWeights[genreId.Value] = count + 1;
+                }
+
+                // Synthetic genre-only queries contribute genre affinity, not keyword noise.
+                if (!search.Query.StartsWith("genre:", StringComparison.OrdinalIgnoreCase))
+                {
+                    searchKeywords.UnionWith(Tokenize(search.Query));
+                    var phrase = search.Query.Trim().ToLowerInvariant();
+                    if (phrase.Length >= 2)
+                    {
+                        searchTitlePhrases.Add(phrase);
+                    }
+                }
+            }
+
+            int maxSearchGenreWeight = searchGenreWeights.Count > 0 ? searchGenreWeights.Values.Max() : 0;
+
+            // Cold start only when the user has nothing personal to go on — including no searches.
+            bool coldStart = !hasContentProfile && !hasSearchProfile;
+
             // ---- per-candidate raw signals ---------------------------------------
-            // Score every active movie; preferences boost ranking instead of hiding titles.
             var candidates = movies
                 .Select(m =>
                 {
@@ -154,6 +203,27 @@ namespace eCommerce.Services
 
                     double keywordComponent = Jaccard(Tokenize(m.Description), profileKeywords);
 
+                    double searchGenreComponent = 0;
+                    if (m.GenreId.HasValue && maxSearchGenreWeight > 0 &&
+                        searchGenreWeights.TryGetValue(m.GenreId.Value, out var sgw))
+                    {
+                        searchGenreComponent = (double)sgw / maxSearchGenreWeight;
+                    }
+
+                    double searchKeywordComponent = Jaccard(Tokenize(m.Title), searchKeywords);
+                    if (searchKeywordComponent == 0)
+                    {
+                        // Fall back to description tokens when the title has no overlap.
+                        searchKeywordComponent = Jaccard(Tokenize(m.Description), searchKeywords);
+                    }
+
+                    double searchTitleComponent = 0;
+                    if (searchTitlePhrases.Count > 0 && !string.IsNullOrWhiteSpace(m.Title))
+                    {
+                        var title = m.Title.ToLowerInvariant();
+                        searchTitleComponent = searchTitlePhrases.Any(p => title.Contains(p)) ? 1.0 : 0.0;
+                    }
+
                     return new Candidate
                     {
                         Movie = m,
@@ -161,7 +231,10 @@ namespace eCommerce.Services
                         Views = m.ViewCount,
                         Rating = rating,
                         GenreComponent = genreComponent,
-                        KeywordComponent = keywordComponent
+                        KeywordComponent = keywordComponent,
+                        SearchGenreComponent = searchGenreComponent,
+                        SearchKeywordComponent = searchKeywordComponent,
+                        SearchTitleComponent = searchTitleComponent
                     };
                 })
                 .ToList();
@@ -185,7 +258,7 @@ namespace eCommerce.Services
             }
 
             // ---- normalize content signals ----------------------------------------
-            if (!coldStart)
+            if (hasContentProfile)
             {
                 foreach (var c in candidates)
                 {
@@ -199,17 +272,44 @@ namespace eCommerce.Services
                 }
             }
 
+            // ---- normalize search-history signals ---------------------------------
+            if (hasSearchProfile)
+            {
+                foreach (var c in candidates)
+                {
+                    c.SearchRaw =
+                        SearchGenreSubWeight * c.SearchGenreComponent +
+                        SearchKeywordSubWeight * c.SearchKeywordComponent +
+                        SearchTitleSubWeight * c.SearchTitleComponent;
+                }
+
+                double minSearch = candidates.Min(c => c.SearchRaw), maxSearch = candidates.Max(c => c.SearchRaw);
+                foreach (var c in candidates)
+                {
+                    c.SearchScore = Normalize(c.SearchRaw, minSearch, maxSearch);
+                }
+            }
+
             // ---- final hybrid score -----------------------------------------------
             foreach (var c in candidates)
             {
-                c.FinalScore = coldStart
-                    ? c.PopularityScore
-                    : _popularityWeight * c.PopularityScore + _contentWeight * c.ContentScore;
+                if (coldStart)
+                {
+                    c.FinalScore = c.PopularityScore;
+                }
+                else
+                {
+                    c.FinalScore =
+                        _popularityWeight * c.PopularityScore +
+                        _contentWeight * c.ContentScore +
+                        _searchWeight * c.SearchScore;
+                }
             }
 
             var ordered = candidates
                 .OrderByDescending(c => c.FinalScore)
-                .ThenByDescending(c => c.PopularityScore);
+                .ThenByDescending(c => c.PopularityScore)
+                .ThenByDescending(c => c.SearchScore);
 
             IEnumerable<Candidate> result = take > 0 ? ordered.Take(take) : ordered;
 
@@ -220,12 +320,13 @@ namespace eCommerce.Services
                     Score = Math.Round(c.FinalScore, 4),
                     PopularityScore = Math.Round(c.PopularityScore, 4),
                     ContentScore = Math.Round(c.ContentScore, 4),
-                    Reason = BuildReason(c, coldStart, reservedMovieIds.Contains(c.Movie.Id))
+                    SearchScore = Math.Round(c.SearchScore, 4),
+                    Reason = BuildReason(c, coldStart, hasSearchProfile, reservedMovieIds.Contains(c.Movie.Id))
                 })
                 .ToList();
         }
 
-        private static string BuildReason(Candidate c, bool coldStart, bool alreadyBooked)
+        private static string BuildReason(Candidate c, bool coldStart, bool hasSearchProfile, bool alreadyBooked)
         {
             var parts = new List<string>();
 
@@ -248,6 +349,11 @@ namespace eCommerce.Services
                 {
                     parts.Add("similar to movies you've enjoyed");
                 }
+                if (hasSearchProfile &&
+                    (c.SearchGenreComponent > 0 || c.SearchKeywordComponent > 0 || c.SearchTitleComponent > 0))
+                {
+                    parts.Add("matches your recent searches");
+                }
                 if (c.PopularityScore >= 0.5)
                 {
                     parts.Add("popular with other viewers");
@@ -262,7 +368,6 @@ namespace eCommerce.Services
             return char.ToUpperInvariant(reason[0]) + reason.Substring(1);
         }
 
-        // Min-max normalization to 0-1. Returns 0 when the signal has no spread across candidates.
         private static double Normalize(double value, double min, double max)
         {
             return max > min ? (value - min) / (max - min) : 0;
@@ -315,9 +420,14 @@ namespace eCommerce.Services
             public double Rating { get; set; }
             public double GenreComponent { get; set; }
             public double KeywordComponent { get; set; }
+            public double SearchGenreComponent { get; set; }
+            public double SearchKeywordComponent { get; set; }
+            public double SearchTitleComponent { get; set; }
             public double ContentRaw { get; set; }
+            public double SearchRaw { get; set; }
             public double PopularityScore { get; set; }
             public double ContentScore { get; set; }
+            public double SearchScore { get; set; }
             public double FinalScore { get; set; }
         }
     }

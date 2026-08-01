@@ -206,9 +206,9 @@ class _MoviesPageState extends State<MoviesPage> {
   Future<(List<Movie>, Map<int, String>, bool)> _loadRecommendationsForTake(int take) async {
     final recommendations = await _movieProvider.getRecommendations(take: take);
 
-    // If user has no bookings/reviews yet -> API is effectively popularity-only.
+    // Cold start only when the user has neither bookings/ratings nor search history.
     final coldStart = recommendations.isEmpty ||
-        recommendations.every((r) => r.contentScore <= 0);
+        recommendations.every((r) => r.contentScore <= 0 && r.searchScore <= 0);
 
     final reasons = <int, String>{};
     if (!coldStart) {
