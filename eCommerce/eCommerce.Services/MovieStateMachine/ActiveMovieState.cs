@@ -20,7 +20,7 @@ namespace eCommerce.Services.MovieStateMachine
                 throw new KeyNotFoundException($"Movie with id {id} not found.");
             }
 
-            entity.MovieState = nameof(DraftMovieState);
+            entity.MovieState = MovieLifecycleState.Draft;
             await DbContext.SaveChangesAsync();
 
             return await MapWithReferencesAsync(entity);

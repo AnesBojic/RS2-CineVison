@@ -1,8 +1,9 @@
 import 'genre.dart';
 
+/// Mirrors the API's MovieLifecycleState enum names.
 class MovieState {
-  static const active = 'ActiveMovieState';
-  static const draft = 'DraftMovieState';
+  static const active = 'Active';
+  static const draft = 'Draft';
 
   static String displayLabel(String? movieState) {
     if (movieState == null || movieState.isEmpty) return 'Draft';

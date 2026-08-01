@@ -130,18 +130,10 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
             }
             if (!string.IsNullOrWhiteSpace(search.MovieState))
             {
-                var stateFilter = search.MovieState.Trim();
-                if (stateFilter.Equals("Active", StringComparison.OrdinalIgnoreCase))
+                var parsed = ParseMovieState(search.MovieState);
+                if (parsed.HasValue)
                 {
-                    query = query.Where(m => m.MovieState == nameof(ActiveMovieState));
-                }
-                else if (stateFilter.Equals("Draft", StringComparison.OrdinalIgnoreCase))
-                {
-                    query = query.Where(m => m.MovieState == nameof(DraftMovieState));
-                }
-                else
-                {
-                    query = query.Where(m => m.MovieState.Equals(stateFilter, StringComparison.OrdinalIgnoreCase));
+                    query = query.Where(m => m.MovieState == parsed.Value);
                 }
             }
         }
@@ -171,8 +163,7 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
     {
         if (id <= 0)
         {
-            var initialState = MovieState.GetMovieState(nameof(InitialMovieState));
-            return initialState.GetAllowedActions();
+            return MovieState.GetInitialState().GetAllowedActions();
         }
 
         var entity = await _dbContext.Movies.FindAsync(id)
@@ -186,7 +177,7 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
     {
         await EnsureReferencesExistAsync(request.LanguageId, request.AgeRatingId);
 
-        var state = MovieState.GetMovieState(nameof(InitialMovieState));
+        var state = MovieState.GetInitialState();
         return await state.InsertAsync(request);
     }
 
@@ -199,6 +190,24 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 
         var state = MovieState.GetMovieState(entity.MovieState);
         return await state.UpdateAsync(id, request);
+    }
+
+    /// <summary>
+    /// Accepts both the enum names ("Active") and the older state class names ("ActiveMovieState")
+    /// so clients built against the previous string column keep filtering correctly.
+    /// Returns null for anything unrecognised, which leaves the result set unfiltered.
+    /// </summary>
+    private static MovieLifecycleState? ParseMovieState(string value)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.EndsWith("MovieState", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed[..^"MovieState".Length];
+        }
+
+        return Enum.TryParse<MovieLifecycleState>(trimmed, ignoreCase: true, out var parsed)
+            ? parsed
+            : null;
     }
 
     /// <summary>

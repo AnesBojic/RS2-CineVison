@@ -27,6 +27,7 @@ namespace eCommerce.Model.Responses
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
+        /// <summary>Name of the <c>MovieLifecycleState</c> value, e.g. "Draft" or "Active".</summary>
         public string MovieState { get; set; } = string.Empty;
         public GenreResponse? Genre { get; set; }
         public List<string> AllowedActions { get; set; } = new List<string>();

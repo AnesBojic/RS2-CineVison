@@ -489,7 +489,7 @@ namespace eCommerce.Services
                 reservation.UserId,
                 "Booking cancelled",
                 $"Reservation {reservation.ReservationNumber} was cancelled. {reason}",
-                "Cancellation");
+                NotificationType.Cancellation);
 
             await NotifyAnalyticsSafeAsync();
 
@@ -514,7 +514,7 @@ namespace eCommerce.Services
                 reservation.UserId,
                 "Booking completed",
                 $"Reservation {reservation.ReservationNumber} is marked as completed. Thanks for visiting CineVision!",
-                "Status");
+                NotificationType.Status);
 
             await NotifyAnalyticsSafeAsync();
 
@@ -623,7 +623,7 @@ namespace eCommerce.Services
                     response.UserId,
                     "Payment confirmed",
                     $"Payment received for {response.ReservationNumber} — {response.MovieTitle}. Seats are reserved.",
-                    "Payment");
+                    NotificationType.Payment);
             }
             else
             {
@@ -631,11 +631,11 @@ namespace eCommerce.Services
                     response.UserId,
                     "Booking confirmed",
                     $"Reservation {response.ReservationNumber} for {response.MovieTitle} is confirmed.",
-                    "Reservation");
+                    NotificationType.Reservation);
             }
         }
 
-        private async Task NotifySafeAsync(int userId, string title, string message, string type)
+        private async Task NotifySafeAsync(int userId, string title, string message, NotificationType type)
         {
             try
             {

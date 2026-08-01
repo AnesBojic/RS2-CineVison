@@ -26,8 +26,10 @@ namespace eCommerce.Services.Database
         [MaxLength(100)]
         public string Username { get; set; } = string.Empty;
         
+        [Required]
         public string PasswordHash { get; set; } = string.Empty;
         
+        [Required]
         public string PasswordSalt { get; set; } = string.Empty;
         
         public bool IsActive { get; set; } = true;

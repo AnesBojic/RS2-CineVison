@@ -59,19 +59,23 @@ namespace eCommerce.Services.MovieStateMachine
             return Mapper.Map<MovieResponse>(entity);
         }
 
-        public BaseMovieState GetMovieState(string stateName)
+        public BaseMovieState GetMovieState(MovieLifecycleState state)
         {
-            switch (stateName)
+            switch (state)
             {
-                case nameof(InitialMovieState):
-                    return ServiceProvider.GetService<InitialMovieState>()!;
-                case nameof(DraftMovieState):
+                case MovieLifecycleState.Draft:
                     return ServiceProvider.GetService<DraftMovieState>()!;
-                case nameof(ActiveMovieState):
+                case MovieLifecycleState.Active:
                     return ServiceProvider.GetService<ActiveMovieState>()!;
                 default:
-                    throw new InvalidOperationException($"Unknown movie state: {stateName}");
+                    throw new InvalidOperationException($"Unknown movie state: {state}");
             }
+        }
+
+        /// <summary>Entry point used when creating a movie; this state is never persisted.</summary>
+        public BaseMovieState GetInitialState()
+        {
+            return ServiceProvider.GetService<InitialMovieState>()!;
         }
 
         public virtual List<string> GetAllowedActions()

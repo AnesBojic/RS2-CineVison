@@ -51,8 +51,8 @@ namespace eCommerce.Services.Database
 
         public DateTime? UpdatedAt { get; set; }
 
-        [MaxLength(1000)]
-        public string MovieState { get; set; } = string.Empty;
+        [Required]
+        public MovieLifecycleState MovieState { get; set; } = MovieLifecycleState.Draft;
 
         // Genre relationship
         public int? GenreId { get; set; }

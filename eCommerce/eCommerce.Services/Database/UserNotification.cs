@@ -14,15 +14,16 @@ namespace eCommerce.Services.Database
         [ForeignKey(nameof(UserId))]
         public User User { get; set; } = null!;
 
+        [Required]
         [MaxLength(200)]
         public string Title { get; set; } = string.Empty;
 
+        [Required]
         [MaxLength(1000)]
         public string Message { get; set; } = string.Empty;
 
-        /// <summary>Email or Message</summary>
-        [MaxLength(50)]
-        public string Type { get; set; } = "Email";
+        [Required]
+        public NotificationType Type { get; set; } = NotificationType.Email;
 
         public bool IsRead { get; set; }
 

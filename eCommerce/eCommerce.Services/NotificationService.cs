@@ -40,14 +40,14 @@ namespace eCommerce.Services
                     Id = n.Id,
                     Title = n.Title,
                     Message = n.Message,
-                    Type = n.Type,
+                    Type = n.Type.ToString(),
                     IsRead = n.IsRead,
                     CreatedAt = n.CreatedAt
                 })
                 .ToListAsync();
         }
 
-        public async Task<NotificationResponse> CreateAsync(int userId, string title, string message, string type)
+        public async Task<NotificationResponse> CreateAsync(int userId, string title, string message, NotificationType type)
         {
             var entity = new UserNotification
             {
@@ -67,7 +67,7 @@ namespace eCommerce.Services
                 Id = entity.Id,
                 Title = entity.Title,
                 Message = entity.Message,
-                Type = entity.Type,
+                Type = entity.Type.ToString(),
                 IsRead = entity.IsRead,
                 CreatedAt = entity.CreatedAt
             };
@@ -92,13 +92,13 @@ namespace eCommerce.Services
             await PushUnreadCountSafeAsync(userId);
         }
 
-        public async Task MarkAllReadAsync(int userId, string? type = null)
+        public async Task MarkAllReadAsync(int userId, NotificationType? type = null)
         {
             var query = _dbContext.UserNotifications.Where(n => n.UserId == userId && !n.IsRead);
 
-            if (!string.IsNullOrWhiteSpace(type))
+            if (type.HasValue)
             {
-                query = query.Where(n => n.Type == type);
+                query = query.Where(n => n.Type == type.Value);
             }
 
             var items = await query.ToListAsync();

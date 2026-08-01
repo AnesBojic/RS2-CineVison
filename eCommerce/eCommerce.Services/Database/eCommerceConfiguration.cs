@@ -173,6 +173,14 @@ namespace eCommerce.Services.Database
                 .HasForeignKey(ur => ur.RoleId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Refresh tokens die with their user; configured explicitly rather than by convention
+            // so every relationship in the model is declared in one place.
+            modelBuilder.Entity<RefreshToken>()
+                .HasOne(t => t.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             modelBuilder.Entity<UserNotification>()
                 .HasOne(n => n.User)
                 .WithMany()

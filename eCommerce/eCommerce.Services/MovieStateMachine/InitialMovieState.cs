@@ -15,7 +15,7 @@ namespace eCommerce.Services.MovieStateMachine
         public override async Task<MovieResponse> InsertAsync(MovieInsertRequest request)
         {
             var entity = Mapper.Map<Movie>(request);
-            entity.MovieState = nameof(DraftMovieState);
+            entity.MovieState = MovieLifecycleState.Draft;
             entity.CreatedAt = DateTime.UtcNow;
             DbContext.Movies.Add(entity);
             await DbContext.SaveChangesAsync();

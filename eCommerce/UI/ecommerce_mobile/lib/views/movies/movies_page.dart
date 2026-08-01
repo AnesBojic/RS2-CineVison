@@ -239,7 +239,7 @@ class _MoviesPageState extends State<MoviesPage> {
       'page': _popularPage,
       'pageSize': _popularPageSize,
       'includeTotalCount': true,
-      'movieState': 'ActiveMovieState',
+      'movieState': MovieState.active,
       'includeGenre': true,
       'includeAssets': true,
       'sortBy': 'ViewCount desc',

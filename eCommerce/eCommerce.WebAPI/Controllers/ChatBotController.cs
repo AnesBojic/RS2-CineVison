@@ -3,6 +3,7 @@ using eCommerce.Model.Access;
 using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Services;
+using eCommerce.Services.Database;
 using eCommerce.WebAPI.Services.AccessManager;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -50,7 +51,7 @@ public class ChatBotController : ControllerBase
                 userId.Value,
                 "Cinema Assistant replied",
                 preview,
-                "Message");
+                NotificationType.Message);
         }
 
         return Ok(result);

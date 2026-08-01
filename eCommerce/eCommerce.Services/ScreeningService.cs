@@ -302,7 +302,7 @@ namespace eCommerce.Services
                         reservation.UserId,
                         "Screening cancelled",
                         $"Your booking {reservation.ReservationNumber} was cancelled because the projection was removed by staff.",
-                        "Cancellation");
+                        NotificationType.Cancellation);
                 }
                 catch (Exception ex)
                 {

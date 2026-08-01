@@ -5,6 +5,7 @@ using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Model.SearchObjects;
 using eCommerce.Services;
+using eCommerce.Services.Database;
 using eCommerce.WebAPI.Services.AccessManager;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -72,7 +73,7 @@ public class UsersController : BaseCRUDController<UserResponse, UserSearch, User
             id,
             $"New email: {request.Subject}",
             $"From {senderName}. {preview}",
-            "Email");
+            NotificationType.Email);
 
         return Ok();
     }

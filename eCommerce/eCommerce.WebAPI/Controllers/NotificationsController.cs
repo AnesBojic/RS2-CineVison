@@ -1,6 +1,7 @@
 using eCommerce.Model.Access;
 using eCommerce.Model.Responses;
 using eCommerce.Services;
+using eCommerce.Services.Database;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -68,7 +69,18 @@ public class NotificationsController : ControllerBase
             return Unauthorized();
         }
 
-        await _notificationService.MarkAllReadAsync(userId.Value, type);
+        NotificationType? parsedType = null;
+        if (!string.IsNullOrWhiteSpace(type))
+        {
+            if (!Enum.TryParse<NotificationType>(type, ignoreCase: true, out var parsed))
+            {
+                return BadRequest($"Unknown notification type '{type}'.");
+            }
+
+            parsedType = parsed;
+        }
+
+        await _notificationService.MarkAllReadAsync(userId.Value, parsedType);
         return NoContent();
     }
 }

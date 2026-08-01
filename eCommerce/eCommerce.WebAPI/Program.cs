@@ -72,7 +72,8 @@ TypeAdapterConfig<Language, LanguageResponse>.NewConfig().IgnoreNullValues(true)
 TypeAdapterConfig<Movie, MovieResponse>.NewConfig()
     .IgnoreNullValues(true)
     .Map(dest => dest.Language, src => src.Language != null ? src.Language.Name : null)
-    .Map(dest => dest.AgeRating, src => src.AgeRating != null ? src.AgeRating.Name : null);
+    .Map(dest => dest.AgeRating, src => src.AgeRating != null ? src.AgeRating.Name : null)
+    .Map(dest => dest.MovieState, src => src.MovieState.ToString());
 TypeAdapterConfig<MovieUpdateRequest, Movie>.NewConfig().IgnoreNullValues(true).Ignore(dest => dest.Assets);
 TypeAdapterConfig<Hall, HallResponse>.NewConfig()
     .IgnoreNullValues(true)

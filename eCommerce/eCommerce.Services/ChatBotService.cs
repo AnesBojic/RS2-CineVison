@@ -227,7 +227,7 @@ namespace eCommerce.Services
             sb.AppendLine($"Generated at: {now:yyyy-MM-dd HH:mm} UTC");
             sb.AppendLine();
 
-            sb.AppendLine($"Movies: {movies.Count} total, {movies.Count(m => m.IsActive)} active, {movies.Count(m => m.MovieState == nameof(ActiveMovieState))} in Active state, {movies.Count(m => m.MovieState == nameof(DraftMovieState))} in Draft.");
+            sb.AppendLine($"Movies: {movies.Count} total, {movies.Count(m => m.IsActive)} active, {movies.Count(m => m.MovieState == MovieLifecycleState.Active)} in Active state, {movies.Count(m => m.MovieState == MovieLifecycleState.Draft)} in Draft.");
             foreach (var m in movies.Where(m => m.IsActive).Take(12))
             {
                 var genre = m.Genre?.Name ?? "—";
