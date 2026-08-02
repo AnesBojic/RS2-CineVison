@@ -135,6 +135,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<INotificationPushNotifier, NotificationPushNotifier>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddScoped<ITokenRevocationService, TokenRevocationService>();
 builder.Services.AddScoped<IAccessManager, AccessManager>();
 builder.Services.AddScoped<ICryptoService, CryptoService>();
 
@@ -234,6 +235,27 @@ builder.Services.AddAuthentication(options =>
                 context.Token = accessToken;
             }
             return Task.CompletedTask;
+        },
+        // A signature check only proves the token was ours, not that the session behind it
+        // still exists. Comparing the stamped version against the user tells us whether the
+        // token was retired by a logout, and rejects tokens belonging to disabled accounts.
+        OnTokenValidated = async context =>
+        {
+            var claims = context.Principal;
+            if (!int.TryParse(claims?.FindFirst(ClaimNames.Id)?.Value, out var userId) ||
+                !int.TryParse(claims?.FindFirst(ClaimNames.TokenVersion)?.Value, out var tokenVersion))
+            {
+                context.Fail("Token is missing the identity claims.");
+                return;
+            }
+
+            var revocation = context.HttpContext.RequestServices
+                .GetRequiredService<ITokenRevocationService>();
+
+            if (!await revocation.IsAccessTokenValidAsync(userId, tokenVersion))
+            {
+                context.Fail("This session has ended. Please sign in again.");
+            }
         }
     };
 });

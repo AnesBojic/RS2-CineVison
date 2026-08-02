@@ -193,7 +193,21 @@ class AuthProvider extends ChangeNotifier {
     return null;
   }
 
-  void logout() {
+  /// An access token verifies on its own, so only the API can retire it early. Signing out
+  /// therefore has to reach the server; the local session is dropped either way so a failed
+  /// or slow round trip never traps the user inside the app.
+  Future<void> logout() async {
+    final token = _accesstoken;
+
+    if (token != null && token.isNotEmpty) {
+      try {
+        await http.post(
+          Uri.parse('$_baseUrl/Logout'),
+          headers: {...createHeaders(), 'Authorization': 'Bearer $token'},
+        ).timeout(const Duration(seconds: 5));
+      } catch (_) {}
+    }
+
     _clearSession();
     notifyListeners();
   }

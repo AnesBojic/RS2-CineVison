@@ -31,4 +31,46 @@ class FieldValidators {
     }
     return null;
   }
+
+  /// Whole number within [min]..[max]. Empty is rejected unless [required] is false.
+  static String? integer(
+    String? value, {
+    String field = 'Field',
+    int min = 1,
+    int? max,
+    bool required = true,
+  }) {
+    final v = value?.trim() ?? '';
+    if (v.isEmpty) return required ? '$field is required' : null;
+    final parsed = int.tryParse(v);
+    if (parsed == null) return '$field must be a whole number';
+    if (parsed < min) return '$field must be at least $min';
+    if (max != null && parsed > max) return '$field must be $max or less';
+    return null;
+  }
+
+  /// Positive amount of money. Tolerates a leading currency symbol.
+  static String? price(String? value, {String field = 'Price'}) {
+    final v = value?.replaceAll('\$', '').trim() ?? '';
+    if (v.isEmpty) return '$field is required';
+    final parsed = num.tryParse(v);
+    if (parsed == null || parsed <= 0) return 'Enter a valid ${field.toLowerCase()}';
+    return null;
+  }
+
+  /// Exactly [length] digits, e.g. a one-time reset code.
+  static String? digitCode(String? value, int length, {String field = 'Code'}) {
+    final v = value?.trim() ?? '';
+    if (v.isEmpty) return '$field is required';
+    if (v.length != length || int.tryParse(v) == null) {
+      return '$field must be $length digits';
+    }
+    return null;
+  }
+
+  /// Confirmation field that has to repeat [other] exactly.
+  static String? match(String? value, String other, {String field = 'Passwords'}) {
+    if (value != other) return '$field do not match';
+    return null;
+  }
 }

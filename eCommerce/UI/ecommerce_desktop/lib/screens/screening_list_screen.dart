@@ -10,6 +10,7 @@ import 'package:ecommerce_desktop/providers/language_provider.dart';
 import 'package:ecommerce_desktop/providers/movie_provider.dart';
 import 'package:ecommerce_desktop/providers/screening_provider.dart';
 import 'package:ecommerce_desktop/utils/api_client_exception.dart';
+import 'package:ecommerce_desktop/utils/field_validators.dart';
 import 'package:ecommerce_desktop/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -323,20 +324,6 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
           isSubmitting: submitting,
           onSubmit: () async {
             if (!(formKey.currentState?.validate() ?? false)) return;
-            if (movieId == null || hallId == null || date == null || time == null) {
-              showAppSnackBar(context, 'Please fill all fields', isError: true);
-              return;
-            }
-            final selectedHall = _hallById(hallId);
-            if (selectedHall != null && !hallIsActive(selectedHall)) {
-              showAppSnackBar(
-                context,
-                inactiveHallMessage(selectedHall),
-                isError: true,
-              );
-              return;
-            }
-
             setDialogState(() => submitting = true);
             final selectedDate = date!;
             final selectedTime = time!;
@@ -401,52 +388,68 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
                           child: Text('${h.name ?? ''} (${h.statusName ?? '—'})'),
                         ))
                     .toList(),
-                onChanged: (v) {
-                  setDialogState(() => hallId = v);
-                  if (v == null) return;
+                onChanged: (v) => setDialogState(() => hallId = v),
+                // Flags an unavailable hall as soon as it is picked, not only on submit.
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                validator: (v) {
+                  if (v == null) return 'Hall is required';
                   final hall = _hallById(v);
-                  if (hall != null && !hallIsActive(hall) && context.mounted) {
-                    showAppSnackBar(
-                      context,
-                      inactiveHallMessage(hall),
-                      isError: true,
-                    );
+                  if (hall != null && !hallIsActive(hall)) {
+                    return inactiveHallMessage(hall);
                   }
+                  return null;
                 },
-                validator: (v) => v == null ? 'Hall is required' : null,
               ),
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(
-                  child: InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: date ?? DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) setDialogState(() => date = picked);
-                    },
-                    child: InputDecorator(
-                      decoration: const InputDecoration(labelText: 'Date'),
-                      child: Text(formatDate(date)),
+                  // Wrapped in a FormField so a missing date reports under the field,
+                  // the same way the text inputs do.
+                  child: FormField<DateTime>(
+                    validator: (_) => date == null ? 'Date is required' : null,
+                    builder: (fieldState) => InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: date ?? DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked == null) return;
+                        setDialogState(() => date = picked);
+                        fieldState.didChange(picked);
+                      },
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Date',
+                          errorText: fieldState.errorText,
+                        ),
+                        child: Text(formatDate(date)),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: InkWell(
-                    onTap: () async {
-                      final picked = await showTimePicker(
-                        context: context,
-                        initialTime: time ?? TimeOfDay.now(),
-                      );
-                      if (picked != null) setDialogState(() => time = picked);
-                    },
-                    child: InputDecorator(
-                      decoration: const InputDecoration(labelText: 'Time'),
-                      child: Text(time != null ? time!.format(context) : '—'),
+                  child: FormField<TimeOfDay>(
+                    validator: (_) => time == null ? 'Time is required' : null,
+                    builder: (fieldState) => InkWell(
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: time ?? TimeOfDay.now(),
+                        );
+                        if (picked == null) return;
+                        setDialogState(() => time = picked);
+                        fieldState.didChange(picked);
+                      },
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Time',
+                          errorText: fieldState.errorText,
+                        ),
+                        child: Text(time != null ? time!.format(context) : '—'),
+                      ),
                     ),
                   ),
                 ),
@@ -467,12 +470,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
                 controller: priceCtrl,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'Price', hintText: 'e.g. \$15'),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return 'Price is required';
-                  final n = num.tryParse(v.replaceAll('\$', '').trim());
-                  if (n == null || n <= 0) return 'Enter a valid price';
-                  return null;
-                },
+                validator: FieldValidators.price,
               ),
             ],
             ),

@@ -1,6 +1,7 @@
 import 'package:ecommerce_desktop/core/theme/app_theme.dart';
 import 'package:ecommerce_desktop/layouts/home_shell.dart';
 import 'package:ecommerce_desktop/providers/auth_provider.dart';
+import 'package:ecommerce_desktop/utils/field_validators.dart';
 import 'package:ecommerce_desktop/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,10 +14,14 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _loading = false;
   bool _obscure = true;
+
+  /// Rejected credentials are reported in the form itself rather than in a dialog.
+  String? _loginError;
 
   @override
   void dispose() {
@@ -103,7 +108,9 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Container(
                 constraints: const BoxConstraints(maxWidth: 400),
                 padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: Column(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -121,18 +128,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 36),
-                    TextField(
+                    TextFormField(
                       controller: _usernameController,
                       decoration: const InputDecoration(
                         labelText: 'Username',
                         prefixIcon: Icon(Icons.person_outline, size: 20),
                       ),
+                      validator: (v) => FieldValidators.required(v, field: 'Username'),
                     ),
                     const SizedBox(height: 16),
-                    TextField(
+                    TextFormField(
                       controller: _passwordController,
                       obscureText: _obscure,
-                      onSubmitted: (_) => _login(),
+                      onFieldSubmitted: (_) => _login(),
                       decoration: InputDecoration(
                         labelText: 'Password',
                         prefixIcon: const Icon(Icons.lock_outline, size: 20),
@@ -144,6 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+                      validator: (v) => FieldValidators.required(v, field: 'Password'),
                     ),
                     Align(
                       alignment: Alignment.centerRight,
@@ -152,6 +161,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: const Text('Forgot password?'),
                       ),
                     ),
+                    if (_loginError != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.error_outline,
+                              size: 18, color: AppColors.orange),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _loginError!,
+                              style: const TextStyle(
+                                color: AppColors.orange,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     SizedBox(
                       height: 48,
@@ -168,6 +196,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
+                ),
               ),
             ),
           ),
@@ -177,7 +206,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    setState(() => _loading = true);
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() {
+      _loading = true;
+      _loginError = null;
+    });
     try {
       await context.read<AuthProvider>().login(
             _usernameController.text.trim(),
@@ -189,13 +222,21 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => const HomeShell()),
       );
     } on Exception catch (e) {
-      if (mounted) alertBox(context, 'Login failed', e.toString());
+      if (mounted) setState(() => _loginError = _readableError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  /// AuthProvider throws plain Exceptions, so toString() carries an "Exception: " prefix.
+  static String _readableError(Exception e) {
+    const prefix = 'Exception: ';
+    final text = e.toString();
+    return text.startsWith(prefix) ? text.substring(prefix.length) : text;
+  }
+
   Future<void> _showForgotPassword() async {
+    final resetFormKey = GlobalKey<FormState>();
     final accountCtrl = TextEditingController(text: _usernameController.text.trim());
     final codeCtrl = TextEditingController();
     final passwordCtrl = TextEditingController();
@@ -209,10 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           Future<void> sendCode() async {
-            if (accountCtrl.text.trim().isEmpty) {
-              alertBox(context, 'Validation', 'Email or username is required');
-              return;
-            }
+            if (!(resetFormKey.currentState?.validate() ?? false)) return;
             setDialogState(() => busy = true);
             try {
               final message = await this.context.read<AuthProvider>().forgotPassword(
@@ -231,18 +269,7 @@ class _LoginScreenState extends State<LoginScreen> {
           }
 
           Future<void> resetPassword() async {
-            if (codeCtrl.text.trim().length != 6) {
-              alertBox(context, 'Validation', 'Enter the 6-digit code from your email');
-              return;
-            }
-            if (passwordCtrl.text.length < 6) {
-              alertBox(context, 'Validation', 'Password must be at least 6 characters');
-              return;
-            }
-            if (passwordCtrl.text != confirmCtrl.text) {
-              alertBox(context, 'Validation', 'Passwords do not match');
-              return;
-            }
+            if (!(resetFormKey.currentState?.validate() ?? false)) return;
             setDialogState(() => busy = true);
             try {
               final message = await this.context.read<AuthProvider>().resetPassword(
@@ -272,7 +299,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             content: SizedBox(
               width: 420,
-              child: Column(
+              child: Form(
+                key: resetFormKey,
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
@@ -282,19 +311,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 16),
-                  TextField(
+                  TextFormField(
                     controller: accountCtrl,
                     readOnly: step == 1,
                     decoration: const InputDecoration(labelText: 'Email or username'),
+                    validator: (v) =>
+                        FieldValidators.required(v, field: 'Email or username'),
                   ),
                   if (step == 1) ...[
                     const SizedBox(height: 12),
-                    TextField(
+                    TextFormField(
                       controller: codeCtrl,
-                      decoration: const InputDecoration(labelText: 'Reset code'),
+                      decoration: const InputDecoration(
+                        labelText: 'Reset code',
+                        hintText: '6-digit code from your email',
+                      ),
+                      validator: (v) =>
+                          FieldValidators.digitCode(v, 6, field: 'Reset code'),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    TextFormField(
                       controller: passwordCtrl,
                       obscureText: obscure,
                       decoration: InputDecoration(
@@ -306,15 +342,20 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+                      validator: (v) =>
+                          FieldValidators.minLength(v, 6, field: 'Password'),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    TextFormField(
                       controller: confirmCtrl,
                       obscureText: obscure,
                       decoration: const InputDecoration(labelText: 'Confirm password'),
+                      validator: (v) =>
+                          FieldValidators.match(v ?? '', passwordCtrl.text),
                     ),
                   ],
                 ],
+              ),
               ),
             ),
             actions: [

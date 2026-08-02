@@ -7,6 +7,7 @@ import 'package:ecommerce_desktop/providers/hall_provider.dart';
 import 'package:ecommerce_desktop/providers/hall_status_provider.dart';
 import 'package:ecommerce_desktop/providers/screen_type_provider.dart';
 import 'package:ecommerce_desktop/utils/api_client_exception.dart';
+import 'package:ecommerce_desktop/utils/field_validators.dart';
 import 'package:ecommerce_desktop/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -285,6 +286,7 @@ class _HallListScreenState extends State<HallListScreen> {
     int statusId = hall?.statusId ?? _hallStatuses.first.id!;
     bool submitting = false;
     final isEdit = hall != null;
+    final formKey = GlobalKey<FormState>();
 
     await showDialog(
       context: context,
@@ -294,16 +296,9 @@ class _HallListScreenState extends State<HallListScreen> {
           submitLabel: hall == null ? 'Add Hall' : 'Save',
           isSubmitting: submitting,
           onSubmit: () async {
-            if (nameCtrl.text.trim().isEmpty) {
-              alertBox(context, 'Validation', 'Hall name is required');
-              return;
-            }
-            final rows = int.tryParse(rowsCtrl.text) ?? 0;
-            final cols = int.tryParse(colsCtrl.text) ?? 0;
-            if (!isEdit && (rows < 1 || cols < 1)) {
-              alertBox(context, 'Validation', 'Rows and columns must be at least 1');
-              return;
-            }
+            if (!(formKey.currentState?.validate() ?? false)) return;
+            final rows = int.tryParse(rowsCtrl.text.trim()) ?? 0;
+            final cols = int.tryParse(colsCtrl.text.trim()) ?? 0;
             setDialogState(() => submitting = true);
             final entity = Hall(
               name: nameCtrl.text.trim(),
@@ -326,16 +321,19 @@ class _HallListScreenState extends State<HallListScreen> {
               if (context.mounted) alertBox(context, 'Error', e.toString());
             }
           },
-          child: Column(
+          child: Form(
+            key: formKey,
+            child: Column(
             children: [
-              TextField(
+              TextFormField(
                 controller: nameCtrl,
                 decoration: const InputDecoration(labelText: 'Hall Name', hintText: 'e.g., Hall 1'),
+                validator: (v) => FieldValidators.required(v, field: 'Hall name'),
               ),
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(
-                  child: TextField(
+                  child: TextFormField(
                     controller: rowsCtrl,
                     readOnly: isEdit,
                     keyboardType: TextInputType.number,
@@ -344,11 +342,15 @@ class _HallListScreenState extends State<HallListScreen> {
                       hintText: 'e.g., 5',
                       helperText: isEdit ? 'Use seat layout editor to change couple seats' : null,
                     ),
+                    // Rows are fixed once seats exist, so only a new hall needs the check.
+                    validator: isEdit
+                        ? null
+                        : (v) => FieldValidators.integer(v, field: 'Rows', max: 50),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
+                  child: TextFormField(
                     controller: colsCtrl,
                     readOnly: isEdit,
                     keyboardType: TextInputType.number,
@@ -357,6 +359,9 @@ class _HallListScreenState extends State<HallListScreen> {
                       hintText: 'e.g., 8',
                       helperText: isEdit ? null : 'Seats per row',
                     ),
+                    validator: isEdit
+                        ? null
+                        : (v) => FieldValidators.integer(v, field: 'Columns', max: 50),
                   ),
                 ),
               ]),
@@ -388,6 +393,7 @@ class _HallListScreenState extends State<HallListScreen> {
                 ),
               ]),
             ],
+          ),
           ),
         ),
       ),

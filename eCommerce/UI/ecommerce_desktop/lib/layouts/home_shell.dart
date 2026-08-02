@@ -371,11 +371,11 @@ class _HomeShellState extends State<HomeShell> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
+              final navigator = Navigator.of(context);
               context.read<AnalyticsProvider>().disconnectRealtime();
-              context.read<AuthProvider>().logout();
-              Navigator.pushAndRemoveUntil(
-                context,
+              await context.read<AuthProvider>().logout();
+              navigator.pushAndRemoveUntil(
                 MaterialPageRoute(builder: (_) => const LoginScreen()),
                 (route) => false,
               );

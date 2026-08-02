@@ -186,6 +186,7 @@ class _UserListState extends State<UserList> {
   Future<void> _showEmailDialog(User u) async {
     final subjectCtrl = TextEditingController();
     final bodyCtrl = TextEditingController();
+    final emailFormKey = GlobalKey<FormState>();
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -197,23 +198,32 @@ class _UserListState extends State<UserList> {
         title: Text('Email ${u.firstName}', style: const TextStyle(color: AppColors.textPrimary)),
         content: SizedBox(
           width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: subjectCtrl, decoration: const InputDecoration(labelText: 'Subject')),
-              const SizedBox(height: 12),
-              TextField(
-                controller: bodyCtrl,
-                maxLines: 4,
-                decoration: const InputDecoration(labelText: 'Message'),
-              ),
-            ],
+          child: Form(
+            key: emailFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: subjectCtrl,
+                  decoration: const InputDecoration(labelText: 'Subject'),
+                  validator: (v) => FieldValidators.required(v, field: 'Subject'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: bodyCtrl,
+                  maxLines: 4,
+                  decoration: const InputDecoration(labelText: 'Message'),
+                  validator: (v) => FieldValidators.required(v, field: 'Message'),
+                ),
+              ],
+            ),
           ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
+              if (!(emailFormKey.currentState?.validate() ?? false)) return;
               try {
                 await _userProvider.sendEmail(u.id!, subjectCtrl.text, bodyCtrl.text);
                 if (context.mounted) {

@@ -2,6 +2,7 @@ import 'package:ecommerce_desktop/core/theme/app_theme.dart';
 import 'package:ecommerce_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:ecommerce_desktop/models/news.dart';
 import 'package:ecommerce_desktop/providers/news_provider.dart';
+import 'package:ecommerce_desktop/utils/field_validators.dart';
 import 'package:ecommerce_desktop/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -73,32 +74,58 @@ class _NewsListScreenState extends State<NewsListScreen> {
   }
 
   Future<void> _showEditor({NewsItem? existing}) async {
+    final formKey = GlobalKey<FormState>();
     final titleCtrl = TextEditingController(text: existing?.title ?? '');
     final contentCtrl = TextEditingController(text: existing?.content ?? '');
     var isActive = existing?.isActive ?? true;
+    var submitting = false;
 
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setLocal) {
-            return AlertDialog(
-              backgroundColor: AppColors.card,
-              title: Text(existing == null ? 'New announcement' : 'Edit announcement'),
-              content: SizedBox(
-                width: 480,
+            return FormDialogShell(
+              title: existing == null ? 'New announcement' : 'Edit announcement',
+              submitLabel: existing == null ? 'Publish' : 'Save',
+              isSubmitting: submitting,
+              maxWidth: 520,
+              onSubmit: () async {
+                if (!(formKey.currentState?.validate() ?? false)) return;
+                setLocal(() => submitting = true);
+                try {
+                  final payload = NewsItem(
+                    title: titleCtrl.text.trim(),
+                    content: contentCtrl.text.trim(),
+                    publishedAt: existing?.publishedAt ?? DateTime.now().toUtc(),
+                    isActive: isActive,
+                  );
+                  if (existing?.id == null) {
+                    await _provider.insert(payload.toInsertJson());
+                  } else {
+                    await _provider.update(existing!.id!, payload.toUpdateJson());
+                  }
+                  if (ctx.mounted) Navigator.pop(ctx, true);
+                } on Exception catch (e) {
+                  setLocal(() => submitting = false);
+                  if (ctx.mounted) showAppSnackBar(ctx, e.toString(), isError: true);
+                }
+              },
+              child: Form(
+                key: formKey,
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
+                    TextFormField(
                       controller: titleCtrl,
                       decoration: const InputDecoration(labelText: 'Title'),
+                      validator: (v) => FieldValidators.required(v, field: 'Title'),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    TextFormField(
                       controller: contentCtrl,
                       maxLines: 6,
                       decoration: const InputDecoration(labelText: 'Content'),
+                      validator: (v) => FieldValidators.required(v, field: 'Content'),
                     ),
                     const SizedBox(height: 8),
                     SwitchListTile(
@@ -110,50 +137,16 @@ class _NewsListScreenState extends State<NewsListScreen> {
                   ],
                 ),
               ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                FilledButton(
-                  onPressed: () {
-                    if (titleCtrl.text.trim().isEmpty || contentCtrl.text.trim().isEmpty) {
-                      return;
-                    }
-                    Navigator.pop(ctx, true);
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
             );
           },
         );
       },
     );
 
-    if (saved != true) {
-      titleCtrl.dispose();
-      contentCtrl.dispose();
-      return;
-    }
-
-    final payload = NewsItem(
-      title: titleCtrl.text.trim(),
-      content: contentCtrl.text.trim(),
-      publishedAt: existing?.publishedAt ?? DateTime.now().toUtc(),
-      isActive: isActive,
-    );
-
     titleCtrl.dispose();
     contentCtrl.dispose();
 
-    try {
-      if (existing?.id == null) {
-        await _provider.insert(payload.toInsertJson());
-      } else {
-        await _provider.update(existing!.id!, payload.toUpdateJson());
-      }
-      await _load();
-    } on Exception catch (e) {
-      if (mounted) alertBox(context, 'Error', e.toString());
-    }
+    if (saved == true) await _load();
   }
 
   @override

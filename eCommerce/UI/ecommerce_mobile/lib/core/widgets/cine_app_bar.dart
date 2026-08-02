@@ -48,12 +48,9 @@ class CineAppBar extends StatefulWidget implements PreferredSizeWidget {
       ),
     );
     if (confirmed == true && context.mounted) {
-      context.read<AuthProvider>().logout();
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.entryPoint,
-        (_) => false,
-      );
+      final navigator = Navigator.of(context);
+      await context.read<AuthProvider>().logout();
+      navigator.pushNamedAndRemoveUntil(AppRoutes.entryPoint, (_) => false);
     }
   }
 }

@@ -31,6 +31,7 @@ namespace eCommerce.Services
         private readonly IValidator<UserRegisterRequest> _registerValidator;
         private readonly IValidator<UserPasswordChangeRequest> _passwordChangeValidator;
         private readonly IEmailService _emailService;
+        private readonly ITokenRevocationService _tokenRevocationService;
 
         public UserService(
             ECommerceDbContext dbContext,
@@ -43,9 +44,11 @@ namespace eCommerce.Services
             IValidator<ResetPasswordRequest> resetPasswordValidator,
             IValidator<UserRegisterRequest> registerValidator,
             IValidator<UserPasswordChangeRequest> passwordChangeValidator,
-            IEmailService emailService)
+            IEmailService emailService,
+            ITokenRevocationService tokenRevocationService)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
+            _tokenRevocationService = tokenRevocationService;
             _cryptoService = cryptoService;
             _profileValidator = profileValidator;
             _forgotPasswordValidator = forgotPasswordValidator;
@@ -505,6 +508,14 @@ namespace eCommerce.Services
             user.PasswordSalt = _cryptoService.GenerateSlat();
             user.PasswordHash = _cryptoService.GenerateHash(request.NewPassword, user.PasswordSalt);
 
+            // Other devices have to sign in again with the new password. The caller keeps its
+            // own access token, so changing the password does not eject them mid-session.
+            var tokens = await _dbContext.RefreshTokens.Where(t => t.UserId == user.Id).ToListAsync();
+            if (tokens.Count > 0)
+            {
+                _dbContext.RefreshTokens.RemoveRange(tokens);
+            }
+
             _dbContext.Users.Update(user);
             await _dbContext.SaveChangesAsync();
         }
@@ -569,7 +580,9 @@ namespace eCommerce.Services
             user.PasswordResetExpiresAt = null;
             user.UpdatedAt = DateTime.UtcNow;
 
-            // Invalidate existing refresh sessions after a password change.
+            // A reset means the account may have been compromised, and whoever runs it is not
+            // signed in anyway, so every session goes: refresh tokens and access tokens alike.
+            user.TokenVersion++;
             var tokens = await _dbContext.RefreshTokens.Where(t => t.UserId == user.Id).ToListAsync();
             if (tokens.Count > 0)
             {
@@ -577,6 +590,7 @@ namespace eCommerce.Services
             }
 
             await _dbContext.SaveChangesAsync();
+            _tokenRevocationService.InvalidateCache(user.Id);
         }
     }
 }

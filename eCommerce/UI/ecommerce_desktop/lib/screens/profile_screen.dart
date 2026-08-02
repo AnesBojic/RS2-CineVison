@@ -6,6 +6,7 @@ import 'package:ecommerce_desktop/models/user.dart';
 import 'package:ecommerce_desktop/providers/auth_provider.dart';
 import 'package:ecommerce_desktop/providers/user_provider.dart';
 import 'package:ecommerce_desktop/utils/api_client_exception.dart';
+import 'package:ecommerce_desktop/utils/field_validators.dart';
 import 'package:ecommerce_desktop/utils/image_utils.dart';
 import 'package:ecommerce_desktop/utils/utils_widgets.dart';
 import 'package:file_picker/file_picker.dart';
@@ -37,6 +38,14 @@ Future<void> showProfileDialog(BuildContext context) async {
   String? profileImageBase64 = loadedProfile.profileImageBase64;
   bool showPasswordFields = false;
   bool submitting = false;
+  final formKey = GlobalKey<FormState>();
+
+  // The password section is optional, but once any of the three fields is touched
+  // all of them have to be filled in correctly.
+  bool changingPassword() =>
+      currentPwdCtrl.text.isNotEmpty ||
+      newPwdCtrl.text.isNotEmpty ||
+      confirmPwdCtrl.text.isNotEmpty;
 
   await showDialog(
     context: context,
@@ -47,6 +56,7 @@ Future<void> showProfileDialog(BuildContext context) async {
         isSubmitting: submitting,
         maxWidth: 560,
         onSubmit: () async {
+          if (!(formKey.currentState?.validate() ?? false)) return;
           setDialogState(() => submitting = true);
           try {
             await userProvider.updateMe({
@@ -60,9 +70,7 @@ Future<void> showProfileDialog(BuildContext context) async {
             final refreshed = await userProvider.getMe();
             final savedImage = refreshed.profileImageBase64 ?? profileImageBase64;
 
-            if (showPasswordFields &&
-                currentPwdCtrl.text.isNotEmpty &&
-                newPwdCtrl.text.isNotEmpty) {
+            if (showPasswordFields && changingPassword()) {
               final userId = auth.userId ?? refreshed.id;
               if (userId == null) {
                 throw Exception('Could not determine user id for password change.');
@@ -101,7 +109,9 @@ Future<void> showProfileDialog(BuildContext context) async {
             if (context.mounted) alertBox(context, 'Error', e.toString());
           }
         },
-        child: Column(
+        child: Form(
+          key: formKey,
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
@@ -155,44 +165,47 @@ Future<void> showProfileDialog(BuildContext context) async {
             const SizedBox(height: 8),
             Row(children: [
               Expanded(
-                child: TextField(
+                child: TextFormField(
                   controller: firstCtrl,
                   decoration: const InputDecoration(labelText: 'First Name'),
+                  validator: (v) => FieldValidators.required(v, field: 'First name'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: TextField(
+                child: TextFormField(
                   controller: lastCtrl,
                   decoration: const InputDecoration(labelText: 'Last Name'),
+                  validator: (v) => FieldValidators.required(v, field: 'Last name'),
                 ),
               ),
             ]),
             const SizedBox(height: 12),
-            TextField(
+            TextFormField(
               controller: emailCtrl,
               decoration: const InputDecoration(labelText: 'Email'),
+              validator: FieldValidators.email,
             ),
             const SizedBox(height: 12),
-            TextField(
+            TextFormField(
               controller: phoneCtrl,
               decoration: const InputDecoration(labelText: 'Phone Number'),
+              validator: (v) => FieldValidators.phone(v),
             ),
             const SizedBox(height: 12),
-            TextField(
+            TextFormField(
               enabled: false,
-              controller: TextEditingController(text: loadedProfile.username ?? ''),
+              initialValue: loadedProfile.username ?? '',
               decoration: const InputDecoration(
                 labelText: 'Username',
                 helperText: 'Username cannot be changed here',
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
+            TextFormField(
               enabled: false,
-              controller: TextEditingController(
-                text: (loadedProfile.role?.isNotEmpty == true) ? loadedProfile.role! : '—',
-              ),
+              initialValue:
+                  (loadedProfile.role?.isNotEmpty == true) ? loadedProfile.role! : '—',
               decoration: const InputDecoration(
                 labelText: 'Role',
                 helperText: 'Contact an admin to change your role',
@@ -206,26 +219,39 @@ Future<void> showProfileDialog(BuildContext context) async {
             ),
             if (showPasswordFields) ...[
               const SizedBox(height: 8),
-              TextField(
+              TextFormField(
                 controller: currentPwdCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Current Password'),
+                decoration: const InputDecoration(
+                  labelText: 'Current Password',
+                  helperText: 'Leave the three password fields empty to keep your current password',
+                ),
+                validator: (v) => changingPassword()
+                    ? FieldValidators.required(v, field: 'Current password')
+                    : null,
               ),
               const SizedBox(height: 12),
-              TextField(
+              TextFormField(
                 controller: newPwdCtrl,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'New Password'),
+                validator: (v) => changingPassword()
+                    ? FieldValidators.minLength(v, 6, field: 'New password')
+                    : null,
               ),
               const SizedBox(height: 12),
-              TextField(
+              TextFormField(
                 controller: confirmPwdCtrl,
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Confirm New Password'),
+                validator: (v) => changingPassword()
+                    ? FieldValidators.match(v ?? '', newPwdCtrl.text)
+                    : null,
               ),
             ],
             const SizedBox(height: 8),
           ],
+        ),
         ),
       ),
     ),

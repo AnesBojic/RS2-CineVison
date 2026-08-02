@@ -8,5 +8,8 @@
         public static readonly string Email = "Email";
         public static readonly string Role = "Role";
         public static readonly string IsActive = "IsActive";
+
+        /// <summary>Session generation the token was issued for; see ITokenRevocationService.</summary>
+        public static readonly string TokenVersion = "TokenVersion";
     }
 }

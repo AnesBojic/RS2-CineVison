@@ -383,10 +383,15 @@ class _MovieListScreenState extends State<MovieListScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
+                  child: TextFormField(
                     controller: durationCtrl,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(labelText: 'Duration', hintText: 'e.g., 192 min'),
+                    validator: (v) => FieldValidators.integer(
+                      v,
+                      field: 'Duration',
+                      max: 600,
+                    ),
                   ),
                 ),
               ]),

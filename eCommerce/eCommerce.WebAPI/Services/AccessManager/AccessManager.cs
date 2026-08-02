@@ -22,6 +22,7 @@ namespace eCommerce.WebAPI.Services.AccessManager
         private readonly IConfiguration _configuration;
         private readonly ICryptoService _cryptoService;
         private readonly IRefreshTokenService _refreshTokenService;
+        private readonly ITokenRevocationService _tokenRevocationService;
         private readonly IValidator<UserLoginRequest> _loginValidator;
         private readonly IValidator<RefreshAccessTokenRequest> _refreshTokenValidator;
 
@@ -30,6 +31,7 @@ namespace eCommerce.WebAPI.Services.AccessManager
             IConfiguration configuration,
             ICryptoService cryptoService,
             IRefreshTokenService refreshTokenService,
+            ITokenRevocationService tokenRevocationService,
             IValidator<UserLoginRequest> loginValidator,
             IValidator<RefreshAccessTokenRequest> refreshTokenValidator)
         {
@@ -37,6 +39,7 @@ namespace eCommerce.WebAPI.Services.AccessManager
             _configuration = configuration;
             _cryptoService = cryptoService;
             _refreshTokenService = refreshTokenService;
+            _tokenRevocationService = tokenRevocationService;
             _loginValidator = loginValidator;
             _refreshTokenValidator = refreshTokenValidator;
         }
@@ -59,7 +62,7 @@ namespace eCommerce.WebAPI.Services.AccessManager
                 throw new ClientException("Invalid username or password.");
             }
 
-            var accessToken = GenerateToken(user);
+            var accessToken = await GenerateTokenAsync(user);
             var refreshTokenValue = GenerateRefreshToken();
 
             var refreshToken = new RefreshToken
@@ -106,7 +109,7 @@ namespace eCommerce.WebAPI.Services.AccessManager
                 throw new ClientException("User is not active");
             }
 
-            var accessToken = GenerateToken(user);
+            var accessToken = await GenerateTokenAsync(user);
             var refreshTokenValue = GenerateRefreshToken();
 
             var token = new RefreshToken
@@ -126,8 +129,10 @@ namespace eCommerce.WebAPI.Services.AccessManager
 
         }
 
-        private string GenerateToken(UserResponse user)
+        private async Task<string> GenerateTokenAsync(UserResponse user)
         {
+            var tokenVersion = await _tokenRevocationService.GetVersionAsync(user.Id);
+
             string secretKeyString = _configuration["JwtToken:SecretKey"] ?? string.Empty;
             var issuer = _configuration["JwtToken:Issuer"];
             var audience = _configuration["JwtToken:Audience"];
@@ -144,7 +149,8 @@ namespace eCommerce.WebAPI.Services.AccessManager
                     new Claim(ClaimNames.LastName, user.LastName ?? string.Empty),
                     new Claim(ClaimNames.Email, user.Email ?? string.Empty),
                     new Claim(ClaimNames.Role, user.Role ?? RoleNames.Customer),
-                    new Claim(ClaimNames.IsActive, user.IsActive.ToString())
+                    new Claim(ClaimNames.IsActive, user.IsActive.ToString()),
+                    new Claim(ClaimNames.TokenVersion, tokenVersion.ToString())
                 }),
                 Expires = DateTime.UtcNow.AddMinutes(durationInMinutes),
                 Issuer = issuer,
@@ -160,7 +166,9 @@ namespace eCommerce.WebAPI.Services.AccessManager
 
         public async Task LogoutAsync(int userId)
         {
-            await _refreshTokenService.DeleteAllUserRefreshTokensAsync(userId);
+            // Dropping the refresh tokens alone would leave the access token usable until it
+            // expired, so the token version is bumped as well and the JWT dies with it.
+            await _tokenRevocationService.RevokeAllSessionsAsync(userId);
         }
 
         private static string GenerateRefreshToken()

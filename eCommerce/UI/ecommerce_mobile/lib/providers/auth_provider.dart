@@ -222,7 +222,37 @@ class AuthProvider extends ChangeNotifier {
     throw Exception(_messageFromBody(response.body) ?? 'Something went wrong. Please try again.');
   }
 
-  void logout() {
+  /// An access token verifies on its own, so only the API can retire it early. Signing out
+  /// therefore has to reach the server; the local session is dropped either way so a failed
+  /// or slow round trip never traps the user inside the app.
+  Future<void> logout() async {
+    final token = _accesstoken;
+
+    if (token != null && token.isNotEmpty) {
+      try {
+        await http.post(
+          Uri.parse('$_baseUrl/Logout'),
+          headers: {...createHeaders(), 'Authorization': 'Bearer $token'},
+        ).timeout(const Duration(seconds: 5));
+      } catch (_) {}
+    }
+
+    _clearSession();
+  }
+
+  /// Clears tokens when any API call returns 401 (session expired / invalid JWT).
+  /// The token is already worthless here, so there is nothing to tell the server.
+  static void clearSessionOnUnauthorized() {
+    final active = _active;
+    if (active == null) {
+      _accesstoken = null;
+      _accessTokenDecoded = null;
+      return;
+    }
+    active._clearSession();
+  }
+
+  void _clearSession() {
     _isAuthenticated = false;
     _accesstoken = null;
     _refreshtoken = null;
@@ -234,17 +264,6 @@ class AuthProvider extends ChangeNotifier {
     _userId = null;
     _profileImageBase64 = null;
     notifyListeners();
-  }
-
-  /// Clears tokens when any API call returns 401 (session expired / invalid JWT).
-  static void clearSessionOnUnauthorized() {
-    final active = _active;
-    if (active == null) {
-      _accesstoken = null;
-      _accessTokenDecoded = null;
-      return;
-    }
-    active.logout();
   }
 
   Map<String, String> createHeaders() => {'Content-Type': 'application/json'};
