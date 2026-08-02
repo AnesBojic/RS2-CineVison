@@ -1,9 +1,12 @@
 import 'dart:convert';
 
+import 'package:ecommerce_desktop/core/enums/api_enums.dart';
 import 'package:ecommerce_desktop/core/theme/app_theme.dart';
 import 'package:ecommerce_desktop/core/widgets/cinevision_widgets.dart';
+import 'package:ecommerce_desktop/models/lookup_item.dart';
 import 'package:ecommerce_desktop/models/user.dart';
 import 'package:ecommerce_desktop/providers/notification_provider.dart';
+import 'package:ecommerce_desktop/providers/role_provider.dart';
 import 'package:ecommerce_desktop/providers/user_provider.dart';
 import 'package:ecommerce_desktop/utils/api_client_exception.dart';
 import 'package:ecommerce_desktop/utils/field_validators.dart';
@@ -22,7 +25,9 @@ class UserList extends StatefulWidget {
 
 class _UserListState extends State<UserList> {
   late UserProvider _userProvider;
+  late RoleProvider _roleProvider;
   List<User> _users = [];
+  List<LookupItem> _roles = [];
   bool _loading = true;
   final _searchController = TextEditingController();
 
@@ -30,6 +35,7 @@ class _UserListState extends State<UserList> {
   void initState() {
     super.initState();
     _userProvider = context.read<UserProvider>();
+    _roleProvider = context.read<RoleProvider>();
     _load();
   }
 
@@ -45,9 +51,14 @@ class _UserListState extends State<UserList> {
       final filter = <String, dynamic>{'pageSize': 50};
       if (_searchController.text.isNotEmpty) filter['name'] = _searchController.text;
       final data = await _userProvider.get(filter: filter);
+      // Roles are reference data too, so the picker offers whatever the database holds.
+      final roles = await _roleProvider.get(
+        filter: {'pageSize': 100, 'isActive': true},
+      );
       if (!mounted) return;
       setState(() {
         _users = data.items ?? [];
+        _roles = roles.items ?? [];
         _loading = false;
       });
     } on Exception catch (e) {
@@ -71,7 +82,11 @@ class _UserListState extends State<UserList> {
             onSubmitted: (_) => _load(),
           ),
           const SizedBox(width: 10),
-          PrimaryButton(label: 'Add User', onPressed: () => _showUserDialog()),
+          PrimaryButton(
+            label: 'Add User',
+            onPressed: _missingRolesReason == null ? () => _showUserDialog() : null,
+            tooltip: _missingRolesReason,
+          ),
         ],
       ),
       child: DataCard(
@@ -187,17 +202,35 @@ class _UserListState extends State<UserList> {
     final subjectCtrl = TextEditingController();
     final bodyCtrl = TextEditingController();
     final emailFormKey = GlobalKey<FormState>();
+    bool submitting = false;
+
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.cardBorder),
-        ),
-        title: Text('Email ${u.firstName}', style: const TextStyle(color: AppColors.textPrimary)),
-        content: SizedBox(
-          width: 420,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => FormDialogShell(
+          title: 'Email ${u.firstName}',
+          submitLabel: 'Send',
+          isSubmitting: submitting,
+          maxWidth: 460,
+          onSubmit: () async {
+            if (!(emailFormKey.currentState?.validate() ?? false)) return;
+            setDialogState(() => submitting = true);
+            final notifications = this.context.read<NotificationProvider>();
+            try {
+              await _userProvider.sendEmail(u.id!, subjectCtrl.text, bodyCtrl.text);
+              if (context.mounted) {
+                Navigator.pop(context);
+                showAppSnackBar(this.context, 'Email sent');
+                notifications.refresh();
+              }
+            } on ApiClientException catch (e) {
+              setDialogState(() => submitting = false);
+              if (context.mounted) showAppSnackBar(context, e.message, isError: true);
+            } on Exception catch (e) {
+              setDialogState(() => submitting = false);
+              if (context.mounted) showAppSnackBar(context, e.toString(), isError: true);
+            }
+          },
           child: Form(
             key: emailFormKey,
             child: Column(
@@ -219,32 +252,23 @@ class _UserListState extends State<UserList> {
             ),
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              if (!(emailFormKey.currentState?.validate() ?? false)) return;
-              try {
-                await _userProvider.sendEmail(u.id!, subjectCtrl.text, bodyCtrl.text);
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  showAppSnackBar(this.context, 'Email sent');
-                  context.read<NotificationProvider>().refresh();
-                }
-              } on ApiClientException catch (e) {
-                if (context.mounted) showAppSnackBar(context, e.message, isError: true);
-              } on Exception catch (e) {
-                if (context.mounted) alertBox(context, 'Error', e.toString());
-              }
-            },
-            child: const Text('Send'),
-          ),
-        ],
       ),
     );
   }
 
+  /// Every account is assigned a role, so the form has nothing to submit until the
+  /// roles have been read from the API.
+  String? get _missingRolesReason => _loading || _roles.isNotEmpty
+      ? null
+      : 'No roles are available. A user cannot be saved without one.';
+
   Future<void> _showUserDialog({User? user}) async {
+    final blockedReason = _missingRolesReason;
+    if (blockedReason != null) {
+      showAppSnackBar(context, blockedReason, isError: true);
+      return;
+    }
+
     User? fullUser = user;
     if (user?.id != null) {
       try {
@@ -263,7 +287,17 @@ class _UserListState extends State<UserList> {
     final usernameCtrl = TextEditingController(text: fullUser?.username ?? '');
     final phoneCtrl = TextEditingController(text: fullUser?.phoneNumber ?? '');
     final passwordCtrl = TextEditingController();
-    String selectedRole = (fullUser?.role?.isNotEmpty == true) ? fullUser!.role! : 'Customer';
+    final roleNames = _roles
+        .map((r) => r.name ?? '')
+        .where((name) => name.isNotEmpty)
+        .toList();
+    final currentRole = fullUser?.role;
+    String selectedRole = roleNames.contains(currentRole)
+        ? currentRole!
+        : roleNames.firstWhere(
+            (name) => name == UserRoles.customer,
+            orElse: () => roleNames.first,
+          );
     bool isActive = fullUser?.isActive ?? true;
     String? profileImageBase64 = fullUser?.profileImageBase64;
     bool submitting = false;
@@ -409,10 +443,16 @@ class _UserListState extends State<UserList> {
                 initialValue: selectedRole,
                 dropdownColor: AppColors.card,
                 decoration: const InputDecoration(labelText: 'Role'),
-                items: userRoles
-                    .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                items: _roles
+                    .map((r) => DropdownMenuItem(
+                          value: r.name,
+                          child: Text(r.name ?? ''),
+                        ))
                     .toList(),
-                onChanged: (v) => setDialogState(() => selectedRole = v ?? 'Customer'),
+                onChanged: (v) =>
+                    setDialogState(() => selectedRole = v ?? selectedRole),
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Role is required' : null,
               ),
               const SizedBox(height: 12),
               SwitchListTile(

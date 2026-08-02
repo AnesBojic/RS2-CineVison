@@ -12,9 +12,16 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class TopBar extends StatelessWidget {
-  const TopBar({super.key, required this.title});
+  const TopBar({super.key, required this.title, this.onBack, this.backLabel});
 
   final String title;
+
+  /// Returns to the previously visited section. Null on the first section of a
+  /// session, where there is nowhere to go back to.
+  final VoidCallback? onBack;
+
+  /// Name of the section [onBack] returns to, shown in the tooltip.
+  final String? backLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +36,14 @@ class TopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (onBack != null) ...[
+            IconButton(
+              onPressed: onBack,
+              tooltip: backLabel == null ? 'Back' : 'Back to $backLabel',
+              icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary, size: 22),
+            ),
+            const SizedBox(width: 8),
+          ],
           Text(
             title,
             style: const TextStyle(
@@ -120,6 +135,11 @@ class TopBar extends StatelessWidget {
                 },
                 child: const Text('Mark all read'),
               ),
+            IconButton(
+              tooltip: 'Close',
+              onPressed: () => Navigator.pop(dialogContext),
+              icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+            ),
           ],
         ),
         content: SizedBox(
@@ -352,6 +372,7 @@ class PrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.compact = false,
+    this.tooltip,
   });
 
   final String label;
@@ -359,9 +380,13 @@ class PrimaryButton extends StatelessWidget {
   final IconData? icon;
   final bool compact;
 
+  /// Shown on hover. Passing a null [onPressed] greys the button out, so this is
+  /// where the reason the action is unavailable belongs.
+  final String? tooltip;
+
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    final button = SizedBox(
       height: compact ? 40 : 44,
       child: ElevatedButton.icon(
         onPressed: onPressed,
@@ -372,6 +397,8 @@ class PrimaryButton extends StatelessWidget {
         ),
       ),
     );
+    if (tooltip == null || tooltip!.isEmpty) return button;
+    return Tooltip(message: tooltip!, child: button);
   }
 }
 

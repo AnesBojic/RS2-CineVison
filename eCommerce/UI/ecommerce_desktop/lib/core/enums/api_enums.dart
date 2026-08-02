@@ -55,6 +55,4 @@ class UserRoles {
   static const admin = 'Admin';
   static const staff = 'Staff';
   static const customer = 'Customer';
-
-  static const all = [admin, staff, customer];
 }

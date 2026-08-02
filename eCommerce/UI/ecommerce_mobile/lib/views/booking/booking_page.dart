@@ -7,6 +7,7 @@ import 'package:ecommerce_mobile/core/widgets/cine_app_bar.dart';
 import 'package:ecommerce_mobile/models/movie.dart';
 import 'package:ecommerce_mobile/models/screening.dart';
 import 'package:ecommerce_mobile/models/screening_seat.dart';
+import 'package:ecommerce_mobile/models/search_result.dart';
 import 'package:ecommerce_mobile/providers/booking_provider.dart';
 import 'package:ecommerce_mobile/providers/movie_provider.dart';
 import 'package:ecommerce_mobile/providers/screening_provider.dart';
@@ -47,20 +48,32 @@ class _BookingPageState extends State<BookingPage> {
   Future<void> _loadData() async {
     setState(() => _loadingScreenings = true);
     try {
-      if ((_movie?.posterImageBase64 ?? '').isEmpty && _movie?.id != null) {
-        _movie = await context.read<MovieProvider>().getWithPoster(_movie!.id!);
+      final needsPoster =
+          (_movie?.posterImageBase64 ?? '').isEmpty && _movie?.id != null;
+      final movieProvider = context.read<MovieProvider>();
+
+      // Poster and upcoming projections are independent — fetch them together.
+      final loaded = await Future.wait([
+        _screeningProvider.get(
+          filter: {
+            'movieId': widget.movie.id,
+            'onlyUpcoming': true,
+            'includeMovie': true,
+            'includeHall': true,
+            'pageSize': 200,
+          },
+        ),
+        if (needsPoster)
+          movieProvider.getWithPoster(_movie!.id!)
+        else
+          Future.value(_movie),
+      ]);
+
+      final result = loaded[0] as SearchResult<Screening>;
+      if (needsPoster) {
+        _movie = loaded[1] as Movie;
         _bookingProvider.startBooking(_movie!);
       }
-
-      final result = await _screeningProvider.get(
-        filter: {
-          'movieId': widget.movie.id,
-          'onlyUpcoming': true,
-          'includeMovie': true,
-          'includeHall': true,
-          'pageSize': 200,
-        },
-      );
 
       final items = (result.items ?? [])
           .where((s) => s.isActive != false && s.startTime != null)

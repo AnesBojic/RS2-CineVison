@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Dynamic.Core;
 using System.Threading.Tasks;
 using eCommerce.Model.Exceptions;
 using eCommerce.Model.Requests;
@@ -53,14 +54,12 @@ namespace eCommerce.Services
             return await base.IncludeRelatedEntitiesAsync(search, query);
         }
 
-        protected override IEnumerable<Hall> ApplyFilters(IEnumerable<Hall> query, HallSearchObject? search)
+        protected override IQueryable<Hall> ApplyFilters(IQueryable<Hall> query, HallSearchObject? search)
         {
-            if (search != null)
+            if (search != null && !string.IsNullOrWhiteSpace(search.Name))
             {
-                if (!string.IsNullOrWhiteSpace(search.Name))
-                {
-                    query = query.Where(h => h.Name.Contains(search.Name, StringComparison.OrdinalIgnoreCase));
-                }
+                var name = search.Name;
+                query = query.Where(h => h.Name.Contains(name));
             }
 
             return query;
@@ -115,6 +114,8 @@ namespace eCommerce.Services
         public override async Task<PageResult<HallResponse>> GetAllAsync(HallSearchObject? search = null)
         {
             search ??= new HallSearchObject();
+            // Without Normalize a client can ask for every hall (or millions of rows) with no cap.
+            PagingLimits.Normalize(search);
 
             IQueryable<Hall> query = _dbContext.Halls
                 .AsNoTracking()
@@ -122,11 +123,7 @@ namespace eCommerce.Services
                 .Include(h => h.Status)
                 .Include(h => h.Seats);
 
-            if (!string.IsNullOrWhiteSpace(search.Name))
-            {
-                var name = search.Name;
-                query = query.Where(h => h.Name.Contains(name));
-            }
+            query = ApplyFilters(query, search);
 
             int? totalCount = null;
             if (search.IncludeTotalCount ?? false)
@@ -134,16 +131,14 @@ namespace eCommerce.Services
                 totalCount = await query.CountAsync();
             }
 
-            query = query.OrderBy(h => h.Name);
+            // Newest first by default so a hall added a moment ago is the first row.
+            query = string.IsNullOrWhiteSpace(search.SortBy)
+                ? query.OrderByDescending(h => h.Id)
+                : query.OrderBy(search.SortBy);
 
-            if (search.Page.HasValue && search.PageSize.HasValue)
-            {
-                query = query.Skip((search.Page.Value - 1) * search.PageSize.Value).Take(search.PageSize.Value);
-            }
-            else if (search.PageSize.HasValue)
-            {
-                query = query.Take(search.PageSize.Value);
-            }
+            query = query
+                .Skip((search.Page!.Value - 1) * search.PageSize!.Value)
+                .Take(search.PageSize.Value);
 
             var halls = await query.ToListAsync();
 

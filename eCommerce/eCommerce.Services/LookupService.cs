@@ -38,13 +38,14 @@ namespace eCommerce.Services
         /// <summary>Number of records referencing each of the given lookup rows.</summary>
         protected abstract Task<Dictionary<int, int>> CountUsagesAsync(IReadOnlyCollection<int> ids);
 
-        protected override IEnumerable<TEntity> ApplyFilters(IEnumerable<TEntity> query, LookupSearchObject? search)
+        protected override IQueryable<TEntity> ApplyFilters(IQueryable<TEntity> query, LookupSearchObject? search)
         {
             if (search != null)
             {
                 if (!string.IsNullOrWhiteSpace(search.Name))
                 {
-                    query = query.Where(x => x.Name.Contains(search.Name, StringComparison.OrdinalIgnoreCase));
+                    var name = search.Name;
+                    query = query.Where(x => x.Name.Contains(name));
                 }
 
                 if (search.IsActive.HasValue)
@@ -53,8 +54,10 @@ namespace eCommerce.Services
                 }
             }
 
-            return query.OrderBy(x => x.Name);
+            return query;
         }
+
+        protected override string? DefaultSortBy => "Id desc";
 
         public override async Task<PageResult<TResponse>> GetAllAsync(LookupSearchObject? search = null)
         {

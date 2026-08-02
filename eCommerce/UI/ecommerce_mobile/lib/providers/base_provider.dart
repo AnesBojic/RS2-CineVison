@@ -13,7 +13,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
   static String? get baseUrl => _baseUrl;
 
-  /// API resource segment, e.g. `Products` → `{baseUrl}Products`.
+  /// API resource segment, e.g. `Movies` → `{baseUrl}Movies`.
   final String endpoint;
 
   BaseProvider(this.endpoint) {

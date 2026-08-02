@@ -20,7 +20,10 @@ namespace eCommerce.Services
         {
         }
 
-        protected override IEnumerable<News> ApplyFilters(IEnumerable<News> query, NewsSearchObject? search)
+        /// <summary>Newest publication first; Id breaks ties so a just-saved row lands on top.</summary>
+        protected override string? DefaultSortBy => "PublishedAt desc, Id desc";
+
+        protected override IQueryable<News> ApplyFilters(IQueryable<News> query, NewsSearchObject? search)
         {
             if (search == null)
             {
@@ -29,7 +32,8 @@ namespace eCommerce.Services
 
             if (!string.IsNullOrWhiteSpace(search.Title))
             {
-                query = query.Where(n => n.Title.Contains(search.Title, StringComparison.OrdinalIgnoreCase));
+                var title = search.Title;
+                query = query.Where(n => n.Title.Contains(title));
             }
 
             if (search.IsActive.HasValue)
@@ -37,7 +41,7 @@ namespace eCommerce.Services
                 query = query.Where(n => n.IsActive == search.IsActive.Value);
             }
 
-            return query.OrderByDescending(n => n.PublishedAt);
+            return query;
         }
 
         protected override News MapInsertRequestToEntity(NewsInsertRequest request)

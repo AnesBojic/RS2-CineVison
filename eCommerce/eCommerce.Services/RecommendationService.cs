@@ -85,21 +85,24 @@ namespace eCommerce.Services
             }
 
             // ---- popularity signals (catalog-wide) --------------------------------
-            var reservationCounts = (await _dbContext.ReservationSeats
-                    .Where(rs => rs.Reservation.Status != ReservationStatus.Cancelled)
-                    .Select(rs => new { rs.Screening.MovieId })
-                    .ToListAsync())
-                .GroupBy(x => x.MovieId)
-                .ToDictionary(g => g.Key, g => (double)g.Count());
+            // Aggregate in SQL. Pulling every reservation/review row into memory just to
+            // GroupBy is the anti-pattern the performance rules call out.
+            var reservationCounts = await _dbContext.ReservationSeats
+                .AsNoTracking()
+                .Where(rs => rs.Reservation.Status != ReservationStatus.Cancelled)
+                .GroupBy(rs => rs.Screening.MovieId)
+                .Select(g => new { MovieId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.MovieId, x => (double)x.Count);
 
-            var reviewStats = (await _dbContext.Reviews
-                    .Select(r => new { r.MovieId, r.Rating })
-                    .ToListAsync())
-                .GroupBy(x => x.MovieId)
-                .ToDictionary(g => g.Key, g => g.Average(x => (double)x.Rating));
+            var reviewStats = await _dbContext.Reviews
+                .AsNoTracking()
+                .GroupBy(r => r.MovieId)
+                .Select(g => new { MovieId = g.Key, Avg = g.Average(x => (double)x.Rating) })
+                .ToDictionaryAsync(x => x.MovieId, x => x.Avg);
 
             // ---- user taste profile (bookings + high ratings) ---------------------
             var reservedMovieIds = (await _dbContext.Reservations
+                    .AsNoTracking()
                     .Where(r => r.UserId == userId && r.Status != ReservationStatus.Cancelled)
                     .Select(r => r.Screening.MovieId)
                     .Distinct()
@@ -107,6 +110,7 @@ namespace eCommerce.Services
                 .ToHashSet();
 
             var likedRatedMovieIds = (await _dbContext.Reviews
+                    .AsNoTracking()
                     .Where(r => r.UserId == userId && r.Rating >= LikedRatingThreshold)
                     .Select(r => r.MovieId)
                     .Distinct()

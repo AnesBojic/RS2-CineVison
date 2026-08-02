@@ -5,6 +5,7 @@ import 'package:ecommerce_mobile/core/routes/app_routes.dart';
 import 'package:ecommerce_mobile/core/widgets/cine_app_bar.dart';
 import 'package:ecommerce_mobile/models/genre.dart';
 import 'package:ecommerce_mobile/models/movie.dart';
+import 'package:ecommerce_mobile/models/search_result.dart';
 import 'package:ecommerce_mobile/providers/auth_provider.dart';
 import 'package:ecommerce_mobile/providers/genre_provider.dart';
 import 'package:ecommerce_mobile/providers/movie_provider.dart';
@@ -120,9 +121,13 @@ class _MoviesPageState extends State<MoviesPage> {
 
     try {
       final auth = context.read<AuthProvider>();
-      final genres = await _genreProvider.get(filter: {'pageSize': 100});
-
-      final upcomingIds = await _fetchUpcomingMovieIds();
+      // Genres and upcoming-screening ids do not depend on each other.
+      final boot = await Future.wait([
+        _genreProvider.get(filter: {'pageSize': 100}),
+        _fetchUpcomingMovieIds(),
+      ]);
+      final genres = boot[0] as SearchResult<Genre>;
+      final upcomingIds = boot[1] as Set<int>;
       if (!mounted) return;
       setState(() => _upcomingMovieIds = upcomingIds);
 

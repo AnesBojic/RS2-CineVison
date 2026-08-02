@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:ecommerce_desktop/core/enums/api_enums.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -30,8 +31,10 @@ class AuthProvider extends ChangeNotifier {
     return name.isEmpty ? 'User' : name;
   }
 
-  bool get isAdmin => (_role ?? '').toLowerCase() == 'admin';
-  bool get isStaff => (_role ?? '').toLowerCase() == 'staff';
+  bool get isAdmin => _hasRole(UserRoles.admin);
+  bool get isStaff => _hasRole(UserRoles.staff);
+
+  bool _hasRole(String role) => (_role ?? '').toLowerCase() == role.toLowerCase();
 
   String _baseUrl = '';
 

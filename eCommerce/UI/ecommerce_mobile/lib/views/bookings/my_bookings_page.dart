@@ -43,10 +43,15 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
 
     setState(() => _loading = true);
     try {
-      final reservations =
-          await context.read<ReservationProvider>().fetchMyReservations();
-      final eligibility =
-          await context.read<ReviewProvider>().fetchMyEligibility();
+      final reservationProvider = context.read<ReservationProvider>();
+      final reviewProvider = context.read<ReviewProvider>();
+      // Bookings and review eligibility are independent feeds.
+      final loaded = await Future.wait([
+        reservationProvider.fetchMyReservations(),
+        reviewProvider.fetchMyEligibility(),
+      ]);
+      final reservations = loaded[0] as List<Reservation>;
+      final eligibility = loaded[1] as List<ReviewEligibility>;
       if (!mounted) return;
       setState(() {
         _reservations = reservations;

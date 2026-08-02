@@ -70,7 +70,7 @@ namespace eCommerce.Services
         private bool IsAdminOrStaff() =>
             _userAccessor.IsInRole(RoleNames.Admin) || _userAccessor.IsInRole(RoleNames.Staff);
 
-        protected override IEnumerable<Reservation> ApplyFilters(IEnumerable<Reservation> query, ReservationSearchObject? search)
+        protected override IQueryable<Reservation> ApplyFilters(IQueryable<Reservation> query, ReservationSearchObject? search)
         {
             // Filtering handled in GetAllAsync against the database.
             return query;

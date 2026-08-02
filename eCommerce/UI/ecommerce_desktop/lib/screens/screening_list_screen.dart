@@ -35,6 +35,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
   static const int _pageSize = 10;
   int _page = 1;
   int _totalCount = 0;
+  bool _pickerLoaded = false;
   final _searchController = TextEditingController();
 
   int get _totalPages =>
@@ -45,6 +46,9 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
     super.initState();
     _provider = context.read<ScreeningProvider>();
     _load();
+    // Loaded up front so the toolbar can grey out "Add Projection" with a reason
+    // instead of letting the form open and failing afterwards.
+    _ensurePickerData();
   }
 
   @override
@@ -80,7 +84,9 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
   }
 
   Future<void> _ensurePickerData() async {
-    if (_movies.isNotEmpty && _halls.isNotEmpty && _languages.isNotEmpty) return;
+    // Keyed on the fetch having happened rather than on the lists being non-empty,
+    // otherwise a genuinely empty lookup would be re-fetched on every dialog open.
+    if (_pickerLoaded) return;
 
     final movieProvider = context.read<MovieProvider>();
     final hallProvider = context.read<HallProvider>();
@@ -97,7 +103,24 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
       _movies = (results[0] as SearchResult<Movie>).items ?? [];
       _halls = (results[1] as SearchResult<Hall>).items ?? [];
       _languages = (results[2] as SearchResult<LookupItem>).items ?? [];
+      _pickerLoaded = true;
     });
+  }
+
+  /// Why a new projection cannot be started right now, or null when it can.
+  /// Editing an existing one stays possible either way.
+  String? get _newProjectionBlockedReason {
+    if (!_pickerLoaded) return null;
+    if (_movies.isEmpty) {
+      return 'Add at least one movie before creating a projection.';
+    }
+    if (!_halls.any(hallIsActive)) {
+      return _halls.isEmpty
+          ? 'Add at least one hall before creating a projection.'
+          : 'Every hall is currently unavailable. A projection needs a hall whose '
+              'status allows screenings.';
+    }
+    return null;
   }
 
   Hall? _hallById(int? id) {
@@ -163,7 +186,12 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
             onSubmitted: (_) => setState(() {}),
           ),
           const SizedBox(width: 10),
-          PrimaryButton(label: 'Add Projection', onPressed: () => _showDialog()),
+          PrimaryButton(
+            label: 'Add Projection',
+            onPressed:
+                _newProjectionBlockedReason == null ? () => _showDialog() : null,
+            tooltip: _newProjectionBlockedReason,
+          ),
         ],
       ),
       child: Column(
@@ -291,16 +319,11 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
     await _ensurePickerData();
     if (!mounted) return;
 
-    if (_movies.isEmpty || _halls.isEmpty) {
-      showAppSnackBar(
-        context,
-        _movies.isEmpty && _halls.isEmpty
-            ? 'Add at least one movie and one hall before creating a projection.'
-            : _movies.isEmpty
-                ? 'Add at least one movie before creating a projection.'
-                : 'Add at least one active hall before creating a projection.',
-        isError: true,
-      );
+    // The toolbar button is already greyed out in this case; this catches the edit
+    // shortcut and any state that changed since the list was drawn.
+    final blockedReason = screening == null ? _newProjectionBlockedReason : null;
+    if (blockedReason != null) {
+      showAppSnackBar(context, blockedReason, isError: true);
       return;
     }
 
@@ -381,15 +404,32 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
               DropdownButtonFormField<int>(
                 initialValue: hallId,
                 dropdownColor: AppColors.card,
-                decoration: const InputDecoration(labelText: 'Hall'),
-                items: _halls
-                    .map((h) => DropdownMenuItem(
-                          value: h.id,
-                          child: Text('${h.name ?? ''} (${h.statusName ?? '—'})'),
-                        ))
-                    .toList(),
+                decoration: InputDecoration(
+                  labelText: 'Hall',
+                  helperText: _halls.any((h) => !hallIsActive(h))
+                      ? 'Halls whose status blocks screenings cannot be selected.'
+                      : null,
+                ),
+                // Unavailable halls stay visible but greyed out, with the status
+                // spelled out, rather than being selectable and rejected afterwards.
+                items: _halls.map((h) {
+                  final available = hallIsActive(h);
+                  return DropdownMenuItem(
+                    value: h.id,
+                    enabled: available,
+                    child: Text(
+                      available
+                          ? (h.name ?? '')
+                          : '${h.name ?? ''} — ${h.statusName ?? 'unavailable'}',
+                      style: available
+                          ? null
+                          : const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  );
+                }).toList(),
                 onChanged: (v) => setDialogState(() => hallId = v),
-                // Flags an unavailable hall as soon as it is picked, not only on submit.
+                // Still validated: an existing projection may point at a hall that
+                // was taken out of service after it was scheduled.
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 validator: (v) {
                   if (v == null) return 'Hall is required';

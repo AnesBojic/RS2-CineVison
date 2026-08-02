@@ -59,24 +59,26 @@ namespace eCommerce.Services
         }
 
 
-        protected override IEnumerable<User> ApplyFilters(IEnumerable<User> query, UserSearch? search)
+        protected override IQueryable<User> ApplyFilters(IQueryable<User> query, UserSearch? search)
         {
             if (search != null)
             {
                 if (!string.IsNullOrWhiteSpace(search.Email))
                 {
-                    query = query.Where(u => u.Email.Contains(search.Email, StringComparison.OrdinalIgnoreCase));
+                    var email = search.Email;
+                    query = query.Where(u => u.Email.Contains(email));
                 }
 
                 if (!string.IsNullOrWhiteSpace(search.Username))
                 {
-                    query = query.Where(u => u.Username.Contains(search.Username, StringComparison.OrdinalIgnoreCase));
+                    var username = search.Username;
+                    query = query.Where(u => u.Username.Contains(username));
                 }
 
                 if (!string.IsNullOrWhiteSpace(search.Name))
                 {
-                    query = query.Where(u => u.FirstName.Contains(search.Name, StringComparison.OrdinalIgnoreCase)
-                                          || u.LastName.Contains(search.Name, StringComparison.OrdinalIgnoreCase));
+                    var name = search.Name;
+                    query = query.Where(u => u.FirstName.Contains(name) || u.LastName.Contains(name));
                 }
 
                 if (search.IsActive.HasValue)
@@ -150,27 +152,24 @@ namespace eCommerce.Services
             PagingLimits.Normalize(search);
 
             IQueryable<User> query = _dbContext.Users.AsNoTracking();
-
             query = await IncludeRelatedEntitiesAsync(search, query);
-            var entities = await query.ToListAsync();
-            IEnumerable<User> filtered = ApplyFilters(entities, search);
+            query = ApplyFilters(query, search);
 
             int? totalCount = null;
             if (search.IncludeTotalCount ?? false)
             {
-                totalCount = filtered.Count();
+                totalCount = await query.CountAsync();
             }
 
-            if (!string.IsNullOrWhiteSpace(search.SortBy))
-            {
-                filtered = filtered.AsQueryable().OrderBy(search.SortBy);
-            }
+            // Newest first by default so an account created a moment ago is the first row.
+            query = query.OrderBy(string.IsNullOrWhiteSpace(search.SortBy) ? "Id desc" : search.SortBy);
 
-            filtered = filtered
+            query = query
                 .Skip((search.Page!.Value - 1) * search.PageSize!.Value)
                 .Take(search.PageSize.Value);
 
-            var list = filtered.Select(u => MapUserResponse(u, includeProfileImage: false)).ToList();
+            var entities = await query.ToListAsync();
+            var list = entities.Select(u => MapUserResponse(u, includeProfileImage: false)).ToList();
 
             return new PageResult<UserResponse>
             {

@@ -293,9 +293,20 @@ class _LoginScreenState extends State<LoginScreen> {
               borderRadius: BorderRadius.circular(16),
               side: const BorderSide(color: AppColors.cardBorder),
             ),
-            title: Text(
-              step == 0 ? 'Forgot password' : 'Set new password',
-              style: const TextStyle(color: AppColors.textPrimary),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    step == 0 ? 'Forgot password' : 'Set new password',
+                    style: const TextStyle(color: AppColors.textPrimary),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: busy ? null : () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+                ),
+              ],
             ),
             content: SizedBox(
               width: 420,

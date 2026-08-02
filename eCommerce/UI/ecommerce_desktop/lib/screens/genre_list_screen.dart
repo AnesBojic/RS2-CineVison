@@ -46,7 +46,6 @@ class _GenreListScreenState extends State<GenreListScreen> {
       final data = await _provider.get(filter: filter);
       if (!mounted) return;
       final items = data.items ?? [];
-      items.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
       setState(() {
         _items = items;
         _loading = false;

@@ -124,18 +124,24 @@ class NotificationProvider with ChangeNotifier {
     _loading = true;
     notifyListeners();
     try {
-      final countResponse = await http.get(
-        Uri.parse('${_baseUrl}Notifications/UnreadCount'),
-        headers: _headers,
-      );
+      // Unread count and the inbox list are independent GETs.
+      final responses = await Future.wait([
+        http.get(
+          Uri.parse('${_baseUrl}Notifications/UnreadCount'),
+          headers: _headers,
+        ),
+        http.get(
+          Uri.parse('${_baseUrl}Notifications?limit=50'),
+          headers: _headers,
+        ),
+      ]);
+
+      final countResponse = responses[0];
       if (countResponse.statusCode < 299) {
         _unreadCount = jsonDecode(countResponse.body) as int? ?? 0;
       }
 
-      final listResponse = await http.get(
-        Uri.parse('${_baseUrl}Notifications?limit=50'),
-        headers: _headers,
-      );
+      final listResponse = responses[1];
       if (listResponse.statusCode < 299) {
         final list = jsonDecode(listResponse.body) as List<dynamic>;
         _items = list

@@ -19,18 +19,20 @@ namespace eCommerce.Services
         {
         }
 
-        protected override IEnumerable<Asset> ApplyFilters(IEnumerable<Asset> query, AssetSearch? search)
+        protected override IQueryable<Asset> ApplyFilters(IQueryable<Asset> query, AssetSearch? search)
         {
             if (search != null)
             {
                 if (!string.IsNullOrWhiteSpace(search.FileName))
                 {
-                    query = query.Where(a => a.FileName.Contains(search.FileName, StringComparison.OrdinalIgnoreCase));
+                    var fileName = search.FileName;
+                    query = query.Where(a => a.FileName.Contains(fileName));
                 }
 
                 if (!string.IsNullOrWhiteSpace(search.ContentType))
                 {
-                    query = query.Where(a => a.ContentType.Contains(search.ContentType, StringComparison.OrdinalIgnoreCase));
+                    var contentType = search.ContentType;
+                    query = query.Where(a => a.ContentType.Contains(contentType));
                 }
 
                 if (search.MovieId.HasValue)

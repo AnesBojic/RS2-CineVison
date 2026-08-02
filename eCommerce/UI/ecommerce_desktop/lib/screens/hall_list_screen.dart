@@ -114,7 +114,12 @@ class _HallListScreenState extends State<HallListScreen> {
             onSubmitted: (_) => _load(),
           ),
           const SizedBox(width: 10),
-          PrimaryButton(label: 'Add Hall', onPressed: () => _showDialog()),
+          PrimaryButton(
+            label: 'Add Hall',
+            onPressed:
+                _missingReferenceDataReason == null ? () => _showDialog() : null,
+            tooltip: _missingReferenceDataReason,
+          ),
         ],
       ),
       child: DataCard(
@@ -264,14 +269,18 @@ class _HallListScreenState extends State<HallListScreen> {
     }
   }
 
+  /// A hall points at a screen type and a status, so the form has nothing valid to
+  /// submit until both lookups hold at least one row.
+  String? get _missingReferenceDataReason =>
+      _loading || (_screenTypes.isNotEmpty && _hallStatuses.isNotEmpty)
+          ? null
+          : 'Add at least one screen type and one hall status under Reference Data '
+              'before creating or editing a hall.';
+
   Future<void> _showDialog({Hall? hall}) async {
-    if (_screenTypes.isEmpty || _hallStatuses.isEmpty) {
-      alertBox(
-        context,
-        'Reference data missing',
-        'Add at least one screen type and one hall status under Reference Data '
-            'before creating or editing a hall.',
-      );
+    final blockedReason = _missingReferenceDataReason;
+    if (blockedReason != null) {
+      showAppSnackBar(context, blockedReason, isError: true);
       return;
     }
 

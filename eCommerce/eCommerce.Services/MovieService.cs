@@ -43,6 +43,8 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         _posterValidator = posterValidator;
     }
 
+    protected override string? DefaultSortBy => "Id desc";
+
     public override async Task<PageResult<MovieResponse>> GetAllAsync(MovieSearchObject? search = null)
     {
         var result = await base.GetAllAsync(search);
@@ -113,17 +115,19 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         return base.IncludeRelatedEntitiesAsync(search, query);
     }
 
-    protected override IEnumerable<Movie> ApplyFilters(IEnumerable<Movie> query, MovieSearchObject? search)
+    protected override IQueryable<Movie> ApplyFilters(IQueryable<Movie> query, MovieSearchObject? search)
     {
         if (search != null)
         {
             if (!string.IsNullOrWhiteSpace(search.Title))
             {
-                query = query.Where(m => m.Title.Contains(search.Title, StringComparison.OrdinalIgnoreCase));
+                var title = search.Title;
+                query = query.Where(m => m.Title.Contains(title));
             }
             if (!string.IsNullOrWhiteSpace(search.Description))
             {
-                query = query.Where(m => m.Description.Contains(search.Description, StringComparison.OrdinalIgnoreCase));
+                var description = search.Description;
+                query = query.Where(m => m.Description.Contains(description));
             }
             if (search.GenreId.HasValue)
             {

@@ -72,8 +72,9 @@ class _MovieListScreenState extends State<MovieListScreen> {
 
       final data = await _movieProvider.get(filter: filter, includePoster: true);
       if (!mounted) return;
+      // The API already returns newest first; no local re-sort, which would only
+      // reorder the current page.
       final movies = data.items ?? [];
-      movies.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
       setState(() {
         _genres = genres.items ?? [];
         _ageRatings = ageRatings.items ?? [];
@@ -148,7 +149,11 @@ class _MovieListScreenState extends State<MovieListScreen> {
             onSubmitted: (_) => _load(),
           ),
           const SizedBox(width: 10),
-          PrimaryButton(label: 'Add Movie', onPressed: () => _showMovieDialog()),
+          PrimaryButton(
+            label: 'Add Movie',
+            onPressed: _missingReferenceData.isEmpty ? () => _showMovieDialog() : null,
+            tooltip: _missingReferenceDataMessage,
+          ),
         ],
       ),
       child: DataCard(
@@ -232,19 +237,25 @@ class _MovieListScreenState extends State<MovieListScreen> {
     }
   }
 
+  /// Every movie has to point at a genre, an age rating and a language, so the form
+  /// cannot be filled in until those lookups hold at least one row each.
+  List<String> get _missingReferenceData => [
+        if (_genres.isEmpty) 'genre',
+        if (_ageRatings.isEmpty) 'age rating',
+        if (_languages.isEmpty) 'language',
+      ];
+
+  String? get _missingReferenceDataMessage {
+    final missing = _missingReferenceData;
+    if (missing.isEmpty) return null;
+    return 'A movie needs a ${missing.join(', a ')} to be selected. '
+        'Add at least one of each under Reference Data first.';
+  }
+
   Future<void> _showMovieDialog({Movie? movie}) async {
-    final missing = <String>[
-      if (_genres.isEmpty) 'genre',
-      if (_ageRatings.isEmpty) 'age rating',
-      if (_languages.isEmpty) 'language',
-    ];
-    if (missing.isNotEmpty) {
-      alertBox(
-        context,
-        'Reference data missing',
-        'A movie needs a ${missing.join(', a ')} to be selected. '
-            'Add at least one of each under Reference Data first.',
-      );
+    final blockedReason = _missingReferenceDataMessage;
+    if (blockedReason != null) {
+      showAppSnackBar(context, blockedReason, isError: true);
       return;
     }
 

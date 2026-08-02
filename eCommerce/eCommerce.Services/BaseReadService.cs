@@ -21,39 +21,47 @@ namespace eCommerce.Services
         }
 
         /// <summary>
-        /// Applies search filters to the query. Override in derived classes to implement specific filtering logic.
+        /// Applies search filters against an <see cref="IQueryable{T}"/> so EF can push them to SQL.
+        /// Override in derived classes — do not materialize the query here.
         /// </summary>
-        protected abstract IEnumerable<TEntity> ApplyFilters(IEnumerable<TEntity> query, TSearch? search);
+        protected abstract IQueryable<TEntity> ApplyFilters(IQueryable<TEntity> query, TSearch? search);
+
+        /// <summary>
+        /// Ordering applied when the caller does not ask for one. Admin-managed lists set this
+        /// to newest first so a row saved a moment ago is on top rather than on the last page.
+        /// </summary>
+        protected virtual string? DefaultSortBy => null;
 
         public virtual async Task<PageResult<TResponse>> GetAllAsync(TSearch? search = null)
         {
             search ??= new TSearch();
             PagingLimits.Normalize(search);
 
-            IQueryable<TEntity> dbQuery = _dbContext.Set<TEntity>().AsNoTracking();
-            dbQuery = await IncludeRelatedEntitiesAsync(search, dbQuery);
-
-            // Filters stay IEnumerable for existing overrides; materialize once then page in memory.
-            IEnumerable<TEntity> query = await dbQuery.ToListAsync();
+            IQueryable<TEntity> query = _dbContext.Set<TEntity>().AsNoTracking();
+            query = await IncludeRelatedEntitiesAsync(search, query);
             query = ApplyFilters(query, search);
 
             int? totalCount = null;
             if (search.IncludeTotalCount ?? false)
             {
-                totalCount = query.Count();
+                totalCount = await query.CountAsync();
             }
 
-            if (!string.IsNullOrWhiteSpace(search.SortBy))
+            var sortBy = string.IsNullOrWhiteSpace(search.SortBy) ? DefaultSortBy : search.SortBy;
+            if (!string.IsNullOrWhiteSpace(sortBy))
             {
                 // SortBy is an allow-listed Dynamic LINQ expression from trusted admin clients.
-                query = query.AsQueryable().OrderBy(search.SortBy);
+                query = query.OrderBy(sortBy);
             }
 
+            // Filter → count → sort → page, then materialize. Loading the whole table first is
+            // exactly what the performance rules forbid.
             query = query
                 .Skip((search.Page!.Value - 1) * search.PageSize!.Value)
                 .Take(search.PageSize.Value);
 
-            var list = query.Select(item => _mapper.Map<TResponse>(item)).ToList();
+            var entities = await query.ToListAsync();
+            var list = entities.Select(item => _mapper.Map<TResponse>(item)).ToList();
 
             return new PageResult<TResponse>
             {

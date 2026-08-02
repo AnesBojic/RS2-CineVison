@@ -42,7 +42,7 @@ namespace eCommerce.Services
             _analyticsNotifier = analyticsNotifier;
         }
 
-        protected override IEnumerable<Review> ApplyFilters(IEnumerable<Review> query, ReviewSearchObject? search)
+        protected override IQueryable<Review> ApplyFilters(IQueryable<Review> query, ReviewSearchObject? search)
         {
             // Filtering handled in GetAllAsync against the database.
             return query;

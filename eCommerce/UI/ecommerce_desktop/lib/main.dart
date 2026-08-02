@@ -10,6 +10,7 @@ import 'package:ecommerce_desktop/providers/language_provider.dart';
 import 'package:ecommerce_desktop/providers/movie_provider.dart';
 import 'package:ecommerce_desktop/providers/news_provider.dart';
 import 'package:ecommerce_desktop/providers/notification_provider.dart';
+import 'package:ecommerce_desktop/providers/role_provider.dart';
 import 'package:ecommerce_desktop/providers/screen_type_provider.dart';
 import 'package:ecommerce_desktop/providers/screening_provider.dart';
 import 'package:ecommerce_desktop/providers/user_provider.dart';
@@ -32,6 +33,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => ScreeningProvider()),
         ChangeNotifierProvider(create: (_) => NewsProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => RoleProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
         ChangeNotifierProvider(create: (_) => ChatBotProvider()),

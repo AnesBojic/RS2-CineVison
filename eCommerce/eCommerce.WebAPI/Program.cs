@@ -136,6 +136,7 @@ builder.Services.AddScoped<INotificationPushNotifier, NotificationPushNotifier>(
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<ITokenRevocationService, TokenRevocationService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IAccessManager, AccessManager>();
 builder.Services.AddScoped<ICryptoService, CryptoService>();
 

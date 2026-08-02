@@ -16,7 +16,7 @@ namespace eCommerce.Services
         {
         }
 
-        protected override IEnumerable<Seat> ApplyFilters(IEnumerable<Seat> query, SeatSearchObject? search)
+        protected override IQueryable<Seat> ApplyFilters(IQueryable<Seat> query, SeatSearchObject? search)
         {
             if (search != null)
             {

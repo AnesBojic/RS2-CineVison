@@ -16,14 +16,14 @@ namespace eCommerce.Services
         {
         }
 
-        protected override IEnumerable<Genre> ApplyFilters(IEnumerable<Genre> query, GenreSearchObject? search)
+        protected override string? DefaultSortBy => "Id desc";
+
+        protected override IQueryable<Genre> ApplyFilters(IQueryable<Genre> query, GenreSearchObject? search)
         {
-            if (search != null)
+            if (search != null && !string.IsNullOrWhiteSpace(search.Name))
             {
-                if (!string.IsNullOrWhiteSpace(search.Name))
-                {
-                    query = query.Where(g => g.Name.Contains(search.Name, StringComparison.OrdinalIgnoreCase));
-                }
+                var name = search.Name;
+                query = query.Where(g => g.Name.Contains(name));
             }
 
             return query;

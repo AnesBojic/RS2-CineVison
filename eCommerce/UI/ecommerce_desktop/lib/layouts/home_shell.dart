@@ -66,8 +66,31 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
+  /// Sections visited before the current one. The shell swaps screens in place
+  /// rather than pushing routes, so Back is tracked here instead of by Navigator.
+  final List<int> _history = [];
+
   void _onNavTap(int index) {
-    setState(() => _selectedIndex = index);
+    if (index == _selectedIndex) return;
+    setState(() {
+      _history.add(_selectedIndex);
+      _selectedIndex = index;
+    });
+    _afterNavigation(index);
+  }
+
+  void _goBack() {
+    if (_history.isEmpty) return;
+    setState(() {
+      _selectedIndex = _history.removeLast();
+      _movieEditId = null;
+      _hallEditId = null;
+      _screeningEditId = null;
+    });
+    _afterNavigation(_selectedIndex);
+  }
+
+  void _afterNavigation(int index) {
     if (index == _chatbotIndex) {
       context.read<NotificationProvider>().markAllRead(
             type: NotificationTypes.message,
@@ -96,18 +119,13 @@ class _HomeShellState extends State<HomeShell> {
 
   void _navigateTo(int index, {int? editId}) {
     setState(() {
+      if (index != _selectedIndex) _history.add(_selectedIndex);
       _selectedIndex = index;
       _movieEditId = index == 1 ? editId : null;
       _hallEditId = index == 2 ? editId : null;
       _screeningEditId = index == 3 ? editId : null;
     });
-    if (index == _chatbotIndex) {
-      context.read<NotificationProvider>().markAllRead(
-            type: NotificationTypes.message,
-          );
-    } else {
-      context.read<NotificationProvider>().refresh();
-    }
+    _afterNavigation(index);
   }
 
   void _clearEditId(int index) {
@@ -155,10 +173,10 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  String _titleForIndex(int index) {
-    if (index == _chatbotIndex) return 'Chatbot';
-    return 'Dashboard';
-  }
+  String _titleForIndex(int index) =>
+      index >= 0 && index < _allNavItems.length
+          ? _allNavItems[index].label
+          : _allNavItems.first.label;
 
   @override
   Widget build(BuildContext context) {
@@ -179,7 +197,12 @@ class _HomeShellState extends State<HomeShell> {
           Expanded(
             child: Column(
               children: [
-                TopBar(title: _titleForIndex(_selectedIndex)),
+                TopBar(
+                  title: _titleForIndex(_selectedIndex),
+                  onBack: _history.isEmpty ? null : _goBack,
+                  backLabel:
+                      _history.isEmpty ? null : _titleForIndex(_history.last),
+                ),
                 Expanded(
                   child: KeyedSubtree(
                     key: ValueKey('nav-$_selectedIndex'),

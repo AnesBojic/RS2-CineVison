@@ -44,7 +44,7 @@ namespace eCommerce.Services
             _notificationService = notificationService;
         }
 
-        protected override IEnumerable<Screening> ApplyFilters(IEnumerable<Screening> query, ScreeningSearchObject? search)
+        protected override IQueryable<Screening> ApplyFilters(IQueryable<Screening> query, ScreeningSearchObject? search)
         {
             // Filtering is handled in GetAllAsync against the database query.
             return query;
