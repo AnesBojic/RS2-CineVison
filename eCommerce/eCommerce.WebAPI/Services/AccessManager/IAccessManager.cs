@@ -7,10 +7,7 @@ namespace eCommerce.WebAPI.Services.AccessManager
         Task<UserLoginResponse> LoginAsync(UserLoginRequest request);
         Task<UserLoginResponse> LoginWithRefreshTokenAsync(RefreshAccessTokenRequest request);
 
-        /// <summary>
-        /// Logs the user out by revoking all of their stored refresh tokens so they can no
-        /// longer obtain new access tokens. The current access token remains valid until it expires.
-        /// </summary>
+        /// <summary>Revokes refresh tokens and bumps token version so existing JWTs fail validation.</summary>
         Task LogoutAsync(int userId);
     }
 }

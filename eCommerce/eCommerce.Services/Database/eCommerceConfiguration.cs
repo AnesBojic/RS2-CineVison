@@ -160,7 +160,7 @@ namespace eCommerce.Services.Database
                 .HasIndex(r => new { r.UserId, r.MovieId })
                 .IsUnique();
 
-            // User role relationships (carried over from the template).
+            // User–role join
             modelBuilder.Entity<UserRole>()
                 .HasOne(ur => ur.User)
                 .WithMany(ur => ur.UserRoles)

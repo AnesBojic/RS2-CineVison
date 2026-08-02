@@ -4,11 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace eCommerce.WebAPI.Serialization
 {
-    /// <summary>
-    /// The API speaks UTC only. Incoming values without an explicit offset are assumed
-    /// to already be UTC, and outgoing values always carry a trailing "Z" so clients can
-    /// convert to their own local time instead of guessing.
-    /// </summary>
+    /// <summary>JSON DateTime converter: assume UTC on read, always emit trailing Z.</summary>
     public class UtcDateTimeConverter : JsonConverter<DateTime>
     {
         private const string OutputFormat = "yyyy-MM-ddTHH:mm:ss.fffffffZ";

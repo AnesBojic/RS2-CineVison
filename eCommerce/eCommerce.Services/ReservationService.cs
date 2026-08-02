@@ -72,7 +72,6 @@ namespace eCommerce.Services
 
         protected override IQueryable<Reservation> ApplyFilters(IQueryable<Reservation> query, ReservationSearchObject? search)
         {
-            // Filtering handled in GetAllAsync against the database.
             return query;
         }
 

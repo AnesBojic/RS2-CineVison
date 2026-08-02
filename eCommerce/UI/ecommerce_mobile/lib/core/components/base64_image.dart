@@ -6,8 +6,7 @@ import '../constants/app_defaults.dart';
 class Base64ImageWithLoader extends StatelessWidget {
   final BoxFit fit;
 
-  /// This widget is used for displaying base64 image with the same style
-  /// as NetworkImageWithLoader.
+  /// Displays a base64-encoded image with a loading placeholder.
   const Base64ImageWithLoader(
     this.src, {
     super.key,

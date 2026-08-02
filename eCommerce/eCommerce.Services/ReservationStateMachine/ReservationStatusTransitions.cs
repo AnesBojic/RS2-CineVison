@@ -4,10 +4,7 @@ using eCommerce.Model.Enums;
 
 namespace eCommerce.Services.ReservationStateMachine;
 
-/// <summary>
-/// Central allowed-transition table for <see cref="ReservationStatus"/>.
-/// All status changes should go through <see cref="Apply"/> so business rules stay in one place.
-/// </summary>
+/// <summary>Allowed <see cref="ReservationStatus"/> transitions; use <see cref="Apply"/> for all changes.</summary>
 public static class ReservationStatusTransitions
 {
     private static readonly Dictionary<ReservationStatus, HashSet<ReservationStatus>> Allowed = new()
@@ -99,15 +96,5 @@ public static class ReservationStatusTransitions
         {
             reservation.PaymentDate ??= DateTime.UtcNow;
         }
-    }
-
-    public static IReadOnlyCollection<string> GetAllowedActions(ReservationStatus status)
-    {
-        if (!Allowed.TryGetValue(status, out var next) || next.Count == 0)
-        {
-            return Array.Empty<string>();
-        }
-
-        return next.Select(s => s.ToString()).OrderBy(s => s).ToList();
     }
 }

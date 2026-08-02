@@ -2,10 +2,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace eCommerce.Services.Database
 {
-    /// <summary>
-    /// SQL Server returns <see cref="DateTimeKind.Unspecified"/>. Treat every persisted
-    /// instant as UTC so comparisons with <see cref="DateTime.UtcNow"/> stay correct.
-    /// </summary>
+    /// <summary>SQL datetime2 Unspecified → Kind=Utc on read.</summary>
     public sealed class UtcDateTimeValueConverter : ValueConverter<DateTime, DateTime>
     {
         public UtcDateTimeValueConverter()

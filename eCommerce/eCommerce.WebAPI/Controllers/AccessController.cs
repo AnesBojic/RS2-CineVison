@@ -1,4 +1,3 @@
-using eCommerce.Model;
 using eCommerce.Model.Access;
 using eCommerce.Model.Requests;
 using eCommerce.Services;
@@ -8,6 +7,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace eCommerce.WebAPI.Controllers
 {
+    /// <summary>
+    /// Auth endpoints. <see cref="AllowAnonymousAttribute"/> only on Login/Register;
+    /// Forgot/Reset/Refresh stay public (no class-level authorize).
+    /// </summary>
     [ApiController]
     [Route("[controller]")]
     public class AccessController : Controller
@@ -31,7 +34,6 @@ namespace eCommerce.WebAPI.Controllers
             return Ok(result);
         }
 
-        [AllowAnonymous]
         [HttpPost("LoginWithRefreshToken")]
         public async Task<ActionResult> LoginWithRefreshToken([FromBody] RefreshAccessTokenRequest request)
         {
@@ -39,9 +41,7 @@ namespace eCommerce.WebAPI.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Public registration. Role is never taken from the client — always Customer.
-        /// </summary>
+        /// <summary>Public registration; role is always Customer.</summary>
         [AllowAnonymous]
         [HttpPost("Register")]
         public async Task<IActionResult> Register([FromBody] UserRegisterRequest request)
@@ -50,7 +50,6 @@ namespace eCommerce.WebAPI.Controllers
             return Ok("You have registered successfully");
         }
 
-        [AllowAnonymous]
         [HttpPost("ForgotPassword")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
@@ -61,7 +60,6 @@ namespace eCommerce.WebAPI.Controllers
             });
         }
 
-        [AllowAnonymous]
         [HttpPost("ResetPassword")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
         {

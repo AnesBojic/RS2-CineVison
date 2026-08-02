@@ -3,11 +3,6 @@ class FieldValidators {
   static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
   static final _phoneRegex = RegExp(r'^\+?[0-9][0-9\s\-]{6,18}[0-9]$');
 
-  static String? required(String? value, {String field = 'Field'}) {
-    if (value == null || value.trim().isEmpty) return '$field is required';
-    return null;
-  }
-
   static String? email(String? value, {bool required = true}) {
     final v = value?.trim() ?? '';
     if (v.isEmpty) return required ? 'Email is required' : null;

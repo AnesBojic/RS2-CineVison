@@ -18,7 +18,6 @@ class NotificationProvider with ChangeNotifier {
   int get unreadCount => _unreadCount;
   List<AppNotification> get items => _items;
   bool get loading => _loading;
-  bool get isLiveConnected => _liveConnected;
 
   String get _baseUrl => BaseProvider.baseUrl ?? 'http://localhost:5126/';
 

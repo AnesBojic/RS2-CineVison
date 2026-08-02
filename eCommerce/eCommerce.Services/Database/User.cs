@@ -52,19 +52,13 @@ namespace eCommerce.Services.Database
 
         public DateTime? PasswordResetExpiresAt { get; set; }
 
-        /// <summary>
-        /// Stamped into every access token issued to this user. Incrementing it makes all
-        /// tokens handed out so far fail validation, which is how sign-out revokes a JWT
-        /// that would otherwise stay valid until it expires.
-        /// </summary>
+        /// <summary>Incremented on logout so previously issued JWTs fail validation.</summary>
         public int TokenVersion { get; set; }
 
-        // Navigation property for the many-to-many relationship with Role
         public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
         public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
-        // Navigation property for reviews written by this user
         public ICollection<Review> Reviews { get; set; } = new List<Review>();
     }
 } 

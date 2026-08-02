@@ -15,11 +15,7 @@ using eCommerce.Model.Enums;
 
 namespace eCommerce.Services
 {
-    /// <summary>
-    /// Customer movie reviews. Reviews are always created for the current authenticated user
-    /// (a client-supplied user id is ignored) and a user may review a given movie only once.
-    /// Reads are public so movie pages can display ratings; ownership is enforced on writes.
-    /// </summary>
+    /// <summary>Customer reviews; one per user/movie. Writes are ownership-checked.</summary>
     public class ReviewService : BaseReadService<Review, ReviewResponse, ReviewSearchObject>, IReviewService
     {
         private readonly IAuthenticatedUserAccessor _userAccessor;
@@ -44,7 +40,6 @@ namespace eCommerce.Services
 
         protected override IQueryable<Review> ApplyFilters(IQueryable<Review> query, ReviewSearchObject? search)
         {
-            // Filtering handled in GetAllAsync against the database.
             return query;
         }
 

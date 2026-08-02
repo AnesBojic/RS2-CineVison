@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class AppBackButton extends StatelessWidget {
-  /// Custom back button used by the pages that are pushed on top of the entry point.
   const AppBackButton({
     super.key,
   });

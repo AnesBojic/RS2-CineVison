@@ -28,8 +28,6 @@ class AnalyticsProvider with ChangeNotifier {
 
 
 
-  bool get isConnecting => _isConnecting;
-
   bool get isLiveConnected => _isLiveConnected;
 
   AnalyticsLiveSnapshot? get liveSnapshot => _liveSnapshot;

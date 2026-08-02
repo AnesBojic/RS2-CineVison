@@ -65,8 +65,7 @@ class Movie {
         genre: genre,
       );
 
-  /// A release date is a calendar day, not an instant. The API stores it as UTC
-  /// midnight, so read the UTC components to keep the day stable in any timezone.
+  /// Release date is a calendar day (UTC midnight on the API); keep the day stable.
   static DateTime? _parseDateOnly(dynamic value) {
     final utc = UtcDateTime.tryParse(value);
     if (utc == null) return null;

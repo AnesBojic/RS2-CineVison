@@ -256,8 +256,7 @@ class _UserListState extends State<UserList> {
     );
   }
 
-  /// Every account is assigned a role, so the form has nothing to submit until the
-  /// roles have been read from the API.
+  /// Null when roles have been loaded for the user form.
   String? get _missingRolesReason => _loading || _roles.isNotEmpty
       ? null
       : 'No roles are available. A user cannot be saved without one.';

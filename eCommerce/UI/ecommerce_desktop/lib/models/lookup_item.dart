@@ -1,18 +1,15 @@
-/// A row from one of the reference (lookup) tables: screen types, hall statuses,
-/// age ratings or languages. One model covers all four because the API returns the
-/// same shape, plus one type-specific field each.
+/// Shared shape for reference tables (screen types, hall statuses, age ratings, languages).
 class LookupItem {
   final int? id;
   final String? name;
   final String? description;
   final bool? isActive;
 
-  /// How many records reference this row, and whether it may be deleted.
   final int inUseCount;
   final bool canDelete;
   final String? deleteBlockedReason;
 
-  /// Hall statuses only: halls with this status can host new projections.
+  /// Hall statuses only.
   final bool? allowsScreenings;
 
   /// Age ratings only.

@@ -13,12 +13,8 @@ using eCommerce.Model.Enums;
 namespace eCommerce.Services
 {
     /// <summary>
-    /// Hybrid movie recommender (project spec Â§8). Combines catalog-wide popularity
-    /// (reservations, views, ratings), personalized content affinity (genres + description
-    /// keywords from bookings/high ratings), and search-history affinity (genres + query tokens
-    /// from <see cref="SearchHistory"/> rows written by movie search). Final score:
-    /// PopularityWeight * Popularity + ContentWeight * Content + SearchWeight * Search.
-    /// Users with no bookings, ratings, or searches get a pure popularity ("cold start") ranking.
+    /// Hybrid recommender: popularity + content affinity + search history
+    /// (weights from config). Cold start falls back to popularity only.
     /// </summary>
     public class RecommendationService : IRecommendationService
     {
@@ -29,11 +25,8 @@ namespace eCommerce.Services
         private readonly double _contentWeight;
         private readonly double _searchWeight;
 
-        // Sub-weights for the two content signals (genre match vs description-keyword overlap).
         private const double GenreSubWeight = 0.6;
         private const double KeywordSubWeight = 0.4;
-
-        // Sub-weights for search-history affinity.
         private const double SearchGenreSubWeight = 0.5;
         private const double SearchKeywordSubWeight = 0.3;
         private const double SearchTitleSubWeight = 0.2;

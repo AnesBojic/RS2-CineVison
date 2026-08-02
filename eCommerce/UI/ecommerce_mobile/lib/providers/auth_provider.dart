@@ -11,7 +11,6 @@ class AuthProvider extends ChangeNotifier {
 
   bool _isAuthenticated = false;
   static String? _accesstoken;
-  String? _refreshtoken;
   static Map<String, dynamic>? _accessTokenDecoded;
   String? _firstName;
   String? _lastName;
@@ -21,7 +20,6 @@ class AuthProvider extends ChangeNotifier {
   String? _profileImageBase64;
 
   static String? get accesstoken => _accesstoken;
-  String? get refreshtoken => _refreshtoken;
   static Map<String, dynamic>? get accessTokenDecoded => _accessTokenDecoded;
   String? get firstName => _firstName;
   String? get lastName => _lastName;
@@ -58,7 +56,6 @@ class AuthProvider extends ChangeNotifier {
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     _accesstoken = data['accesstoken'] as String?;
-    _refreshtoken = data['refreshtoken'] as String?;
     _isAuthenticated = true;
     _accessTokenDecoded = JwtDecoder.decode(_accesstoken ?? '');
     _applyTokenClaims(_accessTokenDecoded);
@@ -222,9 +219,7 @@ class AuthProvider extends ChangeNotifier {
     throw Exception(_messageFromBody(response.body) ?? 'Something went wrong. Please try again.');
   }
 
-  /// An access token verifies on its own, so only the API can retire it early. Signing out
-  /// therefore has to reach the server; the local session is dropped either way so a failed
-  /// or slow round trip never traps the user inside the app.
+  /// Calls API logout to revoke JWTs; always clears the local session.
   Future<void> logout() async {
     final token = _accesstoken;
 
@@ -255,7 +250,6 @@ class AuthProvider extends ChangeNotifier {
   void _clearSession() {
     _isAuthenticated = false;
     _accesstoken = null;
-    _refreshtoken = null;
     _accessTokenDecoded = null;
     _firstName = null;
     _lastName = null;

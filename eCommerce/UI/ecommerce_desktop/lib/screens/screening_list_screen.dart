@@ -319,8 +319,6 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
     await _ensurePickerData();
     if (!mounted) return;
 
-    // The toolbar button is already greyed out in this case; this catches the edit
-    // shortcut and any state that changed since the list was drawn.
     final blockedReason = screening == null ? _newProjectionBlockedReason : null;
     if (blockedReason != null) {
       showAppSnackBar(context, blockedReason, isError: true);

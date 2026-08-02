@@ -237,9 +237,7 @@ builder.Services.AddAuthentication(options =>
             }
             return Task.CompletedTask;
         },
-        // A signature check only proves the token was ours, not that the session behind it
-        // still exists. Comparing the stamped version against the user tells us whether the
-        // token was retired by a logout, and rejects tokens belonging to disabled accounts.
+        // Reject JWTs whose token version no longer matches (logout / disabled user).
         OnTokenValidated = async context =>
         {
             var claims = context.Principal;
@@ -330,9 +328,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
-        // Automatically capture the JWT returned by POST /Access/Login and attach it as a
-        // Bearer header on every subsequent request, so there is no need to use the
-        // "Authorize" button or copy/paste tokens. Logging out clears the stored token.
+        // Persist JWT from Login in localStorage so Swagger sends it automatically.
         options.UseRequestInterceptor(
             "(request) => {" +
             "  const token = window.localStorage.getItem('cinevision_token');" +

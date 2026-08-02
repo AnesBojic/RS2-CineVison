@@ -3,11 +3,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace eCommerce.WebAPI.Serialization
 {
-    /// <summary>
-    /// Query string and route values are bound by MVC rather than System.Text.Json,
-    /// so <see cref="UtcDateTimeConverter"/> never sees them. This keeps the UTC-only
-    /// contract for filters such as <c>?fromDate=...&amp;toDate=...</c>.
-    /// </summary>
+    /// <summary>UTC binder for query/route DateTime values (MVC, not System.Text.Json).</summary>
     public class UtcDateTimeModelBinderProvider : IModelBinderProvider
     {
         public IModelBinder? GetBinder(ModelBinderProviderContext context)

@@ -6,9 +6,6 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace eCommerce.WebAPI.Controllers;
 
-/// <summary>
-/// Generic base controller for CRUD operations (Create, Read, Update, Delete)
-/// </summary>
 [ApiController]
 [Route("[controller]")]
 public abstract class BaseCRUDController<TResponse, TSearch, TInsertRequest, TUpdateRequest, TService>

@@ -39,5 +39,3 @@ class Seat {
   int get normalizedType =>
       seatType == SeatTypes.couple ? SeatTypes.couple : SeatTypes.regular;
 }
-
-const seatTypeLabels = SeatTypes.editableLabels;

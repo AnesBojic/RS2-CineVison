@@ -166,8 +166,6 @@ namespace eCommerce.WebAPI.Services.AccessManager
 
         public async Task LogoutAsync(int userId)
         {
-            // Dropping the refresh tokens alone would leave the access token usable until it
-            // expired, so the token version is bumped as well and the JWT dies with it.
             await _tokenRevocationService.RevokeAllSessionsAsync(userId);
         }
 

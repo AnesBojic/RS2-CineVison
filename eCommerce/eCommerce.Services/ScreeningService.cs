@@ -314,13 +314,7 @@ namespace eCommerce.Services
             await _analyticsNotifier.NotifyAnalyticsChangedAsync();
         }
 
-        /// <summary>
-        /// Ensures no other active screening in the same hall overlaps [start, end).
-        /// </summary>
-        /// <summary>
-        /// A projection can only be scheduled in a hall whose status allows it. The rule lives on
-        /// the HallStatuses row, so staff can add statuses without touching this check.
-        /// </summary>
+        /// <summary>Hall status must allow screenings.</summary>
         private async Task EnsureHallCanBeScheduledAsync(int hallId)
         {
             var hall = await _dbContext.Halls
@@ -350,6 +344,7 @@ namespace eCommerce.Services
             }
         }
 
+        /// <summary>No other active screening in the same hall may overlap [start, end).</summary>
         private async Task EnsureNoHallOverlapAsync(
             int hallId,
             DateTime start,

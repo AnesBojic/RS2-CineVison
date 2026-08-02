@@ -1,8 +1,4 @@
-/// <summary>
-/// Loads KEY=VALUE pairs from a .env file into process environment variables
-/// so ASP.NET Core configuration (env vars) can override appsettings.json.
-/// Does not overwrite variables that are already set (Docker / CI win).
-/// </summary>
+/// <summary>Loads .env KEY=VALUE pairs into process env (does not overwrite existing vars).</summary>
 public static class EnvFileLoader
 {
     public static void Load(params string[] candidatePaths)

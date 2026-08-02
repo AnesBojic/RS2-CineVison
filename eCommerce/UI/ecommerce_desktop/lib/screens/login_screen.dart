@@ -20,7 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   bool _obscure = true;
 
-  /// Rejected credentials are reported in the form itself rather than in a dialog.
   String? _loginError;
 
   @override
@@ -228,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// AuthProvider throws plain Exceptions, so toString() carries an "Exception: " prefix.
+  /// Strips the "Exception: " prefix from AuthProvider errors.
   static String _readableError(Exception e) {
     const prefix = 'Exception: ';
     final text = e.toString();

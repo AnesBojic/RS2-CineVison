@@ -11,7 +11,7 @@ class Screening {
   final DateTime? endTime;
   final num? basePrice;
 
-  /// Reference table id used by the edit form, plus the name flattened for display.
+  /// Reference table id + display for display.
   final int? languageId;
   final String? language;
   final bool? hasSubtitles;

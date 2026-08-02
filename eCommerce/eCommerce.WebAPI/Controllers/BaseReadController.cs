@@ -6,10 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace eCommerce.WebAPI.Controllers;
 
-/// <summary>
-/// Generic base controller for read-only operations (GetAll, GetById).
-/// Derived controllers must declare [Authorize] (or stronger) — anonymous access is not the default.
-/// </summary>
+/// <summary>Read-only base. Derived controllers must declare [Authorize] (or stronger).</summary>
 [ApiController]
 [Route("[controller]")]
 public abstract class BaseReadController<TResponse, TSearch, TService> : ControllerBase

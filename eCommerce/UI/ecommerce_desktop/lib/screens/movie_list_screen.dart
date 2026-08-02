@@ -237,8 +237,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
     }
   }
 
-  /// Every movie has to point at a genre, an age rating and a language, so the form
-  /// cannot be filled in until those lookups hold at least one row each.
+  /// Lookup names still missing before a movie can be created.
   List<String> get _missingReferenceData => [
         if (_genres.isEmpty) 'genre',
         if (_ageRatings.isEmpty) 'age rating',

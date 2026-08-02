@@ -4,11 +4,7 @@ namespace eCommerce.Services
 {
     public interface IRecommendationService
     {
-        /// <summary>
-        /// Returns personalized scores for active movies. When <paramref name="take"/> is 0 or less,
-        /// every active movie is returned (ranked); otherwise returns up to <paramref name="take"/> items.
-        /// Movies are ordered by hybrid score but nothing is excluded from the catalog.
-        /// </summary>
+        /// <summary>Ranked active movies; <paramref name="take"/> ≤ 0 returns the full catalog.</summary>
         Task<List<RecommendationResponse>> GetRecommendationsAsync(int take = 10);
     }
 }

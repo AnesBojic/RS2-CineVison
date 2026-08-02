@@ -41,8 +41,6 @@ class _HallListScreenState extends State<HallListScreen> {
     _load();
   }
 
-  /// Screen types and statuses are reference data, so the form offers whatever the
-  /// database currently holds instead of a hardcoded list.
   Future<void> _loadLookups() async {
     const filter = {'pageSize': 100, 'isActive': true};
     final results = await Future.wait([
@@ -269,8 +267,7 @@ class _HallListScreenState extends State<HallListScreen> {
     }
   }
 
-  /// A hall points at a screen type and a status, so the form has nothing valid to
-  /// submit until both lookups hold at least one row.
+  /// Null when screen type and status lookups are ready for create/edit.
   String? get _missingReferenceDataReason =>
       _loading || (_screenTypes.isNotEmpty && _hallStatuses.isNotEmpty)
           ? null

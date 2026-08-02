@@ -103,8 +103,6 @@ int derivedSeatsPerRow(Hall hall) {
   return byRow.values.fold(0, (a, b) => a > b ? a : b);
 }
 
-/// Statuses come from the API, so the colour follows the one behaviour that matters:
-/// whether the hall can host projections.
 Color hallStatusColor(Hall hall) =>
     hall.allowsScreenings == true ? const Color(0xFF22C55E) : const Color(0xFFF59E0B);
 
