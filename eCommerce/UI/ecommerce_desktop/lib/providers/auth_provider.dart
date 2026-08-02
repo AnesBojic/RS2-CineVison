@@ -46,6 +46,36 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isAuthenticated => _isAuthenticated;
 
+  Future<void> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String username,
+    required String password,
+    String? phoneNumber,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/Register');
+    final response = await http.post(
+      uri,
+      headers: createHeaders(),
+      body: jsonEncode({
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        'username': username,
+        'password': password,
+        if (phoneNumber != null && phoneNumber.trim().isNotEmpty)
+          'phoneNumber': phoneNumber.trim(),
+      }),
+    );
+
+    if (response.statusCode >= 299) {
+      throw Exception(
+        _messageFromBody(response.body) ?? 'Registration could not be completed',
+      );
+    }
+  }
+
   Future<void> login(String username, String password) async {
     final uri = Uri.parse('$_baseUrl/login');
     final response = await http.post(
@@ -187,6 +217,17 @@ class AuthProvider extends ChangeNotifier {
       final parsed = jsonDecode(body);
       if (parsed is Map && parsed['message'] != null) {
         return parsed['message'].toString();
+      }
+      if (parsed is Map && parsed['title'] != null) {
+        return parsed['title'].toString();
+      }
+      if (parsed is Map && parsed['errors'] is Map) {
+        final errors = parsed['errors'] as Map;
+        final first = errors.values
+            .expand((v) => v is List ? v : [v])
+            .map((e) => e.toString())
+            .where((e) => e.isNotEmpty);
+        if (first.isNotEmpty) return first.first;
       }
     } catch (_) {}
     if (body.isNotEmpty && body.length < 200) return body;

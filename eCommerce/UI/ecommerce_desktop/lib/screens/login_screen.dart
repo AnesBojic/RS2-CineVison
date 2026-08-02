@@ -193,6 +193,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             : const Text('Sign In'),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _loading ? null : _showRegister,
+                      child: const Text('Create account'),
+                    ),
                   ],
                 ),
                 ),
@@ -232,6 +237,211 @@ class _LoginScreenState extends State<LoginScreen> {
     const prefix = 'Exception: ';
     final text = e.toString();
     return text.startsWith(prefix) ? text.substring(prefix.length) : text;
+  }
+
+  Future<void> _showRegister() async {
+    final registerFormKey = GlobalKey<FormState>();
+    final firstNameCtrl = TextEditingController();
+    final lastNameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final usernameCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    var busy = false;
+    var obscure = true;
+    var obscureConfirm = true;
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          Future<void> submit() async {
+            if (!(registerFormKey.currentState?.validate() ?? false)) return;
+            setDialogState(() => busy = true);
+            try {
+              await this.context.read<AuthProvider>().register(
+                    firstName: firstNameCtrl.text.trim(),
+                    lastName: lastNameCtrl.text.trim(),
+                    email: emailCtrl.text.trim(),
+                    username: usernameCtrl.text.trim(),
+                    password: passwordCtrl.text,
+                    phoneNumber: phoneCtrl.text.trim(),
+                  );
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              if (!this.context.mounted) return;
+              await alertBox(
+                this.context,
+                'Registration successful',
+                'Your account has been successfully registered as a Customer. '
+                    'You cannot access this app until an administrator assigns you '
+                    'an authorized role.',
+              );
+            } on Exception catch (e) {
+              setDialogState(() => busy = false);
+              if (context.mounted) {
+                alertBox(context, 'Registration failed', _readableError(e));
+              }
+            }
+          }
+
+          return AlertDialog(
+            backgroundColor: AppColors.card,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: AppColors.cardBorder),
+            ),
+            title: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Create account',
+                    style: TextStyle(color: AppColors.textPrimary),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: busy ? null : () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 460,
+              child: Form(
+                key: registerFormKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'New accounts are created as Customer. Desktop access '
+                        'requires an Admin or Staff role from an administrator.',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: firstNameCtrl,
+                              decoration: const InputDecoration(labelText: 'First name'),
+                              validator: (v) =>
+                                  FieldValidators.required(v, field: 'First name'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: lastNameCtrl,
+                              decoration: const InputDecoration(labelText: 'Last name'),
+                              validator: (v) =>
+                                  FieldValidators.required(v, field: 'Last name'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: emailCtrl,
+                        decoration: const InputDecoration(labelText: 'Email'),
+                        validator: FieldValidators.email,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: usernameCtrl,
+                        decoration: const InputDecoration(labelText: 'Username'),
+                        validator: (v) => FieldValidators.required(v, field: 'Username'),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: phoneCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone (optional)',
+                        ),
+                        validator: (v) => FieldValidators.phone(v, required: false),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: passwordCtrl,
+                        obscureText: obscure,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          suffixIcon: IconButton(
+                            onPressed: () =>
+                                setDialogState(() => obscure = !obscure),
+                            icon: Icon(
+                              obscure
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                        validator: (v) => FieldValidators.minLength(
+                          v,
+                          6,
+                          field: 'Password',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: confirmCtrl,
+                        obscureText: obscureConfirm,
+                        decoration: InputDecoration(
+                          labelText: 'Confirm password',
+                          suffixIcon: IconButton(
+                            onPressed: () => setDialogState(
+                              () => obscureConfirm = !obscureConfirm,
+                            ),
+                            icon: Icon(
+                              obscureConfirm
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                        validator: (v) => FieldValidators.match(
+                          v,
+                          passwordCtrl.text,
+                          field: 'Passwords',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: busy ? null : () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: busy ? null : submit,
+                child: busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Register'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    firstNameCtrl.dispose();
+    lastNameCtrl.dispose();
+    emailCtrl.dispose();
+    usernameCtrl.dispose();
+    passwordCtrl.dispose();
+    confirmCtrl.dispose();
+    phoneCtrl.dispose();
   }
 
   Future<void> _showForgotPassword() async {
