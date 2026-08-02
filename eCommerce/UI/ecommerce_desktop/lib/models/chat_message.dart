@@ -1,3 +1,5 @@
+import '../core/utils/utc_datetime.dart';
+
 class ChatMessage {
   final String role;
   final String content;
@@ -16,9 +18,7 @@ class ChatResponse {
   factory ChatResponse.fromJson(Map<String, dynamic> json) {
     return ChatResponse(
       reply: json['reply'] as String? ?? '',
-      repliedAt: json['repliedAt'] != null
-          ? DateTime.tryParse(json['repliedAt'].toString())
-          : null,
+      repliedAt: UtcDateTime.tryParse(json['repliedAt']),
     );
   }
 }

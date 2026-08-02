@@ -1,3 +1,5 @@
+import '../core/utils/utc_datetime.dart';
+
 class Screening {
   final int? id;
   final int? movieId;
@@ -31,12 +33,6 @@ class Screening {
     this.availableSeats,
   });
 
-  /// The API always sends UTC (trailing `Z`); the UI works in local time.
-  static DateTime? _parseUtcAsLocal(dynamic value) {
-    final parsed = value == null ? null : DateTime.tryParse(value.toString());
-    return parsed?.toLocal();
-  }
-
   factory Screening.fromJson(Map<String, dynamic> json) {
     final movie = json['movie'];
     return Screening(
@@ -48,8 +44,8 @@ class Screening {
           : null,
       hallId: json['hallId'] as int?,
       hallName: json['hallName'] as String?,
-      startTime: _parseUtcAsLocal(json['startTime']),
-      endTime: _parseUtcAsLocal(json['endTime']),
+      startTime: UtcDateTime.tryParse(json['startTime']),
+      endTime: UtcDateTime.tryParse(json['endTime']),
       basePrice: json['basePrice'] as num?,
       language: json['language'] as String?,
       hasSubtitles: json['hasSubtitles'] as bool?,

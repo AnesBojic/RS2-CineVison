@@ -1,4 +1,5 @@
 import '../core/enums/api_enums.dart';
+import '../core/utils/utc_datetime.dart';
 
 class ReservationSeat {
   final int id;
@@ -71,13 +72,12 @@ class Reservation {
   });
 
   factory Reservation.fromJson(Map<String, dynamic> json) {
+    final fallback = UtcDateTime.now();
     return Reservation(
       id: json['id'] as int? ?? 0,
       reservationNumber: json['reservationNumber'] as String? ?? '',
-      reservationDate: DateTime.tryParse(
-            json['reservationDate']?.toString() ?? '',
-          ) ??
-          DateTime.now(),
+      reservationDate:
+          UtcDateTime.tryParse(json['reservationDate']) ?? fallback,
       status: json['status'] as int? ?? 0,
       statusName: json['statusName'] as String? ?? '',
       totalAmount: json['totalAmount'] as num? ?? 0,
@@ -88,19 +88,13 @@ class Reservation {
       movieId: json['movieId'] as int? ?? 0,
       movieTitle: json['movieTitle'] as String? ?? '',
       hallName: json['hallName'] as String? ?? '',
-      screeningStartTime: DateTime.tryParse(
-            json['screeningStartTime']?.toString() ?? '',
-          ) ??
-          DateTime.now(),
-      screeningEndTime: DateTime.tryParse(
-            json['screeningEndTime']?.toString() ?? '',
-          ) ??
-          DateTime.tryParse(json['screeningStartTime']?.toString() ?? '') ??
-          DateTime.now(),
+      screeningStartTime:
+          UtcDateTime.tryParse(json['screeningStartTime']) ?? fallback,
+      screeningEndTime: UtcDateTime.tryParse(json['screeningEndTime']) ??
+          UtcDateTime.tryParse(json['screeningStartTime']) ??
+          fallback,
       paymentTransactionId: json['paymentTransactionId'] as String?,
-      paymentDate: json['paymentDate'] != null
-          ? DateTime.tryParse(json['paymentDate'].toString())
-          : null,
+      paymentDate: UtcDateTime.tryParse(json['paymentDate']),
       seats: (json['seats'] as List<dynamic>?)
               ?.map((e) => ReservationSeat.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -116,12 +110,13 @@ class Reservation {
   bool get isPaid => status == ReservationStatus.paid;
 
   bool get isScreeningPast =>
-      screeningEndTime.toUtc().isBefore(DateTime.now().toUtc());
+      screeningEndTime.toUtc().isBefore(UtcDateTime.now());
 
   /// Refund/cancel only until 4 hours before the screening starts.
   bool get canRefund {
     if (!isPaidOrConfirmed || isCancelled) return false;
-    final deadline = screeningStartTime.toUtc().subtract(const Duration(hours: 4));
-    return DateTime.now().toUtc().isBefore(deadline);
+    final deadline =
+        screeningStartTime.toUtc().subtract(const Duration(hours: 4));
+    return UtcDateTime.now().isBefore(deadline);
   }
 }

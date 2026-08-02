@@ -1,3 +1,5 @@
+import '../core/utils/utc_datetime.dart';
+
 class DashboardStats {
 
   final num totalRevenue;
@@ -308,11 +310,7 @@ class AnalyticsLiveSnapshot {
 
           .toList(),
 
-      updatedAt: json['updatedAt'] != null
-
-          ? DateTime.tryParse(json['updatedAt'].toString())
-
-          : null,
+      updatedAt: UtcDateTime.tryParse(json['updatedAt']),
 
     );
 

@@ -1,3 +1,5 @@
+import '../core/utils/utc_datetime.dart';
+
 class Review {
   final int? id;
   final int movieId;
@@ -28,9 +30,7 @@ class Review {
       userName: json['userName'] as String? ?? '',
       rating: json['rating'] as int? ?? 0,
       comment: json['comment'] as String?,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString())
-          : null,
+      createdAt: UtcDateTime.tryParse(json['createdAt']),
     );
   }
 }

@@ -30,6 +30,17 @@ namespace eCommerce.Services.Database
         public DbSet<News> News { get; set; }
         public DbSet<SearchHistory> SearchHistories { get; set; }
 
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            configurationBuilder
+                .Properties<DateTime>()
+                .HaveConversion<UtcDateTimeValueConverter>();
+
+            configurationBuilder
+                .Properties<DateTime?>()
+                .HaveConversion<UtcNullableDateTimeValueConverter>();
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

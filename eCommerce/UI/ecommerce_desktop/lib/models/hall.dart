@@ -1,3 +1,4 @@
+import 'package:ecommerce_desktop/core/utils/utc_datetime.dart';
 import 'package:ecommerce_desktop/models/seat.dart';
 import 'package:flutter/material.dart';
 
@@ -57,12 +58,8 @@ class Hall {
       rowCount: json['rowCount'] as int?,
       seatsPerRow: json['seatsPerRow'] as int?,
       seats: seatsJson?.map((e) => Seat.fromJson(e as Map<String, dynamic>)).toList() ?? const [],
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString())
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.tryParse(json['updatedAt'].toString())
-          : null,
+      createdAt: UtcDateTime.tryParse(json['createdAt']),
+      updatedAt: UtcDateTime.tryParse(json['updatedAt']),
     );
   }
 

@@ -1,4 +1,5 @@
 import '../core/enums/api_enums.dart';
+import '../core/utils/utc_datetime.dart';
 import 'genre.dart';
 
 export '../core/enums/api_enums.dart' show MovieState;
@@ -67,9 +68,8 @@ class Movie {
   /// A release date is a calendar day, not an instant. The API stores it as UTC
   /// midnight, so read the UTC components to keep the day stable in any timezone.
   static DateTime? _parseDateOnly(dynamic value) {
-    final parsed = value == null ? null : DateTime.tryParse(value.toString());
-    if (parsed == null) return null;
-    final utc = parsed.toUtc();
+    final utc = UtcDateTime.tryParse(value);
+    if (utc == null) return null;
     return DateTime(utc.year, utc.month, utc.day);
   }
 
@@ -88,12 +88,8 @@ class Movie {
       posterImageBase64: json['posterImageBase64'] as String?,
       isActive: json['isActive'] as bool?,
       viewCount: json['viewCount'] as int?,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString())
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.tryParse(json['updatedAt'].toString())
-          : null,
+      createdAt: UtcDateTime.tryParse(json['createdAt']),
+      updatedAt: UtcDateTime.tryParse(json['updatedAt']),
       movieState: json['movieState'] as String?,
       genre: json['genre'] != null
           ? Genre.fromJson(json['genre'] as Map<String, dynamic>)

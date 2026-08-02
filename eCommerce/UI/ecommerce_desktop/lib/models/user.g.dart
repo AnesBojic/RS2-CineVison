@@ -16,15 +16,9 @@ User _$UserFromJson(Map<String, dynamic> json) => User(
   isActive: json['isActive'] as bool?,
   phoneNumber: json['phoneNumber'] as String?,
   profileImageBase64: json['profileImageBase64'] as String?,
-  createdAt: json['createdAt'] == null
-      ? null
-      : DateTime.parse(json['createdAt'] as String),
-  lastLoginAt: json['lastLoginAt'] == null
-      ? null
-      : DateTime.parse(json['lastLoginAt'] as String),
-  updatedAt: json['updatedAt'] == null
-      ? null
-      : DateTime.parse(json['updatedAt'] as String),
+  createdAt: const UtcDateTimeJsonConverter().fromJson(json['createdAt']),
+  lastLoginAt: const UtcDateTimeJsonConverter().fromJson(json['lastLoginAt']),
+  updatedAt: const UtcDateTimeJsonConverter().fromJson(json['updatedAt']),
 );
 
 Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
@@ -37,7 +31,7 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
   'isActive': instance.isActive,
   'phoneNumber': instance.phoneNumber,
   'profileImageBase64': instance.profileImageBase64,
-  'createdAt': instance.createdAt?.toIso8601String(),
-  'lastLoginAt': instance.lastLoginAt?.toIso8601String(),
-  'updatedAt': instance.updatedAt?.toIso8601String(),
+  'createdAt': const UtcDateTimeJsonConverter().toJson(instance.createdAt),
+  'lastLoginAt': const UtcDateTimeJsonConverter().toJson(instance.lastLoginAt),
+  'updatedAt': const UtcDateTimeJsonConverter().toJson(instance.updatedAt),
 };

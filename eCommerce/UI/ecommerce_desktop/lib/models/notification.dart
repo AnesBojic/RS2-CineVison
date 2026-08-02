@@ -1,3 +1,5 @@
+import '../core/utils/utc_datetime.dart';
+
 class AppNotification {
   final int? id;
   final String? title;
@@ -22,9 +24,7 @@ class AppNotification {
       message: json['message'] as String?,
       type: json['type'] as String?,
       isRead: json['isRead'] as bool?,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString())
-          : null,
+      createdAt: UtcDateTime.tryParse(json['createdAt']),
     );
   }
 }

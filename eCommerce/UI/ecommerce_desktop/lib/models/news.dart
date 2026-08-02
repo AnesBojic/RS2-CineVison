@@ -1,3 +1,5 @@
+import '../core/utils/utc_datetime.dart';
+
 class NewsItem {
   final int? id;
   final String? title;
@@ -25,16 +27,10 @@ class NewsItem {
       title: json['title'] as String?,
       content: json['content'] as String?,
       imageBase64: json['imageBase64'] as String?,
-      publishedAt: json['publishedAt'] != null
-          ? DateTime.tryParse(json['publishedAt'].toString())
-          : null,
+      publishedAt: UtcDateTime.tryParse(json['publishedAt']),
       isActive: json['isActive'] as bool?,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString())
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.tryParse(json['updatedAt'].toString())
-          : null,
+      createdAt: UtcDateTime.tryParse(json['createdAt']),
+      updatedAt: UtcDateTime.tryParse(json['updatedAt']),
     );
   }
 
@@ -42,7 +38,7 @@ class NewsItem {
         'title': title,
         'content': content,
         'imageBase64': imageBase64,
-        'publishedAt': publishedAt?.toUtc().toIso8601String(),
+        'publishedAt': UtcDateTime.toApi(publishedAt),
         'isActive': isActive ?? true,
       };
 

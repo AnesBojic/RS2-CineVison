@@ -1,3 +1,5 @@
+import '../core/utils/utc_datetime.dart';
+
 class Screening {
   final int? id;
   final int? movieId;
@@ -35,16 +37,6 @@ class Screening {
     this.availableSeats,
   });
 
-  /// The API always sends UTC (trailing `Z`), so the whole app works with
-  /// local time and only converts back to UTC when writing.
-  static DateTime? _parseUtcAsLocal(dynamic value) {
-    final parsed = value == null ? null : DateTime.tryParse(value.toString());
-    return parsed?.toLocal();
-  }
-
-  static String? _toUtcApi(DateTime? value) =>
-      value?.toUtc().toIso8601String();
-
   factory Screening.fromJson(Map<String, dynamic> json) {
     final movie = json['movie'];
     final nestedPoster =
@@ -56,8 +48,8 @@ class Screening {
       moviePosterBase64: (json['moviePosterBase64'] as String?) ?? nestedPoster,
       hallId: json['hallId'] as int?,
       hallName: json['hallName'] as String?,
-      startTime: _parseUtcAsLocal(json['startTime']),
-      endTime: _parseUtcAsLocal(json['endTime']),
+      startTime: UtcDateTime.tryParse(json['startTime']),
+      endTime: UtcDateTime.tryParse(json['endTime']),
       basePrice: json['basePrice'] as num?,
       languageId: json['languageId'] as int?,
       language: json['language'] as String?,
@@ -71,7 +63,7 @@ class Screening {
   Map<String, dynamic> toJson() => {
         'movieId': movieId,
         'hallId': hallId,
-        'startTime': _toUtcApi(startTime),
+        'startTime': UtcDateTime.toApi(startTime),
         'basePrice': basePrice,
         'languageId': languageId,
         'hasSubtitles': hasSubtitles ?? false,

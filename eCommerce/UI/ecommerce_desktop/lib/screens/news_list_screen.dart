@@ -1,4 +1,5 @@
 import 'package:ecommerce_desktop/core/theme/app_theme.dart';
+import 'package:ecommerce_desktop/core/utils/utc_datetime.dart';
 import 'package:ecommerce_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:ecommerce_desktop/models/news.dart';
 import 'package:ecommerce_desktop/providers/news_provider.dart';
@@ -97,7 +98,7 @@ class _NewsListScreenState extends State<NewsListScreen> {
                   final payload = NewsItem(
                     title: titleCtrl.text.trim(),
                     content: contentCtrl.text.trim(),
-                    publishedAt: existing?.publishedAt ?? DateTime.now().toUtc(),
+                    publishedAt: existing?.publishedAt ?? UtcDateTime.now(),
                     isActive: isActive,
                   );
                   if (existing?.id == null) {

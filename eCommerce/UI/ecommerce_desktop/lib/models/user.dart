@@ -1,3 +1,4 @@
+import 'package:ecommerce_desktop/core/utils/utc_datetime.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'user.g.dart';
@@ -13,8 +14,11 @@ class User {
   final bool? isActive;
   final String? phoneNumber;
   final String? profileImageBase64;
+  @UtcDateTimeJsonConverter()
   final DateTime? createdAt;
+  @UtcDateTimeJsonConverter()
   final DateTime? lastLoginAt;
+  @UtcDateTimeJsonConverter()
   final DateTime? updatedAt;
 
   User({
