@@ -62,4 +62,13 @@ class ReviewProvider extends BaseProvider<Review> {
   }
 
   Future<Review> getReview(int id) => getById(id);
+
+  Future<List<Review>> getForMovie(int movieId) async {
+    final result = await get(filter: {
+      'movieId': movieId,
+      'page': 1,
+      'pageSize': 50,
+    });
+    return result.items ?? [];
+  }
 }

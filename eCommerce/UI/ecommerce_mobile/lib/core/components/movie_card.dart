@@ -60,7 +60,12 @@ class MovieCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$genreName | $duration min',
+                  [
+                    if (genreName.isNotEmpty) genreName,
+                    if ((movie.language ?? '').trim().isNotEmpty)
+                      movie.language!.trim(),
+                    if (duration > 0) '$duration min',
+                  ].join(' · '),
                   style: Theme.of(context).textTheme.bodyMedium,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

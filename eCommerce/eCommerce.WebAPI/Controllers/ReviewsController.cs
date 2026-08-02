@@ -7,15 +7,33 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace eCommerce.WebAPI.Controllers;
 
-/// <summary>
-/// Customer movie reviews. Authentication required for all operations;
-/// ownership is enforced in the service layer.
-/// </summary>
+/// <summary>Reviews: public reads; writes require auth and ownership checks in the service.</summary>
 [Authorize]
 public class ReviewsController : BaseReadController<ReviewResponse, ReviewSearchObject, IReviewService>
 {
     public ReviewsController(IReviewService reviewService) : base(reviewService)
     {
+    }
+
+    [AllowAnonymous]
+    [HttpGet]
+    public override async Task<PageResult<ReviewResponse>> GetAll([FromQuery] ReviewSearchObject? search)
+    {
+        return await _service.GetAllAsync(search);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{id}")]
+    public override async Task<ActionResult<ReviewResponse>> GetById(int id)
+    {
+        try
+        {
+            return Ok(await _service.GetByIdAsync(id));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
     }
 
     [HttpPost]

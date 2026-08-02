@@ -5,11 +5,13 @@ import 'package:ecommerce_mobile/core/routes/app_routes.dart';
 import 'package:ecommerce_mobile/core/utils/date_formatters.dart';
 import 'package:ecommerce_mobile/core/widgets/cine_app_bar.dart';
 import 'package:ecommerce_mobile/models/movie.dart';
+import 'package:ecommerce_mobile/models/review.dart';
 import 'package:ecommerce_mobile/models/screening.dart';
 import 'package:ecommerce_mobile/models/screening_seat.dart';
 import 'package:ecommerce_mobile/models/search_result.dart';
 import 'package:ecommerce_mobile/providers/booking_provider.dart';
 import 'package:ecommerce_mobile/providers/movie_provider.dart';
+import 'package:ecommerce_mobile/providers/review_provider.dart';
 import 'package:ecommerce_mobile/providers/screening_provider.dart';
 import 'package:ecommerce_mobile/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
@@ -31,8 +33,10 @@ class _BookingPageState extends State<BookingPage> {
 
   Movie? _movie;
   List<Screening> _screenings = [];
+  List<Review> _reviews = [];
   DateTime? _selectedDate;
   bool _loadingScreenings = true;
+  bool _loadingReviews = true;
   bool _loadingSeats = false;
 
   @override
@@ -46,17 +50,21 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _loadingScreenings = true);
+    setState(() {
+      _loadingScreenings = true;
+      _loadingReviews = true;
+    });
     try {
       final needsPoster =
           (_movie?.posterImageBase64 ?? '').isEmpty && _movie?.id != null;
       final movieProvider = context.read<MovieProvider>();
+      final reviewProvider = context.read<ReviewProvider>();
+      final movieId = widget.movie.id;
 
-      // Poster and upcoming projections are independent — fetch them together.
       final loaded = await Future.wait([
         _screeningProvider.get(
           filter: {
-            'movieId': widget.movie.id,
+            'movieId': movieId,
             'onlyUpcoming': true,
             'includeMovie': true,
             'includeHall': true,
@@ -67,6 +75,10 @@ class _BookingPageState extends State<BookingPage> {
           movieProvider.getWithPoster(_movie!.id!)
         else
           Future.value(_movie),
+        if (movieId != null)
+          reviewProvider.getForMovie(movieId)
+        else
+          Future.value(<Review>[]),
       ]);
 
       final result = loaded[0] as SearchResult<Screening>;
@@ -74,6 +86,7 @@ class _BookingPageState extends State<BookingPage> {
         _movie = loaded[1] as Movie;
         _bookingProvider.startBooking(_movie!);
       }
+      final reviews = loaded[2] as List<Review>;
 
       final items = (result.items ?? [])
           .where((s) => s.isActive != false && s.startTime != null)
@@ -91,12 +104,17 @@ class _BookingPageState extends State<BookingPage> {
       if (!mounted) return;
       setState(() {
         _screenings = items;
+        _reviews = reviews;
         _selectedDate = firstDate;
         _loadingScreenings = false;
+        _loadingReviews = false;
       });
     } on Exception catch (e) {
       if (!mounted) return;
-      setState(() => _loadingScreenings = false);
+      setState(() {
+        _loadingScreenings = false;
+        _loadingReviews = false;
+      });
       alertBox(context, 'Error', e.toString());
     }
   }
@@ -185,9 +203,7 @@ class _BookingPageState extends State<BookingPage> {
                 )
               : null,
           body: _loadingScreenings
-          ? const Center(child: CircularProgressIndicator())
-          : _screenings.isEmpty
-              ? const Center(child: Text('No upcoming showtimes'))
+              ? const Center(child: CircularProgressIndicator())
               : SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(
                     AppDefaults.padding,
@@ -219,7 +235,17 @@ class _BookingPageState extends State<BookingPage> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: Column(
+                            child: _screenings.isEmpty
+                                ? const Padding(
+                                    padding: EdgeInsets.only(top: 24),
+                                    child: Text(
+                                      'No upcoming showtimes',
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  )
+                                : Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
@@ -276,73 +302,224 @@ class _BookingPageState extends State<BookingPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Showtimes:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (_dayScreenings.isEmpty)
+                      const SizedBox(height: 16),
+                      _MovieDetails(movie: movie),
+                      if (_screenings.isNotEmpty) ...[
+                        const SizedBox(height: 24),
                         const Text(
-                          'No showtimes on this date',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        )
-                      else
-                        ...grouped.entries.expand((entry) {
-                          return [
-                            Text(
-                              entry.key,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
+                          'Showtimes:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (_dayScreenings.isEmpty)
+                          const Text(
+                            'No showtimes on this date',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          )
+                        else
+                          ...grouped.entries.expand((entry) {
+                            return [
+                              Text(
+                                entry.key,
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            if (entry.key == 'Evening')
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: entry.value.map((s) {
-                                  return SizedBox(
-                                    width:
-                                        (MediaQuery.of(context).size.width -
-                                                AppDefaults.padding * 2 -
-                                                8) /
-                                            2,
+                              const SizedBox(height: 8),
+                              if (entry.key == 'Evening')
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: entry.value.map((s) {
+                                    return SizedBox(
+                                      width:
+                                          (MediaQuery.of(context).size.width -
+                                                  AppDefaults.padding * 2 -
+                                                  8) /
+                                              2,
+                                      child: _ShowtimeButton(
+                                        screening: s,
+                                        selected: selectedId == s.id,
+                                        onTap: () => _onScreeningSelected(s),
+                                      ),
+                                    );
+                                  }).toList(),
+                                )
+                              else
+                                ...entry.value.map(
+                                  (s) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
                                     child: _ShowtimeButton(
                                       screening: s,
                                       selected: selectedId == s.id,
                                       onTap: () => _onScreeningSelected(s),
+                                      fullWidth: true,
                                     ),
-                                  );
-                                }).toList(),
-                              )
-                            else
-                              ...entry.value.map(
-                                (s) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: _ShowtimeButton(
-                                    screening: s,
-                                    selected: selectedId == s.id,
-                                    onTap: () => _onScreeningSelected(s),
-                                    fullWidth: true,
                                   ),
                                 ),
-                              ),
-                            const SizedBox(height: 8),
-                          ];
-                        }),
-                      if (selectedId != null) ...[
-                        const SizedBox(height: 8),
-                        _SeatSelectionSection(loading: _loadingSeats),
+                              const SizedBox(height: 8),
+                            ];
+                          }),
+                        if (selectedId != null) ...[
+                          const SizedBox(height: 8),
+                          _SeatSelectionSection(loading: _loadingSeats),
+                        ],
                       ],
+                      const SizedBox(height: 24),
+                      _ReviewsSection(
+                        loading: _loadingReviews,
+                        reviews: _reviews,
+                      ),
                     ],
                   ),
                 ),
         );
       },
+    );
+  }
+}
+
+class _MovieDetails extends StatelessWidget {
+  const _MovieDetails({required this.movie});
+
+  final Movie movie;
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = [
+      if ((movie.genre?.name ?? '').trim().isNotEmpty) movie.genre!.name!.trim(),
+      if ((movie.language ?? '').trim().isNotEmpty) movie.language!.trim(),
+      if ((movie.durationMinutes ?? 0) > 0) '${movie.durationMinutes} min',
+      if ((movie.ageRating ?? '').trim().isNotEmpty) movie.ageRating!.trim(),
+    ].join(' · ');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (meta.isNotEmpty)
+          Text(
+            meta,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+        if ((movie.description ?? '').trim().isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(
+            movie.description!.trim(),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              height: 1.35,
+            ),
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ReviewsSection extends StatelessWidget {
+  const _ReviewsSection({
+    required this.loading,
+    required this.reviews,
+  });
+
+  final bool loading;
+  final List<Review> reviews;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Reviews',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 10),
+        if (loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (reviews.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.cardColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'No reviews yet',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          )
+        else
+          ...reviews.map((review) => _ReviewTile(review: review)),
+      ],
+    );
+  }
+}
+
+class _ReviewTile extends StatelessWidget {
+  const _ReviewTile({required this.review});
+
+  final Review review;
+
+  @override
+  Widget build(BuildContext context) {
+    final comment = (review.comment ?? '').trim();
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  review.userName.isEmpty ? 'Customer' : review.userName,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(5, (i) {
+                  final filled = i < review.rating;
+                  return Icon(
+                    filled ? Icons.star : Icons.star_border,
+                    size: 16,
+                    color: filled ? AppColors.primary : AppColors.placeholder,
+                  );
+                }),
+              ),
+            ],
+          ),
+          if (comment.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              comment,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
