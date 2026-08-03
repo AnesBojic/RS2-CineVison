@@ -1,0 +1,106 @@
+services:
+  # SQL Server
+  cinevision-sql:
+    image: mcr.microsoft.com/mssql/server:2022-CU17-ubuntu-22.04
+    container_name: cinevision-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+    ports:
+      - "${SQL_HOST_PORT:-1435}:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - cinevision
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  # RabbitMQ + management UI (http://localhost:15672)
+  cinevision-rabbitmq:
+    image: rabbitmq:3.13.7-management
+    container_name: cinevision-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - cinevision
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # CineVision Web API — http://localhost:${API_HOST_PORT:-5126}
+  cinevision-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cinevision-api
+    env_file:
+      - .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5121
+      # Docker service hostnames (override the localhost values from .env)
+      ConnectionStrings__DefaultConnection: Server=cinevision-sql,1433;Database=${DB_NAME};User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;MultipleActiveResultSets=True
+      RabbitMq__Host: cinevision-rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+    ports:
+      - "${API_HOST_PORT:-5126}:5121"
+    depends_on:
+      cinevision-sql:
+        condition: service_healthy
+      cinevision-rabbitmq:
+        condition: service_healthy
+    networks:
+      - cinevision
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5121/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+    restart: unless-stopped
+
+  # Email worker — consumes RabbitMQ and sends real SMTP mail (separate process/container)
+  cinevision-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: cinevision-worker
+    env_file:
+      - .env
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      RabbitMq__Host: cinevision-rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD}
+    depends_on:
+      cinevision-rabbitmq:
+        condition: service_healthy
+    networks:
+      - cinevision
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+  rabbitmq_data:
+
+networks:
+  cinevision:
+    driver: bridge
