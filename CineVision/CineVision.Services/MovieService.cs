@@ -60,6 +60,15 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         return result;
     }
 
+    public Task RecordSearchAsync(RecordSearchRequest request)
+    {
+        return TryRecordSearchAsync(new MovieSearchObject
+        {
+            Title = request.Title,
+            GenreId = request.GenreId
+        });
+    }
+
     private async Task TryRecordSearchAsync(MovieSearchObject? search)
     {
         if (search == null)
@@ -75,6 +84,19 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 
         var userId = _userAccessor.GetUserId();
         if (userId == null)
+        {
+            return;
+        }
+
+        // Skip near-duplicate spam (same user + query/genre within a short window).
+        var since = DateTime.UtcNow.AddMinutes(-2);
+        var alreadyLogged = await _dbContext.SearchHistories.AsNoTracking().AnyAsync(s =>
+            s.UserId == userId.Value &&
+            s.SearchedAt >= since &&
+            s.GenreId == search.GenreId &&
+            s.Query == (string.IsNullOrWhiteSpace(queryText) ? $"genre:{search.GenreId}" : queryText!));
+
+        if (alreadyLogged)
         {
             return;
         }
@@ -107,10 +129,6 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         if (search?.IncludeGenre == true)
         {
             query = query.Include(m => m.Genre);
-        }
-        if (search?.IncludeAssets == true)
-        {
-            query = query.Include(m => m.Assets);
         }
         return base.IncludeRelatedEntitiesAsync(search, query);
     }
@@ -222,7 +240,6 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 
         var graph = await BookingGraphCascade.CountForScreeningIdsAsync(_dbContext, screeningIds);
         var reviewCount = await _dbContext.Reviews.CountAsync(r => r.MovieId == id);
-        var assetCount = await _dbContext.Assets.CountAsync(a => a.MovieId == id);
 
         return BookingGraphCascade.BuildImpact(
             movie.Id,
@@ -230,8 +247,7 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
             ("Projections", graph.ScreeningCount),
             ("Reservations", graph.ReservationCount),
             ("Reserved seats", graph.ReservationSeatCount),
-            ("Reviews", reviewCount),
-            ("Assets", assetCount));
+            ("Reviews", reviewCount));
     }
 
     public async Task DeleteAsync(int id)
@@ -252,7 +268,7 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
                 screeningIds,
                 paymentIntentId => StripeRefundHelper.TryRefundAsync(_stripeSecretKey, paymentIntentId, _logger));
 
-            // Reviews/Assets cascade via FK; remove root after children that Restrict.
+            // Reviews cascade via FK; remove root after children that Restrict.
             _dbContext.Movies.Remove(entity);
             await _dbContext.SaveChangesAsync();
             await tx.CommitAsync();
@@ -300,7 +316,6 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
             .Include(m => m.Genre)
             .Include(m => m.Language)
             .Include(m => m.AgeRating)
-            .Include(m => m.Assets)
             .FirstOrDefaultAsync(m => m.Id == id)
             ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
 

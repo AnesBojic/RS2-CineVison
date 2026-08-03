@@ -38,8 +38,6 @@ namespace CineVision.Services.Database
         [ForeignKey("LanguageId")]
         public Language? Language { get; set; }
 
-        public bool HasSubtitles { get; set; } = false;
-
         public bool IsActive { get; set; } = true;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

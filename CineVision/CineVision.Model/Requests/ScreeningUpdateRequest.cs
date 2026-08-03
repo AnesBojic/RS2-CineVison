@@ -19,8 +19,6 @@ namespace CineVision.Model.Requests
         /// <summary>Id of a row in the Languages reference table.</summary>
         public int? LanguageId { get; set; }
 
-        public bool HasSubtitles { get; set; } = false;
-
         public bool IsActive { get; set; } = true;
     }
 }

@@ -94,6 +94,25 @@ class _MoviesPageState extends State<MoviesPage> {
         AuthProvider.accesstoken!.isNotEmpty;
   }
 
+  Future<void> _recordSearchIfNeeded(AuthProvider auth) async {
+    // Any signed-in search/genre filter should feed SearchHistories (recs + popular).
+    if (!auth.isAuthenticated ||
+        AuthProvider.accesstoken == null ||
+        AuthProvider.accesstoken!.isEmpty) {
+      return;
+    }
+    final title = _searchController.text.trim();
+    if (title.isEmpty && _selectedGenreId == null) return;
+    try {
+      await _movieProvider.recordSearch(
+        title: title.isEmpty ? null : title,
+        genreId: _selectedGenreId,
+      );
+    } catch (e) {
+      debugPrint('SearchHistory record failed: $e');
+    }
+  }
+
   List<Movie> _applyClientFilters(List<Movie> movies) {
     final query = _searchController.text.trim().toLowerCase();
     return movies.where((movie) {
@@ -121,6 +140,9 @@ class _MoviesPageState extends State<MoviesPage> {
 
     try {
       final auth = context.read<AuthProvider>();
+      // Persist search even when there are no upcoming screenings (otherwise history stays empty).
+      await _recordSearchIfNeeded(auth);
+
       // Genres and upcoming-screening ids do not depend on each other.
       final boot = await Future.wait([
         _genreProvider.get(filter: {'pageSize': 100}),
@@ -246,7 +268,6 @@ class _MoviesPageState extends State<MoviesPage> {
       'includeTotalCount': true,
       'movieState': MovieState.active,
       'includeGenre': true,
-      'includeAssets': true,
       'sortBy': 'ViewCount desc',
       'title': _searchController.text,
       if (_selectedGenreId != null) 'genreId': _selectedGenreId,

@@ -78,7 +78,7 @@ TypeAdapterConfig<Movie, MovieResponse>.NewConfig()
     .IgnoreNullValues(true)
     .Map(dest => dest.Language, src => src.Language != null ? src.Language.Name : null)
     .Map(dest => dest.AgeRating, src => src.AgeRating != null ? src.AgeRating.Name : null);
-TypeAdapterConfig<MovieUpdateRequest, Movie>.NewConfig().IgnoreNullValues(true).Ignore(dest => dest.Assets);
+TypeAdapterConfig<MovieUpdateRequest, Movie>.NewConfig().IgnoreNullValues(true);
 TypeAdapterConfig<Hall, HallResponse>.NewConfig()
     .IgnoreNullValues(true)
     .Map(dest => dest.ScreenTypeName, src => src.ScreenType != null ? src.ScreenType.Name : string.Empty)
@@ -90,7 +90,6 @@ TypeAdapterConfig<Screening, ScreeningResponse>.NewConfig()
     .Map(dest => dest.Language, src => src.Language != null ? src.Language.Name : null)
     .Ignore(dest => dest.Movie)
     .Ignore(dest => dest.Hall);
-TypeAdapterConfig<Asset, AssetResponse>.NewConfig().IgnoreNullValues(true);
 TypeAdapterConfig<User, UserResponse>.NewConfig().IgnoreNullValues(true);
 TypeAdapterConfig<UserUpdateRequest, User>.NewConfig().IgnoreNullValues(true);
 
@@ -130,7 +129,6 @@ builder.Services.AddHttpClient("OpenAI", client =>
 });
 
 // shared services
-builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<INotificationPushNotifier, NotificationPushNotifier>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -176,8 +174,6 @@ builder.Services.AddScoped<IValidator<SeatInsertRequest>, SeatInsertValidator>()
 builder.Services.AddScoped<IValidator<SeatUpdateRequest>, SeatUpdateValidator>();
 builder.Services.AddScoped<IValidator<ScreeningInsertRequest>, ScreeningInsertValidator>();
 builder.Services.AddScoped<IValidator<ScreeningUpdateRequest>, ScreeningUpdateValidator>();
-builder.Services.AddScoped<IValidator<AssetInsertRequest>, AssetInsertValidator>();
-builder.Services.AddScoped<IValidator<AssetUpdateRequest>, AssetUpdateValidator>();
 builder.Services.AddScoped<IValidator<UserInsertRequest>, UserInsertValidator>();
 builder.Services.AddScoped<IValidator<UserRegisterRequest>, UserRegisterValidator>();
 builder.Services.AddScoped<IValidator<UserUpdateRequest>, UserUpdateValidator>();

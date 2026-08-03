@@ -4,6 +4,7 @@ using CineVision.Services.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CineVision.Services.Migrations
 {
     [DbContext(typeof(CineVisionDbContext))]
-    partial class CineVisionDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260803141300_RemoveAssetsAndScreeningHasSubtitles")]
+    partial class RemoveAssetsAndScreeningHasSubtitles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -195,6 +198,11 @@ namespace CineVision.Services.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -225,6 +233,7 @@ namespace CineVision.Services.Migrations
                         {
                             Id = 1,
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Main auditorium with 40 seats",
                             IsActive = true,
                             Name = "Hall A",
                             ScreenTypeId = 2,
@@ -234,6 +243,7 @@ namespace CineVision.Services.Migrations
                         {
                             Id = 2,
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Smaller auditorium with 24 seats",
                             IsActive = true,
                             Name = "Hall B",
                             ScreenTypeId = 1,
@@ -554,6 +564,9 @@ namespace CineVision.Services.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("ImageBase64")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");

@@ -11,10 +11,9 @@ class Screening {
   final DateTime? endTime;
   final num? basePrice;
 
-  /// Reference table id + display for display.
+  /// Reference table id + name for display.
   final int? languageId;
   final String? language;
-  final bool? hasSubtitles;
   final bool? isActive;
   final int? totalSeats;
   final int? availableSeats;
@@ -31,7 +30,6 @@ class Screening {
     this.basePrice,
     this.languageId,
     this.language,
-    this.hasSubtitles,
     this.isActive,
     this.totalSeats,
     this.availableSeats,
@@ -53,7 +51,6 @@ class Screening {
       basePrice: json['basePrice'] as num?,
       languageId: json['languageId'] as int?,
       language: json['language'] as String?,
-      hasSubtitles: json['hasSubtitles'] as bool?,
       isActive: json['isActive'] as bool?,
       totalSeats: json['totalSeats'] as int?,
       availableSeats: json['availableSeats'] as int?,
@@ -66,7 +63,6 @@ class Screening {
         'startTime': UtcDateTime.toApi(startTime),
         'basePrice': basePrice,
         'languageId': languageId,
-        'hasSubtitles': hasSubtitles ?? false,
         'isActive': isActive ?? true,
       };
 }

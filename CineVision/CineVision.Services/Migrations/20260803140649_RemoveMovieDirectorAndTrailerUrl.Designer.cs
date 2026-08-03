@@ -4,6 +4,7 @@ using CineVision.Services.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CineVision.Services.Migrations
 {
     [DbContext(typeof(CineVisionDbContext))]
-    partial class CineVisionDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260803140649_RemoveMovieDirectorAndTrailerUrl")]
+    partial class RemoveMovieDirectorAndTrailerUrl
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -107,6 +110,40 @@ namespace CineVision.Services.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CineVision.Services.Database.Asset", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Base64Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("MovieId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MovieId");
+
+                    b.ToTable("Assets");
+                });
+
             modelBuilder.Entity("CineVision.Services.Database.Genre", b =>
                 {
                     b.Property<int>("Id")
@@ -195,6 +232,11 @@ namespace CineVision.Services.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -225,6 +267,7 @@ namespace CineVision.Services.Migrations
                         {
                             Id = 1,
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Main auditorium with 40 seats",
                             IsActive = true,
                             Name = "Hall A",
                             ScreenTypeId = 2,
@@ -234,6 +277,7 @@ namespace CineVision.Services.Migrations
                         {
                             Id = 2,
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Smaller auditorium with 24 seats",
                             IsActive = true,
                             Name = "Hall B",
                             ScreenTypeId = 1,
@@ -554,6 +598,9 @@ namespace CineVision.Services.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("ImageBase64")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -1220,6 +1267,9 @@ namespace CineVision.Services.Migrations
                     b.Property<int>("HallId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("HasSubtitles")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -1253,6 +1303,7 @@ namespace CineVision.Services.Migrations
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             EndTime = new DateTime(2026, 7, 5, 19, 53, 0, 0, DateTimeKind.Utc),
                             HallId = 1,
+                            HasSubtitles = false,
                             IsActive = true,
                             LanguageId = 1,
                             MovieId = 1,
@@ -1265,6 +1316,7 @@ namespace CineVision.Services.Migrations
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             EndTime = new DateTime(2026, 7, 5, 22, 53, 0, 0, DateTimeKind.Utc),
                             HallId = 1,
+                            HasSubtitles = true,
                             IsActive = true,
                             LanguageId = 1,
                             MovieId = 1,
@@ -1277,6 +1329,7 @@ namespace CineVision.Services.Migrations
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             EndTime = new DateTime(2026, 7, 6, 19, 8, 0, 0, DateTimeKind.Utc),
                             HallId = 1,
+                            HasSubtitles = false,
                             IsActive = true,
                             LanguageId = 1,
                             MovieId = 2,
@@ -1289,6 +1342,7 @@ namespace CineVision.Services.Migrations
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             EndTime = new DateTime(2026, 7, 6, 21, 45, 0, 0, DateTimeKind.Utc),
                             HallId = 2,
+                            HasSubtitles = false,
                             IsActive = true,
                             LanguageId = 1,
                             MovieId = 3,
@@ -1301,6 +1355,7 @@ namespace CineVision.Services.Migrations
                             CreatedAt = new DateTime(2026, 6, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             EndTime = new DateTime(2026, 7, 7, 20, 58, 0, 0, DateTimeKind.Utc),
                             HallId = 2,
+                            HasSubtitles = true,
                             IsActive = true,
                             LanguageId = 1,
                             MovieId = 5,
@@ -2192,6 +2247,17 @@ namespace CineVision.Services.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CineVision.Services.Database.Asset", b =>
+                {
+                    b.HasOne("CineVision.Services.Database.Movie", "Movie")
+                        .WithMany("Assets")
+                        .HasForeignKey("MovieId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Movie");
+                });
+
             modelBuilder.Entity("CineVision.Services.Database.Hall", b =>
                 {
                     b.HasOne("CineVision.Services.Database.ScreenType", "ScreenType")
@@ -2441,6 +2507,8 @@ namespace CineVision.Services.Migrations
 
             modelBuilder.Entity("CineVision.Services.Database.Movie", b =>
                 {
+                    b.Navigation("Assets");
+
                     b.Navigation("Reviews");
 
                     b.Navigation("Screenings");

@@ -81,8 +81,8 @@ namespace CineVision.Services.Database
         private void SeedHalls(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Hall>().HasData(
-                new { Id = 1, Name = "Hall A", Description = "Main auditorium with 40 seats", ScreenTypeId = 2, StatusId = 1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 2, Name = "Hall B", Description = "Smaller auditorium with 24 seats", ScreenTypeId = 1, StatusId = 1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+                new { Id = 1, Name = "Hall A", ScreenTypeId = 2, StatusId = 1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 2, Name = "Hall B", ScreenTypeId = 1, StatusId = 1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
             );
         }
 
@@ -132,23 +132,23 @@ namespace CineVision.Services.Database
         {
             // PosterImageBase64 is filled on first API startup by MoviePosterSeed (SeedAssets/poster-{id}.jpg).
             modelBuilder.Entity<Movie>().HasData(
-                new { Id = 1, Title = "Edge of Tomorrow", Description = "A soldier relives the same brutal battle in a loop against an alien invasion.", DurationMinutes = 113, Director = "Doug Liman", ReleaseDate = (DateTime?)new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)3, TrailerUrl = (string?)null, IsActive = true, ViewCount = 320, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = MovieLifecycleState.Active, GenreId = (int?)4 },
-                new { Id = 2, Title = "The Last Laugh", Description = "An ageing comedian gets one final shot at the spotlight.", DurationMinutes = 98, Director = "Greta Park", ReleaseDate = (DateTime?)new DateTime(2026, 2, 10, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)2, TrailerUrl = (string?)null, IsActive = true, ViewCount = 140, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = MovieLifecycleState.Active, GenreId = (int?)3 },
-                new { Id = 3, Title = "Silent Shadows", Description = "A family moves into a house that hides a terrifying secret.", DurationMinutes = 105, Director = "Mark Reyes", ReleaseDate = (DateTime?)new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)4, TrailerUrl = (string?)null, IsActive = true, ViewCount = 210, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = MovieLifecycleState.Active, GenreId = (int?)5 },
-                new { Id = 4, Title = "Broken Roads", Description = "Two strangers cross the country and find unexpected friendship.", DurationMinutes = 127, Director = "Lena Holt", ReleaseDate = (DateTime?)new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)3, TrailerUrl = (string?)null, IsActive = true, ViewCount = 90, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = MovieLifecycleState.Active, GenreId = (int?)2 },
-                new { Id = 5, Title = "Final Strike", Description = "An elite agent races to stop a global catastrophe.", DurationMinutes = 118, Director = "Sam Okafor", ReleaseDate = (DateTime?)new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)3, TrailerUrl = (string?)null, IsActive = true, ViewCount = 260, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = MovieLifecycleState.Active, GenreId = (int?)1 },
-                new { Id = 6, Title = "Quantum Drift", Description = "A physicist discovers a way to travel between parallel worlds.", DurationMinutes = 134, Director = "Iris Vance", ReleaseDate = (DateTime?)new DateTime(2026, 6, 12, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)3, TrailerUrl = (string?)null, IsActive = true, ViewCount = 60, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = MovieLifecycleState.Draft, GenreId = (int?)4 }
+                new { Id = 1, Title = "Edge of Tomorrow", Description = "A soldier relives the same brutal battle in a loop against an alien invasion.", DurationMinutes = 113, ReleaseDate = (DateTime?)new DateTime(2026, 1, 15, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)3, IsActive = true, ViewCount = 320, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = MovieLifecycleState.Active, GenreId = (int?)4 },
+                new { Id = 2, Title = "The Last Laugh", Description = "An ageing comedian gets one final shot at the spotlight.", DurationMinutes = 98, ReleaseDate = (DateTime?)new DateTime(2026, 2, 10, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)2, IsActive = true, ViewCount = 140, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = MovieLifecycleState.Active, GenreId = (int?)3 },
+                new { Id = 3, Title = "Silent Shadows", Description = "A family moves into a house that hides a terrifying secret.", DurationMinutes = 105, ReleaseDate = (DateTime?)new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)4, IsActive = true, ViewCount = 210, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = MovieLifecycleState.Active, GenreId = (int?)5 },
+                new { Id = 4, Title = "Broken Roads", Description = "Two strangers cross the country and find unexpected friendship.", DurationMinutes = 127, ReleaseDate = (DateTime?)new DateTime(2026, 4, 20, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)3, IsActive = true, ViewCount = 90, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = MovieLifecycleState.Active, GenreId = (int?)2 },
+                new { Id = 5, Title = "Final Strike", Description = "An elite agent races to stop a global catastrophe.", DurationMinutes = 118, ReleaseDate = (DateTime?)new DateTime(2026, 5, 1, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)3, IsActive = true, ViewCount = 260, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = MovieLifecycleState.Active, GenreId = (int?)1 },
+                new { Id = 6, Title = "Quantum Drift", Description = "A physicist discovers a way to travel between parallel worlds.", DurationMinutes = 134, ReleaseDate = (DateTime?)new DateTime(2026, 6, 12, 0, 0, 0, DateTimeKind.Utc), LanguageId = (int?)1, AgeRatingId = (int?)3, IsActive = true, ViewCount = 60, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null, MovieState = MovieLifecycleState.Draft, GenreId = (int?)4 }
             );
         }
 
         private void SeedScreenings(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Screening>().HasData(
-                new { Id = 1, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 18, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 5, 19, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, HasSubtitles = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 2, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 21, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 5, 22, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, HasSubtitles = true, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 3, MovieId = 2, HallId = 1, StartTime = new DateTime(2026, 7, 6, 17, 30, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 6, 19, 8, 0, DateTimeKind.Utc), BasePrice = 7.00m, LanguageId = (int?)1, HasSubtitles = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 4, MovieId = 3, HallId = 2, StartTime = new DateTime(2026, 7, 6, 20, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 6, 21, 45, 0, DateTimeKind.Utc), BasePrice = 9.00m, LanguageId = (int?)1, HasSubtitles = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 5, MovieId = 5, HallId = 2, StartTime = new DateTime(2026, 7, 7, 19, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 7, 20, 58, 0, DateTimeKind.Utc), BasePrice = 10.00m, LanguageId = (int?)1, HasSubtitles = true, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+                new { Id = 1, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 18, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 5, 19, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 2, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 21, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 5, 22, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 3, MovieId = 2, HallId = 1, StartTime = new DateTime(2026, 7, 6, 17, 30, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 6, 19, 8, 0, DateTimeKind.Utc), BasePrice = 7.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 4, MovieId = 3, HallId = 2, StartTime = new DateTime(2026, 7, 6, 20, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 6, 21, 45, 0, DateTimeKind.Utc), BasePrice = 9.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 5, MovieId = 5, HallId = 2, StartTime = new DateTime(2026, 7, 7, 19, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 7, 20, 58, 0, DateTimeKind.Utc), BasePrice = 10.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
             );
         }
 
@@ -338,7 +338,6 @@ namespace CineVision.Services.Database
                     Id = 1,
                     Title = "Summer premiere nights",
                     Content = "Join us every Friday for premiere nights with discounted snacks and late shows.",
-                    ImageBase64 = (string?)null,
                     PublishedAt = new DateTime(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc),
                     IsActive = true,
                     CreatedAt = new DateTime(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc),
@@ -349,7 +348,6 @@ namespace CineVision.Services.Database
                     Id = 2,
                     Title = "Student discount weekdays",
                     Content = "Show your student ID Monday–Thursday for 20% off base ticket prices.",
-                    ImageBase64 = (string?)null,
                     PublishedAt = new DateTime(2026, 6, 20, 9, 0, 0, DateTimeKind.Utc),
                     IsActive = true,
                     CreatedAt = new DateTime(2026, 6, 20, 9, 0, 0, DateTimeKind.Utc),

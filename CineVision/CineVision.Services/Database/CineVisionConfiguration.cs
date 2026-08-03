@@ -54,13 +54,6 @@ namespace CineVision.Services.Database
                 .HasForeignKey(h => h.StatusId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Posters/assets are removed together with their movie.
-            modelBuilder.Entity<Asset>()
-                .HasOne(a => a.Movie)
-                .WithMany(m => m.Assets)
-                .HasForeignKey(a => a.MovieId)
-                .OnDelete(DeleteBehavior.Cascade);
-
             // Seats belong to a hall and are removed together with it.
             modelBuilder.Entity<Seat>()
                 .HasOne(s => s.Hall)

@@ -10,11 +10,9 @@ class Movie {
   final String? description;
   final int? durationMinutes;
   final int? genreId;
-  final String? director;
   final DateTime? releaseDate;
   final String? language;
   final String? ageRating;
-  final String? trailerUrl;
   final String? posterImageBase64;
   final bool? isActive;
   final int? viewCount;
@@ -29,11 +27,9 @@ class Movie {
     this.description,
     this.durationMinutes,
     this.genreId,
-    this.director,
     this.releaseDate,
     this.language,
     this.ageRating,
-    this.trailerUrl,
     this.posterImageBase64,
     this.isActive,
     this.viewCount,
@@ -51,11 +47,9 @@ class Movie {
         description: description,
         durationMinutes: durationMinutes,
         genreId: genreId,
-        director: director,
         releaseDate: releaseDate,
         language: language,
         ageRating: ageRating,
-        trailerUrl: trailerUrl,
         posterImageBase64: null,
         isActive: isActive,
         viewCount: viewCount,
@@ -79,11 +73,9 @@ class Movie {
       description: json['description'] as String?,
       durationMinutes: json['durationMinutes'] as int?,
       genreId: json['genreId'] as int?,
-      director: json['director'] as String?,
       releaseDate: _parseDateOnly(json['releaseDate']),
       language: json['language'] as String?,
       ageRating: json['ageRating'] as String?,
-      trailerUrl: json['trailerUrl'] as String?,
       posterImageBase64: json['posterImageBase64'] as String?,
       isActive: json['isActive'] as bool?,
       viewCount: json['viewCount'] as int?,

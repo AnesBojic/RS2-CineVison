@@ -175,7 +175,6 @@ namespace CineVision.Services
                 EndTime = endTime,
                 BasePrice = request.BasePrice,
                 LanguageId = request.LanguageId,
-                HasSubtitles = request.HasSubtitles,
                 IsActive = request.IsActive,
                 CreatedAt = DateTime.UtcNow
             };
@@ -214,7 +213,6 @@ namespace CineVision.Services
             entity.EndTime = endTime;
             entity.BasePrice = request.BasePrice;
             entity.LanguageId = request.LanguageId;
-            entity.HasSubtitles = request.HasSubtitles;
             entity.IsActive = request.IsActive;
             entity.UpdatedAt = DateTime.UtcNow;
 

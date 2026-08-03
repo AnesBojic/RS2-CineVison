@@ -79,7 +79,6 @@ namespace CineVision.Services
             var hall = new Hall
             {
                 Name = request.Name,
-                Description = request.Description,
                 ScreenTypeId = screenType.Id,
                 StatusId = status.Id,
                 // Keep the legacy IsActive flag in sync with the richer status.
@@ -185,7 +184,6 @@ namespace CineVision.Services
             var status = await RequireStatusAsync(request.StatusId);
 
             hall.Name = request.Name;
-            hall.Description = request.Description;
             hall.ScreenType = screenType;
             hall.ScreenTypeId = screenType.Id;
             hall.Status = status;

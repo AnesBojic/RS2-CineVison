@@ -269,6 +269,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
     }
 
     final titleCtrl = TextEditingController(text: fullMovie?.title ?? '');
+    final descriptionCtrl = TextEditingController(text: fullMovie?.description ?? '');
     final durationCtrl = TextEditingController(text: '${fullMovie?.durationMinutes ?? ''}');
     int? ageRatingId = fullMovie?.ageRatingId;
     int? languageId = fullMovie?.languageId;
@@ -300,7 +301,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
             setDialogState(() => submitting = true);
             final payload = Movie(
               title: titleCtrl.text.trim(),
-              description: '',
+              description: descriptionCtrl.text.trim(),
               durationMinutes: int.tryParse(durationCtrl.text) ?? 0,
               genreId: genreId,
               releaseDate: releaseDate,
@@ -377,6 +378,17 @@ class _MovieListScreenState extends State<MovieListScreen> {
                   ),
                 ),
               ]),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: descriptionCtrl,
+                maxLines: 4,
+                maxLength: 2000,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  hintText: 'Short synopsis shown to customers',
+                  alignLabelWithHint: true,
+                ),
+              ),
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(

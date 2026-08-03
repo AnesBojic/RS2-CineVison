@@ -16,7 +16,6 @@
 
         /// <summary>Name of the referenced language, flattened for display.</summary>
         public string? Language { get; set; }
-        public bool HasSubtitles { get; set; }
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

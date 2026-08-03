@@ -11,7 +11,6 @@ class Screening {
   final DateTime? endTime;
   final num? basePrice;
   final String? language;
-  final bool? hasSubtitles;
   final bool? isActive;
   final int? totalSeats;
   final int? availableSeats;
@@ -27,7 +26,6 @@ class Screening {
     this.endTime,
     this.basePrice,
     this.language,
-    this.hasSubtitles,
     this.isActive,
     this.totalSeats,
     this.availableSeats,
@@ -48,7 +46,6 @@ class Screening {
       endTime: UtcDateTime.tryParse(json['endTime']),
       basePrice: json['basePrice'] as num?,
       language: json['language'] as String?,
-      hasSubtitles: json['hasSubtitles'] as bool?,
       isActive: json['isActive'] as bool?,
       totalSeats: json['totalSeats'] as int?,
       availableSeats: json['availableSeats'] as int?,

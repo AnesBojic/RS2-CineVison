@@ -15,9 +15,6 @@ namespace CineVision.Model.Requests
 
         public int? GenreId { get; set; }
 
-        [MaxLength(100)]
-        public string? Director { get; set; }
-
         public DateTime? ReleaseDate { get; set; }
 
         /// <summary>Id of a row in the Languages reference table.</summary>
@@ -26,13 +23,8 @@ namespace CineVision.Model.Requests
         /// <summary>Id of a row in the AgeRatings reference table.</summary>
         public int? AgeRatingId { get; set; }
 
-        [MaxLength(500)]
-        public string? TrailerUrl { get; set; }
-
         public string? PosterImageBase64 { get; set; }
 
         public bool IsActive { get; set; } = true;
-
-        public List<AssetInsertRequest>? Assets { get; set; }
     }
 }

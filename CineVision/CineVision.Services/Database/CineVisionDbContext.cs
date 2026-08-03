@@ -21,7 +21,6 @@ namespace CineVision.Services.Database
         public DbSet<Reservation> Reservations { get; set; }
         public DbSet<ReservationSeat> ReservationSeats { get; set; }
         public DbSet<Review> Reviews { get; set; }
-        public DbSet<Asset> Assets { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }

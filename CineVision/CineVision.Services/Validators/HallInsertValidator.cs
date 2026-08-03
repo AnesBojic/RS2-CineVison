@@ -11,9 +11,6 @@ namespace CineVision.Services.Validators
                 .NotEmpty().WithMessage("Name is required.")
                 .MaximumLength(100).WithMessage("Name cannot exceed 100 characters.");
 
-            RuleFor(x => x.Description)
-                .MaximumLength(500).WithMessage("Description cannot exceed 500 characters.");
-
             RuleFor(x => x.RowsCount)
                 .GreaterThan(0).WithMessage("Number of rows must be at least 1.")
                 .LessThanOrEqualTo(26).WithMessage("Number of rows cannot exceed 26.");

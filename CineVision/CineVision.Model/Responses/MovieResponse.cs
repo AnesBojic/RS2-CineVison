@@ -9,7 +9,6 @@ namespace CineVision.Model.Responses
         public string Description { get; set; } = string.Empty;
         public int DurationMinutes { get; set; }
         public int? GenreId { get; set; }
-        public string? Director { get; set; }
         public DateTime? ReleaseDate { get; set; }
 
         public int? LanguageId { get; set; }
@@ -22,7 +21,6 @@ namespace CineVision.Model.Responses
         /// <summary>Name of the referenced age rating, flattened for display.</summary>
         public string? AgeRating { get; set; }
 
-        public string? TrailerUrl { get; set; }
         public string? PosterImageBase64 { get; set; }
         public bool IsActive { get; set; }
         public int ViewCount { get; set; }
@@ -33,6 +31,5 @@ namespace CineVision.Model.Responses
         public MovieLifecycleState MovieState { get; set; }
         public GenreResponse? Genre { get; set; }
         public List<string> AllowedActions { get; set; } = new List<string>();
-        public List<AssetResponse> Assets { get; set; } = new List<AssetResponse>();
     }
 }

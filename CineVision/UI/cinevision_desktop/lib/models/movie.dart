@@ -10,7 +10,6 @@ class Movie {
   final String? description;
   final int? durationMinutes;
   final int? genreId;
-  final String? director;
   final DateTime? releaseDate;
 
   /// Reference table ids used by the edit form.
@@ -20,7 +19,6 @@ class Movie {
   /// Names flattened by the API for display.
   final String? language;
   final String? ageRating;
-  final String? trailerUrl;
   final String? posterImageBase64;
   final bool? isActive;
   final int? viewCount;
@@ -35,13 +33,11 @@ class Movie {
     this.description,
     this.durationMinutes,
     this.genreId,
-    this.director,
     this.releaseDate,
     this.languageId,
     this.ageRatingId,
     this.language,
     this.ageRating,
-    this.trailerUrl,
     this.posterImageBase64,
     this.isActive,
     this.viewCount,
@@ -61,13 +57,11 @@ class Movie {
         description: description,
         durationMinutes: durationMinutes,
         genreId: genreId,
-        director: director,
         releaseDate: releaseDate,
         languageId: languageId,
         ageRatingId: ageRatingId,
         language: language,
         ageRating: ageRating,
-        trailerUrl: trailerUrl,
         posterImageBase64: null,
         isActive: isActive,
         viewCount: viewCount,
@@ -95,13 +89,11 @@ class Movie {
       description: json['description'] as String?,
       durationMinutes: json['durationMinutes'] as int?,
       genreId: json['genreId'] as int?,
-      director: json['director'] as String?,
       releaseDate: _parseDateOnly(json['releaseDate']),
       languageId: json['languageId'] as int?,
       ageRatingId: json['ageRatingId'] as int?,
       language: json['language'] as String?,
       ageRating: json['ageRating'] as String?,
-      trailerUrl: json['trailerUrl'] as String?,
       posterImageBase64: json['posterImageBase64'] as String?,
       isActive: json['isActive'] as bool?,
       viewCount: json['viewCount'] as int?,
@@ -120,11 +112,9 @@ class Movie {
         'description': description ?? '',
         'durationMinutes': durationMinutes ?? 0,
         'genreId': genreId,
-        'director': director,
         'releaseDate': _toDateOnlyApi(releaseDate),
         'languageId': languageId,
         'ageRatingId': ageRatingId,
-        'trailerUrl': trailerUrl,
         'isActive': true,
       };
 

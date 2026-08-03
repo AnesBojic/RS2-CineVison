@@ -13,6 +13,9 @@ namespace CineVision.Services
         /// <summary>Increments the movie's view counter (called when its details are opened).</summary>
         Task RegisterViewAsync(int id);
 
+        /// <summary>Stores a title/genre search for the recommendation search-history signal.</summary>
+        Task RecordSearchAsync(RecordSearchRequest request);
+
         /// <summary>Sets or clears the movie poster image.</summary>
         Task<MovieResponse> UpdatePosterAsync(int id, MoviePosterUpdateRequest request);
 

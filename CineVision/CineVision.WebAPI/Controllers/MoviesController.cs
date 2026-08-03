@@ -16,6 +16,15 @@ public class MoviesController : BaseCRUDController<MovieResponse, MovieSearchObj
     }
 
     [Authorize]
+    [HttpPost("SearchHistory")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RecordSearch([FromBody] RecordSearchRequest request)
+    {
+        await _service.RecordSearchAsync(request);
+        return NoContent();
+    }
+
+    [Authorize]
     [HttpPost("{id}/View")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

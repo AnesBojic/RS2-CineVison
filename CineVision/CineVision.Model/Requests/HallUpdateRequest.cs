@@ -8,9 +8,6 @@ namespace CineVision.Model.Requests
         [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
 
-        [MaxLength(500)]
-        public string Description { get; set; } = string.Empty;
-
         /// <summary>Id of a row in the ScreenTypes reference table.</summary>
         [Required]
         public int ScreenTypeId { get; set; }

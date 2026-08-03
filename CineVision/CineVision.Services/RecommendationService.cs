@@ -70,7 +70,6 @@ namespace CineVision.Services
                 .Include(m => m.Genre)
                 .Include(m => m.Language)
                 .Include(m => m.AgeRating)
-                .Include(m => m.Assets)
                 .Where(m => m.IsActive)
                 .ToListAsync();
 

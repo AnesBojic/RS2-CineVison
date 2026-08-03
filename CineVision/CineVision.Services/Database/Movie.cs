@@ -20,9 +20,6 @@ namespace CineVision.Services.Database
 
         public int DurationMinutes { get; set; }
 
-        [MaxLength(100)]
-        public string? Director { get; set; }
-
         public DateTime? ReleaseDate { get; set; }
 
         // Spoken language (reference table)
@@ -36,9 +33,6 @@ namespace CineVision.Services.Database
 
         [ForeignKey("AgeRatingId")]
         public AgeRating? AgeRating { get; set; }
-
-        [MaxLength(500)]
-        public string? TrailerUrl { get; set; }
 
         /// <summary>Movie poster image stored as a base64 string (same pattern as user profile images).</summary>
         public string? PosterImageBase64 { get; set; }
@@ -60,9 +54,6 @@ namespace CineVision.Services.Database
 
         [ForeignKey("GenreId")]
         public Genre? Genre { get; set; }
-
-        // Navigation property for poster/promo images
-        public ICollection<Asset> Assets { get; set; } = new List<Asset>();
 
         // Navigation property for screenings of this movie
         public ICollection<Screening> Screenings { get; set; } = new List<Screening>();

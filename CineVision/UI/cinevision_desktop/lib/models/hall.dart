@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 class Hall {
   final int? id;
   final String? name;
-  final String? description;
   final int? screenTypeId;
   final String? screenTypeName;
   final int? statusId;
@@ -25,7 +24,6 @@ class Hall {
   Hall({
     this.id,
     this.name,
-    this.description,
     this.screenTypeId,
     this.screenTypeName,
     this.statusId,
@@ -46,7 +44,6 @@ class Hall {
     return Hall(
       id: json['id'] as int?,
       name: json['name'] as String?,
-      description: json['description'] as String?,
       screenTypeId: json['screenTypeId'] as int?,
       screenTypeName: json['screenTypeName'] as String?,
       statusId: json['statusId'] as int?,
@@ -75,7 +72,6 @@ class Hall {
 
   Map<String, dynamic> toUpdateJson() => {
         'name': name,
-        'description': description ?? '',
         'screenTypeId': screenTypeId,
         'statusId': statusId,
       };

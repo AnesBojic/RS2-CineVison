@@ -49,4 +49,21 @@ class MovieProvider extends BaseProvider<Movie> {
     final response = await http.post(uri, headers: createHeaders());
     validateResponse(response);
   }
+
+  /// Persists title/genre search for recommendations (SearchHistories).
+  Future<void> recordSearch({String? title, int? genreId}) async {
+    final trimmed = title?.trim() ?? '';
+    if (trimmed.isEmpty && genreId == null) return;
+
+    final uri = Uri.parse('${BaseProvider.baseUrl}$endpoint/SearchHistory');
+    final response = await http.post(
+      uri,
+      headers: createHeaders(),
+      body: jsonEncode({
+        if (trimmed.isNotEmpty) 'title': trimmed,
+        if (genreId != null) 'genreId': genreId,
+      }),
+    );
+    validateResponse(response);
+  }
 }
