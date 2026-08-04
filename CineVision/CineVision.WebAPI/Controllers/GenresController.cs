@@ -13,4 +13,15 @@ public class GenresController : BaseCRUDController<GenreResponse, GenreSearchObj
     public GenresController(IGenreService genreService) : base(genreService)
     {
     }
+
+    /// <summary>Public genre list for guest movie filters.</summary>
+    [AllowAnonymous]
+    [HttpGet]
+    public override Task<PageResult<GenreResponse>> GetAll([FromQuery] GenreSearchObject? search)
+        => base.GetAll(search);
+
+    [AllowAnonymous]
+    [HttpGet("{id}")]
+    public override Task<ActionResult<GenreResponse>> GetById(int id)
+        => base.GetById(id);
 }

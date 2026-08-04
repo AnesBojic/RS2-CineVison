@@ -36,18 +36,41 @@ void main() {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'CineVision',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.defaultTheme,
-      scrollBehavior: const AppScrollBehavior(),
-      onGenerateRoute: RouteGenerator.onGenerate,
-      initialRoute: AppRoutes.entryPoint,
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (auth.sessionExpired) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            auth.acknowledgeSessionExpired();
+            _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+              AppRoutes.authLanding,
+              (_) => false,
+            );
+          });
+        }
+
+        return MaterialApp(
+          navigatorKey: _navigatorKey,
+          title: 'CineVision',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.defaultTheme,
+          scrollBehavior: const AppScrollBehavior(),
+          onGenerateRoute: RouteGenerator.onGenerate,
+          initialRoute: AppRoutes.entryPoint,
+        );
+      },
     );
   }
 }

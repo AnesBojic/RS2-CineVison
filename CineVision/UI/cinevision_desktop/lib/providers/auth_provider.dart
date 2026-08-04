@@ -8,6 +8,7 @@ class AuthProvider extends ChangeNotifier {
   static AuthProvider? _active;
 
   bool _isAuthenticated = false;
+  bool _sessionExpired = false;
   static String? _accesstoken;
   String? _firstName;
   String? _lastName;
@@ -23,6 +24,14 @@ class AuthProvider extends ChangeNotifier {
   int? get userId => _userId;
   String? get email => _email;
   String? get profileImageBase64 => _profileImageBase64;
+
+  /// True after a 401 cleared a previously authenticated session (navigate to login once).
+  bool get sessionExpired => _sessionExpired;
+
+  void acknowledgeSessionExpired() {
+    if (!_sessionExpired) return;
+    _sessionExpired = false;
+  }
 
   String get displayName {
     final name = '${_firstName ?? ''} ${_lastName ?? ''}'.trim();
@@ -258,11 +267,13 @@ class AuthProvider extends ChangeNotifier {
       _accesstoken = null;
       return;
     }
-    active._clearSession();
+    final hadSession = active._isAuthenticated ||
+        (_accesstoken != null && _accesstoken!.isNotEmpty);
+    active._clearSession(markExpired: hadSession);
     active.notifyListeners();
   }
 
-  void _clearSession() {
+  void _clearSession({bool markExpired = false}) {
     _isAuthenticated = false;
     _accesstoken = null;
     _firstName = null;
@@ -271,6 +282,9 @@ class AuthProvider extends ChangeNotifier {
     _userId = null;
     _email = null;
     _profileImageBase64 = null;
+    if (markExpired) {
+      _sessionExpired = true;
+    }
   }
 
   Map<String, String> createHeaders() => {'Content-Type': 'application/json'};

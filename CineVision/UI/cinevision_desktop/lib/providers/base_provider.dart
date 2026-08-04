@@ -124,16 +124,13 @@ abstract class BaseProvider<T> with ChangeNotifier {
   }
 
   Map<String, String> createHeaders() {
-    String accesstoken = AuthProvider.accesstoken ?? "";
-
-    String basicAuth =
-        "Bearer $accesstoken";
-
-    var headers = {
-      "Content-Type": "application/json",
-      "Authorization": basicAuth
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
     };
-
+    final token = AuthProvider.accesstoken;
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
     return headers;
   }
 

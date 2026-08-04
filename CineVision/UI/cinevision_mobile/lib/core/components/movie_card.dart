@@ -1,6 +1,7 @@
 import 'package:cinevision_mobile/core/components/base64_image.dart';
 import 'package:cinevision_mobile/core/constants/app_colors.dart';
 import 'package:cinevision_mobile/core/routes/app_routes.dart';
+import 'package:cinevision_mobile/providers/auth_provider.dart';
 import 'package:cinevision_mobile/providers/movie_provider.dart';
 import 'package:cinevision_mobile/models/movie.dart';
 import 'package:flutter/material.dart';
@@ -90,7 +91,8 @@ class MovieCard extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () {
                       final id = movie.id;
-                      if (id != null) {
+                      final auth = context.read<AuthProvider>();
+                      if (id != null && auth.isAuthenticated) {
                         context.read<MovieProvider>().registerView(id);
                       }
                       Navigator.pushNamed(

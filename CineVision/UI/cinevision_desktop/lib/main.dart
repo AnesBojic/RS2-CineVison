@@ -43,16 +43,39 @@ void main() {
   );
 }
 
-class CineVisionApp extends StatelessWidget {
+class CineVisionApp extends StatefulWidget {
   const CineVisionApp({super.key});
 
   @override
+  State<CineVisionApp> createState() => _CineVisionAppState();
+}
+
+class _CineVisionAppState extends State<CineVisionApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'CineVision',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      home: const LoginScreen(),
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (auth.sessionExpired) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            auth.acknowledgeSessionExpired();
+            _navigatorKey.currentState?.pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (_) => false,
+            );
+          });
+        }
+
+        return MaterialApp(
+          navigatorKey: _navigatorKey,
+          title: 'CineVision',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.darkTheme,
+          home: const LoginScreen(),
+        );
+      },
     );
   }
 }

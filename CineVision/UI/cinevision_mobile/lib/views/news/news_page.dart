@@ -1,7 +1,6 @@
 ﻿import 'package:cinevision_mobile/core/components/app_back_button.dart';
 import 'package:cinevision_mobile/core/constants/app_defaults.dart';
 import 'package:cinevision_mobile/models/news.dart';
-import 'package:cinevision_mobile/providers/auth_provider.dart';
 import 'package:cinevision_mobile/providers/news_provider.dart';
 import 'package:cinevision_mobile/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
@@ -47,12 +46,7 @@ class _NewsPageState extends State<NewsPage> {
     } on Exception catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      final auth = context.read<AuthProvider>();
-      if (!auth.isAuthenticated) {
-        alertBox(context, 'Sign in required', 'Please sign in to read cinema news.');
-      } else {
-        alertBox(context, 'Error', e.toString());
-      }
+      alertBox(context, 'Error', e.toString());
     }
   }
 

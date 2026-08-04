@@ -15,6 +15,18 @@ public class MoviesController : BaseCRUDController<MovieResponse, MovieSearchObj
     {
     }
 
+    /// <summary>Public catalog listing for the mobile app (guests can browse).</summary>
+    [AllowAnonymous]
+    [HttpGet]
+    public override Task<PageResult<MovieResponse>> GetAll([FromQuery] MovieSearchObject? search)
+        => base.GetAll(search);
+
+    /// <summary>Public movie details for browsing before login.</summary>
+    [AllowAnonymous]
+    [HttpGet("{id}")]
+    public override Task<ActionResult<MovieResponse>> GetById(int id)
+        => base.GetById(id);
+
     [Authorize]
     [HttpPost("SearchHistory")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

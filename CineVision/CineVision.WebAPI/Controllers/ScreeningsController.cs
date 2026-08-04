@@ -15,7 +15,19 @@ public class ScreeningsController : BaseCRUDController<ScreeningResponse, Screen
     {
     }
 
-    [Authorize]
+    /// <summary>Public showtimes for guest browsing.</summary>
+    [AllowAnonymous]
+    [HttpGet]
+    public override Task<PageResult<ScreeningResponse>> GetAll([FromQuery] ScreeningSearchObject? search)
+        => base.GetAll(search);
+
+    [AllowAnonymous]
+    [HttpGet("{id}")]
+    public override Task<ActionResult<ScreeningResponse>> GetById(int id)
+        => base.GetById(id);
+
+    /// <summary>Public seat map so guests can pick seats before signing in at checkout.</summary>
+    [AllowAnonymous]
     [HttpGet("{id}/Seats")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
