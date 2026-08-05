@@ -1,4 +1,4 @@
-﻿using CineVision.Model.Access;
+using CineVision.Model.Access;
 using CineVision.Model.Requests;
 using CineVision.Model.Responses;
 using CineVision.Model.SearchObjects;
@@ -17,7 +17,7 @@ namespace CineVision.Services
         Task<UserDeleteImpactResponse> GetDeleteImpactAsync(int id);
         Task ForgotPasswordAsync(ForgotPasswordRequest request);
         Task ResetPasswordAsync(ResetPasswordRequest request);
-        /// <summary>Public self-registration â€” always assigns the Customer role.</summary>
+        /// <summary>Public self-registration — always assigns the Customer role.</summary>
         Task<UserResponse> RegisterAsync(UserRegisterRequest request);
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace CineVision.Model.Responses
+namespace CineVision.Model.Responses
 {
     public class ReservationResponse
     {
@@ -13,12 +13,12 @@
         public string? CustomerName { get; set; }
         public string? CustomerEmail { get; set; }
 
-        public int ScreeningId { get; set; }
+        public int ProjectionId { get; set; }
         public int MovieId { get; set; }
         public string MovieTitle { get; set; } = string.Empty;
         public string HallName { get; set; } = string.Empty;
-        public DateTime ScreeningStartTime { get; set; }
-        public DateTime ScreeningEndTime { get; set; }
+        public DateTime ProjectionStartTime { get; set; }
+        public DateTime ProjectionEndTime { get; set; }
 
         public string? PaymentTransactionId { get; set; }
         public DateTime? PaymentDate { get; set; }

@@ -48,7 +48,7 @@ class AnalyticsPdfReports {
           pw.TableHelper.fromTextArray(
             headers: const [
               'Movie',
-              'Screenings',
+              'Projections',
               'Tickets',
               'Revenue',
               'Occupancy',
@@ -58,7 +58,7 @@ class AnalyticsPdfReports {
                 .map(
                   (m) => [
                     m.title,
-                    '${m.screeningsCount}',
+                    '${m.projectionsCount}',
                     '${m.ticketsSold}',
                     _moneyFmt.format(m.revenue),
                     '${m.occupancyPercent.toStringAsFixed(1)}%',

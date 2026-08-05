@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace CineVision.Services.Database
 {
-    /// <summary>SQL datetime2 Unspecified â†’ Kind=Utc on read.</summary>
+    /// <summary>SQL datetime2 Unspecified → Kind=Utc on read.</summary>
     public sealed class UtcDateTimeValueConverter : ValueConverter<DateTime, DateTime>
     {
         public UtcDateTimeValueConverter()

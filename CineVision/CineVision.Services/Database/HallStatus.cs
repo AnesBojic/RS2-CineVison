@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace CineVision.Services.Database
 {
-    /// <summary>Reference table: operational status of a hall (Active, Maintenance, Inactiveâ€¦).</summary>
+    /// <summary>Reference table: operational status of a hall (Active, Maintenance, Inactive…).</summary>
     public class HallStatus : ILookupEntity
     {
         [Key]
@@ -18,10 +18,10 @@ namespace CineVision.Services.Database
         public string Description { get; set; } = string.Empty;
 
         /// <summary>
-        /// Drives scheduling: only halls whose status allows screenings can host new projections.
+        /// Drives scheduling: only halls whose status allows projections can host new projections.
         /// Keeping the rule on the row means staff can add or rename statuses without code changes.
         /// </summary>
-        public bool AllowsScreenings { get; set; }
+        public bool AllowsProjections { get; set; }
 
         public bool IsActive { get; set; } = true;
 

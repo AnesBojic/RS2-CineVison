@@ -1,7 +1,7 @@
-﻿namespace CineVision.Model.Responses
+namespace CineVision.Model.Responses
 {
     /// <summary>
-    /// How intensively a hall is being used: seats sold versus seats offered across its screenings.
+    /// How intensively a hall is being used: seats sold versus seats offered across its projections.
     /// </summary>
     public class HallUtilizationResponse
     {
@@ -10,15 +10,15 @@
 
         /// <summary>Number of active seats in the hall.</summary>
         public int Capacity { get; set; }
-        public int ScreeningsCount { get; set; }
+        public int ProjectionsCount { get; set; }
 
-        /// <summary>Number of screenings (shows) scheduled in this hall. Mirrors <see cref="ScreeningsCount"/>.</summary>
+        /// <summary>Number of projections (shows) scheduled in this hall. Mirrors <see cref="ProjectionsCount"/>.</summary>
         public int ShowCount { get; set; }
 
-        /// <summary>This hall's screenings divided by the total screenings across all halls (0-100), for the usage-distribution pie chart.</summary>
+        /// <summary>This hall's projections divided by the total projections across all halls (0-100), for the usage-distribution pie chart.</summary>
         public double SharePercent { get; set; }
 
-        /// <summary>Capacity multiplied by the number of screenings in the hall.</summary>
+        /// <summary>Capacity multiplied by the number of projections in the hall.</summary>
         public int SeatsOffered { get; set; }
         public int SeatsSold { get; set; }
 

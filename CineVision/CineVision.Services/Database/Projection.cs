@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CineVision.Services.Database
 {
-    public class Screening
+    public class Projection
     {
         [Key]
         public int Id { get; set; }
@@ -44,10 +44,10 @@ namespace CineVision.Services.Database
 
         public DateTime? UpdatedAt { get; set; }
 
-        // Navigation property for reservations of this screening
+        // Navigation property for reservations of this projection
         public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
 
-        // Navigation property for individual reserved seats of this screening
+        // Navigation property for individual reserved seats of this projection
         public ICollection<ReservationSeat> ReservationSeats { get; set; } = new List<ReservationSeat>();
     }
 }

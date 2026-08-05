@@ -10,7 +10,7 @@ class LookupItem {
   final String? deleteBlockedReason;
 
   /// Hall statuses only.
-  final bool? allowsScreenings;
+  final bool? allowsProjections;
 
   /// Age ratings only.
   final int? minimumAge;
@@ -26,7 +26,7 @@ class LookupItem {
     this.inUseCount = 0,
     this.canDelete = true,
     this.deleteBlockedReason,
-    this.allowsScreenings,
+    this.allowsProjections,
     this.minimumAge,
     this.code,
   });
@@ -40,7 +40,7 @@ class LookupItem {
       inUseCount: json['inUseCount'] as int? ?? 0,
       canDelete: json['canDelete'] as bool? ?? true,
       deleteBlockedReason: json['deleteBlockedReason'] as String?,
-      allowsScreenings: json['allowsScreenings'] as bool?,
+      allowsProjections: json['allowsProjections'] as bool?,
       minimumAge: json['minimumAge'] as int?,
       code: json['code'] as String?,
     );
@@ -51,7 +51,7 @@ class LookupItem {
         'name': name,
         'description': description ?? '',
         'isActive': isActive ?? true,
-        if (allowsScreenings != null) 'allowsScreenings': allowsScreenings,
+        if (allowsProjections != null) 'allowsProjections': allowsProjections,
         if (minimumAge != null) 'minimumAge': minimumAge,
         if (code != null) 'code': code,
       };

@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:cinevision_desktop/core/enums/api_enums.dart';
 import 'package:cinevision_desktop/core/theme/app_theme.dart';
@@ -15,7 +15,7 @@ import 'package:cinevision_desktop/screens/login_screen.dart';
 import 'package:cinevision_desktop/screens/movie_list_screen.dart';
 import 'package:cinevision_desktop/screens/news_list_screen.dart';
 import 'package:cinevision_desktop/screens/reference_data_hub_screen.dart';
-import 'package:cinevision_desktop/screens/screening_list_screen.dart';
+import 'package:cinevision_desktop/screens/projection_list_screen.dart';
 import 'package:cinevision_desktop/screens/profile_screen.dart';
 import 'package:cinevision_desktop/screens/user_list.dart';
 import 'package:flutter/material.dart';
@@ -85,7 +85,7 @@ class _HomeShellState extends State<HomeShell> {
       _selectedIndex = _history.removeLast();
       _movieEditId = null;
       _hallEditId = null;
-      _screeningEditId = null;
+      _projectionEditId = null;
     });
     _afterNavigation(_selectedIndex);
   }
@@ -115,7 +115,7 @@ class _HomeShellState extends State<HomeShell> {
 
   int? _movieEditId;
   int? _hallEditId;
-  int? _screeningEditId;
+  int? _projectionEditId;
 
   void _navigateTo(int index, {int? editId}) {
     setState(() {
@@ -123,7 +123,7 @@ class _HomeShellState extends State<HomeShell> {
       _selectedIndex = index;
       _movieEditId = index == 1 ? editId : null;
       _hallEditId = index == 2 ? editId : null;
-      _screeningEditId = index == 3 ? editId : null;
+      _projectionEditId = index == 3 ? editId : null;
     });
     _afterNavigation(index);
   }
@@ -132,7 +132,7 @@ class _HomeShellState extends State<HomeShell> {
     setState(() {
       if (index == 1) _movieEditId = null;
       if (index == 2) _hallEditId = null;
-      if (index == 3) _screeningEditId = null;
+      if (index == 3) _projectionEditId = null;
     });
   }
 
@@ -153,9 +153,9 @@ class _HomeShellState extends State<HomeShell> {
           onEditConsumed: () => _clearEditId(2),
         );
       case 3:
-        return ScreeningListScreen(
-          key: ValueKey('screenings-${_screeningEditId ?? 'list'}'),
-          editId: _screeningEditId,
+        return ProjectionListScreen(
+          key: ValueKey('projections-${_projectionEditId ?? 'list'}'),
+          editId: _projectionEditId,
           onEditConsumed: () => _clearEditId(3),
         );
       case 4:

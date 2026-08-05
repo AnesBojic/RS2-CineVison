@@ -1,10 +1,10 @@
-﻿namespace CineVision.Model.Responses
+namespace CineVision.Model.Responses
 {
     /// <summary>
-    /// Represents a seat in the context of a specific screening, including whether it has
+    /// Represents a seat in the context of a specific projection, including whether it has
     /// already been reserved. Used to render the seat-selection map.
     /// </summary>
-    public class ScreeningSeatResponse
+    public class ProjectionSeatResponse
     {
         public int SeatId { get; set; }
         public int HallId { get; set; }
@@ -20,7 +20,7 @@
 
         public bool IsTaken { get; set; }
 
-        /// <summary>Total price for this selection (2Ã— base price for couple seats).</summary>
+        /// <summary>Total price for this selection (2× base price for couple seats).</summary>
         public decimal Price { get; set; }
     }
 }

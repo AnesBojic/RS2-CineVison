@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CineVision.Model.Requests;
@@ -32,13 +32,13 @@ namespace CineVision.Services
                 .Select(g => new { Id = g.Key, Count = g.Count() })
                 .ToListAsync();
 
-            var screeningCounts = await _dbContext.Screenings
+            var projectionCounts = await _dbContext.Projections
                 .Where(s => s.LanguageId != null && ids.Contains(s.LanguageId.Value))
                 .GroupBy(s => s.LanguageId!.Value)
                 .Select(g => new { Id = g.Key, Count = g.Count() })
                 .ToListAsync();
 
-            return movieCounts.Concat(screeningCounts)
+            return movieCounts.Concat(projectionCounts)
                 .GroupBy(x => x.Id)
                 .ToDictionary(g => g.Key, g => g.Sum(x => x.Count));
         }

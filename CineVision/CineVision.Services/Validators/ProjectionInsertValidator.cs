@@ -1,11 +1,11 @@
-﻿using CineVision.Model.Requests;
+using CineVision.Model.Requests;
 using FluentValidation;
 
 namespace CineVision.Services.Validators
 {
-    public class ScreeningInsertValidator : AbstractValidator<ScreeningInsertRequest>
+    public class ProjectionInsertValidator : AbstractValidator<ProjectionInsertRequest>
     {
-        public ScreeningInsertValidator()
+        public ProjectionInsertValidator()
         {
             RuleFor(x => x.MovieId)
                 .GreaterThan(0).WithMessage("MovieId is required and must be greater than 0.");

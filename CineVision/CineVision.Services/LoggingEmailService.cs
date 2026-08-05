@@ -1,10 +1,10 @@
-﻿using CineVision.Model.Messages;
+using CineVision.Model.Messages;
 using Microsoft.Extensions.Logging;
 
 namespace CineVision.Services
 {
     /// <summary>
-    /// Development fallback when RabbitMQ is disabled â€” logs the email instead of queueing it.
+    /// Development fallback when RabbitMQ is disabled — logs the email instead of queueing it.
     /// In-app notifications still work; only SMTP delivery is skipped.
     /// </summary>
     public class LoggingEmailService : IEmailService
@@ -19,7 +19,7 @@ namespace CineVision.Services
         public Task QueueEmailAsync(EmailMessage message)
         {
             _logger.LogInformation(
-                "RabbitMQ disabled â€” email logged only. To: {To}, Subject: {Subject}",
+                "RabbitMQ disabled — email logged only. To: {To}, Subject: {Subject}",
                 message.To,
                 message.Subject);
             return Task.CompletedTask;

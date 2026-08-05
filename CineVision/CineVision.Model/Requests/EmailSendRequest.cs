@@ -1,7 +1,7 @@
-﻿namespace CineVision.Model.Requests
+namespace CineVision.Model.Requests
 {
     /// <summary>
-    /// Payload for POST /Users/{id}/SendEmail â€” an admin composing an email to a user.
+    /// Payload for POST /Users/{id}/SendEmail — an admin composing an email to a user.
     /// </summary>
     public class EmailSendRequest
     {

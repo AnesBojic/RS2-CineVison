@@ -1,4 +1,4 @@
-﻿import 'package:cinevision_desktop/core/widgets/cinevision_widgets.dart';
+import 'package:cinevision_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:cinevision_desktop/providers/age_rating_provider.dart';
 import 'package:cinevision_desktop/providers/hall_status_provider.dart';
 import 'package:cinevision_desktop/providers/language_provider.dart';
@@ -39,7 +39,7 @@ class _ReferenceDataHubScreenState extends State<ReferenceDataHubScreen> {
           key: ValueKey('hall-statuses-section'),
           title: 'Hall Statuses',
           itemNoun: 'hall status',
-          extraField: LookupExtraField.allowsScreenings,
+          extraField: LookupExtraField.allowsProjections,
         );
       case 3:
         return const LookupListScreen<AgeRatingProvider>(

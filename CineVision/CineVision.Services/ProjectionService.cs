@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -17,23 +17,23 @@ using CineVision.Model.Enums;
 
 namespace CineVision.Services
 {
-    public class ScreeningService : BaseCRUDService<Screening, ScreeningResponse, ScreeningSearchObject, ScreeningInsertRequest, ScreeningUpdateRequest>, IScreeningService
+    public class ProjectionService : BaseCRUDService<Projection, ProjectionResponse, ProjectionSearchObject, ProjectionInsertRequest, ProjectionUpdateRequest>, IProjectionService
     {
         private readonly IAnalyticsNotifier _analyticsNotifier;
         private readonly IEmailService _emailService;
         private readonly string? _stripeSecretKey;
-        private readonly ILogger<ScreeningService> _logger;
+        private readonly ILogger<ProjectionService> _logger;
         private readonly INotificationService _notificationService;
 
-        public ScreeningService(
+        public ProjectionService(
             CineVisionDbContext dbContext,
             MapsterMapper.IMapper mapper,
-            IValidator<ScreeningInsertRequest> insertValidator,
-            IValidator<ScreeningUpdateRequest> updateValidator,
+            IValidator<ProjectionInsertRequest> insertValidator,
+            IValidator<ProjectionUpdateRequest> updateValidator,
             IAnalyticsNotifier analyticsNotifier,
             IEmailService emailService,
             IConfiguration configuration,
-            ILogger<ScreeningService> logger,
+            ILogger<ProjectionService> logger,
             INotificationService notificationService)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
@@ -44,21 +44,21 @@ namespace CineVision.Services
             _notificationService = notificationService;
         }
 
-        protected override IQueryable<Screening> ApplyFilters(IQueryable<Screening> query, ScreeningSearchObject? search)
+        protected override IQueryable<Projection> ApplyFilters(IQueryable<Projection> query, ProjectionSearchObject? search)
         {
             // Filtering is handled in GetAllAsync against the database query.
             return query;
         }
 
-        public override async Task<PageResult<ScreeningResponse>> GetAllAsync(ScreeningSearchObject? search = null)
+        public override async Task<PageResult<ProjectionResponse>> GetAllAsync(ProjectionSearchObject? search = null)
         {
-            search ??= new ScreeningSearchObject();
+            search ??= new ProjectionSearchObject();
             PagingLimits.Normalize(search);
 
             var includeSeatStats = search.IncludeSeatStats == true;
             var includePoster = search.IncludePoster == true;
 
-            IQueryable<Screening> query = _dbContext.Screenings
+            IQueryable<Projection> query = _dbContext.Projections
                 .AsNoTracking()
                 .Include(s => s.Language)
                 .Include(s => s.Movie).ThenInclude(m => m.Language)
@@ -125,16 +125,16 @@ namespace CineVision.Services
                 includeSeatStats,
                 includePoster)).ToList();
 
-            return new PageResult<ScreeningResponse>
+            return new PageResult<ProjectionResponse>
             {
                 Items = items,
                 TotalCount = totalCount
             };
         }
 
-        public override async Task<ScreeningResponse> GetByIdAsync(int id)
+        public override async Task<ProjectionResponse> GetByIdAsync(int id)
         {
-            var entity = await _dbContext.Screenings
+            var entity = await _dbContext.Projections
                 .AsNoTracking()
                 .Include(s => s.Language)
                 .Include(s => s.Movie).ThenInclude(m => m.Genre)
@@ -145,12 +145,12 @@ namespace CineVision.Services
                 .Include(s => s.Hall).ThenInclude(h => h.Status)
                 .Include(s => s.ReservationSeats)
                 .FirstOrDefaultAsync(s => s.Id == id)
-                ?? throw new KeyNotFoundException($"Screening with id {id} not found.");
+                ?? throw new KeyNotFoundException($"Projection with id {id} not found.");
 
             return MapToResponse(entity, includeMovie: true, includeHall: true, includeSeatStats: true, includePoster: true);
         }
 
-        public override async Task<ScreeningResponse> InsertAsync(ScreeningInsertRequest request)
+        public override async Task<ProjectionResponse> InsertAsync(ProjectionInsertRequest request)
         {
             var validationResult = await _insertValidator.ValidateAsync(request);
             if (!validationResult.IsValid)
@@ -167,7 +167,7 @@ namespace CineVision.Services
             var endTime = request.StartTime.AddMinutes(movie.DurationMinutes);
             await EnsureNoHallOverlapAsync(request.HallId, request.StartTime, endTime);
 
-            var entity = new Screening
+            var entity = new Projection
             {
                 MovieId = request.MovieId,
                 HallId = request.HallId,
@@ -179,7 +179,7 @@ namespace CineVision.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            _dbContext.Screenings.Add(entity);
+            _dbContext.Projections.Add(entity);
             await _dbContext.SaveChangesAsync();
 
             await _analyticsNotifier.NotifyAnalyticsChangedAsync();
@@ -187,7 +187,7 @@ namespace CineVision.Services
             return await GetByIdAsync(entity.Id);
         }
 
-        public override async Task<ScreeningResponse> UpdateAsync(int id, ScreeningUpdateRequest request)
+        public override async Task<ProjectionResponse> UpdateAsync(int id, ProjectionUpdateRequest request)
         {
             var validationResult = await _updateValidator.ValidateAsync(request);
             if (!validationResult.IsValid)
@@ -195,8 +195,8 @@ namespace CineVision.Services
                 throw new ValidationException(validationResult.Errors);
             }
 
-            var entity = await _dbContext.Screenings.FindAsync(id)
-                ?? throw new KeyNotFoundException($"Screening with id {id} not found.");
+            var entity = await _dbContext.Projections.FindAsync(id)
+                ?? throw new KeyNotFoundException($"Projection with id {id} not found.");
 
             var movie = await _dbContext.Movies.FindAsync(request.MovieId)
                 ?? throw new ClientException($"Movie {request.MovieId} was not found.");
@@ -205,7 +205,7 @@ namespace CineVision.Services
             await EnsureLanguageExistsAsync(request.LanguageId);
 
             var endTime = request.StartTime.AddMinutes(movie.DurationMinutes);
-            await EnsureNoHallOverlapAsync(request.HallId, request.StartTime, endTime, excludeScreeningId: id);
+            await EnsureNoHallOverlapAsync(request.HallId, request.StartTime, endTime, excludeProjectionId: id);
 
             entity.MovieId = request.MovieId;
             entity.HallId = request.HallId;
@@ -225,17 +225,17 @@ namespace CineVision.Services
 
         public async Task<CascadeDeleteImpactResponse> GetDeleteImpactAsync(int id)
         {
-            var screening = await _dbContext.Screenings
+            var projection = await _dbContext.Projections
                 .AsNoTracking()
                 .Include(s => s.Movie)
                 .FirstOrDefaultAsync(s => s.Id == id)
-                ?? throw new KeyNotFoundException($"Screening with id {id} not found.");
+                ?? throw new KeyNotFoundException($"Projection with id {id} not found.");
 
-            var graph = await BookingGraphCascade.CountForScreeningIdsAsync(_dbContext, new[] { id });
-            var display = screening.Movie?.Title ?? $"Projection #{id}";
+            var graph = await BookingGraphCascade.CountForProjectionIdsAsync(_dbContext, new[] { id });
+            var display = projection.Movie?.Title ?? $"Projection #{id}";
 
             return BookingGraphCascade.BuildImpact(
-                screening.Id,
+                projection.Id,
                 display,
                 ("Reservations", graph.ReservationCount),
                 ("Reserved seats", graph.ReservationSeatCount));
@@ -243,7 +243,7 @@ namespace CineVision.Services
 
         public override async Task DeleteAsync(int id)
         {
-            // Hard cascade: refund paid bookings, notify customers, then delete children then screening.
+            // Hard cascade: refund paid bookings, notify customers, then delete children then projection.
             await using var tx = await _dbContext.Database.BeginTransactionAsync();
             List<Reservation> toNotify;
             string movieTitle;
@@ -251,33 +251,33 @@ namespace CineVision.Services
             DateTime startTime;
             try
             {
-                var screening = await _dbContext.Screenings
+                var projection = await _dbContext.Projections
                     .FirstOrDefaultAsync(s => s.Id == id)
-                    ?? throw new KeyNotFoundException($"Screening with id {id} not found.");
+                    ?? throw new KeyNotFoundException($"Projection with id {id} not found.");
 
                 var reservations = await _dbContext.Reservations
-                    .Where(r => r.ScreeningId == id)
+                    .Where(r => r.ProjectionId == id)
                     .Include(r => r.User)
                     .Include(r => r.ReservationSeats)
                     .ThenInclude(rs => rs.Seat)
                     .ToListAsync();
 
                 movieTitle = await _dbContext.Movies
-                    .Where(m => m.Id == screening.MovieId)
+                    .Where(m => m.Id == projection.MovieId)
                     .Select(m => m.Title)
                     .FirstOrDefaultAsync() ?? string.Empty;
 
                 hallName = await _dbContext.Halls
-                    .Where(h => h.Id == screening.HallId)
+                    .Where(h => h.Id == projection.HallId)
                     .Select(h => h.Name)
                     .FirstOrDefaultAsync() ?? string.Empty;
 
-                startTime = screening.StartTime;
+                startTime = projection.StartTime;
                 toNotify = reservations
                     .Where(r => r.Status != ReservationStatus.Cancelled)
                     .ToList();
 
-                await BookingGraphCascade.RemoveScreeningsAsync(
+                await BookingGraphCascade.RemoveProjectionsAsync(
                     _dbContext,
                     new[] { id },
                     paymentIntentId => StripeRefundHelper.TryRefundAsync(_stripeSecretKey, paymentIntentId, _logger));
@@ -299,20 +299,20 @@ namespace CineVision.Services
                 {
                     await _notificationService.CreateAsync(
                         reservation.UserId,
-                        "Screening cancelled",
+                        "Projection cancelled",
                         $"Your booking {reservation.ReservationNumber} was cancelled because the projection was removed by staff.",
                         NotificationType.Cancellation);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to notify user {UserId} about screening cancellation.", reservation.UserId);
+                    _logger.LogWarning(ex, "Failed to notify user {UserId} about projection cancellation.", reservation.UserId);
                 }
             }
 
             await _analyticsNotifier.NotifyAnalyticsChangedAsync();
         }
 
-        /// <summary>Hall status must allow screenings.</summary>
+        /// <summary>Hall status must allow projections.</summary>
         private async Task EnsureHallCanBeScheduledAsync(int hallId)
         {
             var hall = await _dbContext.Halls
@@ -320,7 +320,7 @@ namespace CineVision.Services
                 .FirstOrDefaultAsync(h => h.Id == hallId)
                 ?? throw new ClientException($"Hall {hallId} was not found.");
 
-            if (hall.Status?.AllowsScreenings != true)
+            if (hall.Status?.AllowsProjections != true)
             {
                 var statusName = hall.Status?.Name ?? "unknown";
                 throw new ClientException(
@@ -342,28 +342,28 @@ namespace CineVision.Services
             }
         }
 
-        /// <summary>No other active screening in the same hall may overlap [start, end).</summary>
+        /// <summary>No other active projection in the same hall may overlap [start, end).</summary>
         private async Task EnsureNoHallOverlapAsync(
             int hallId,
             DateTime start,
             DateTime end,
-            int? excludeScreeningId = null)
+            int? excludeProjectionId = null)
         {
             if (end <= start)
             {
-                throw new ClientException("Screening end time must be after start time.");
+                throw new ClientException("Projection end time must be after start time.");
             }
 
-            var query = _dbContext.Screenings.AsNoTracking()
+            var query = _dbContext.Projections.AsNoTracking()
                 .Where(s =>
                     s.HallId == hallId &&
                     s.IsActive &&
                     s.StartTime < end &&
                     s.EndTime > start);
 
-            if (excludeScreeningId.HasValue)
+            if (excludeProjectionId.HasValue)
             {
-                query = query.Where(s => s.Id != excludeScreeningId.Value);
+                query = query.Where(s => s.Id != excludeProjectionId.Value);
             }
 
             var conflict = await query
@@ -373,7 +373,7 @@ namespace CineVision.Services
             if (conflict != null)
             {
                 throw new ClientException(
-                    $"Hall already has screening #{conflict.Id} from {conflict.StartTime:u} to {conflict.EndTime:u} (UTC). Choose another time or hall.");
+                    $"Hall already has projection #{conflict.Id} from {conflict.StartTime:u} to {conflict.EndTime:u} (UTC). Choose another time or hall.");
             }
         }
 
@@ -439,21 +439,21 @@ namespace CineVision.Services
             }
         }
 
-        public async Task<List<ScreeningSeatResponse>> GetSeatsAsync(int screeningId)
+        public async Task<List<ProjectionSeatResponse>> GetSeatsAsync(int projectionId)
         {
-            var screening = await _dbContext.Screenings
+            var projection = await _dbContext.Projections
                 .AsNoTracking()
                 .Include(s => s.Hall).ThenInclude(h => h.Seats)
-                .FirstOrDefaultAsync(s => s.Id == screeningId)
-                ?? throw new KeyNotFoundException($"Screening with id {screeningId} not found.");
+                .FirstOrDefaultAsync(s => s.Id == projectionId)
+                ?? throw new KeyNotFoundException($"Projection with id {projectionId} not found.");
 
             var takenSeatIds = await _dbContext.ReservationSeats
-                .Where(rs => rs.ScreeningId == screeningId)
+                .Where(rs => rs.ProjectionId == projectionId)
                 .Select(rs => rs.SeatId)
                 .ToListAsync();
 
             var taken = new HashSet<int>(takenSeatIds);
-            var seatsById = screening.Hall.Seats.ToDictionary(s => s.Id);
+            var seatsById = projection.Hall.Seats.ToDictionary(s => s.Id);
 
             foreach (var takenId in takenSeatIds.ToList())
             {
@@ -462,7 +462,7 @@ namespace CineVision.Services
                     taken.Add(takenSeat.PartnerSeatId.Value);
                 }
 
-                foreach (var seat in screening.Hall.Seats)
+                foreach (var seat in projection.Hall.Seats)
                 {
                     if (seat.PartnerSeatId == takenId)
                     {
@@ -471,14 +471,14 @@ namespace CineVision.Services
                 }
             }
 
-            return screening.Hall.Seats
+            return projection.Hall.Seats
                 .Where(s => s.IsActive)
                 .OrderBy(s => s.RowLabel)
                 .ThenBy(s => s.SeatNumber)
                 .Select(s =>
                 {
                     var spots = s.SeatType == SeatType.Couple ? 2 : 1;
-                    return new ScreeningSeatResponse
+                    return new ProjectionSeatResponse
                     {
                         SeatId = s.Id,
                         HallId = s.HallId,
@@ -489,20 +489,20 @@ namespace CineVision.Services
                         SpotsOccupied = spots,
                         IsTaken = taken.Contains(s.Id) ||
                                   (s.PartnerSeatId.HasValue && taken.Contains(s.PartnerSeatId.Value)),
-                        Price = screening.BasePrice * spots
+                        Price = projection.BasePrice * spots
                     };
                 })
                 .ToList();
         }
 
-        private ScreeningResponse MapToResponse(
-            Screening s,
+        private ProjectionResponse MapToResponse(
+            Projection s,
             bool includeMovie,
             bool includeHall,
             bool includeSeatStats,
             bool includePoster = false)
         {
-            var response = _mapper.Map<ScreeningResponse>(s);
+            var response = _mapper.Map<ProjectionResponse>(s);
             response.MovieTitle = s.Movie?.Title ?? string.Empty;
             response.MoviePosterBase64 = includePoster ? s.Movie?.PosterImageBase64 : null;
             response.HallName = s.Hall?.Name ?? string.Empty;

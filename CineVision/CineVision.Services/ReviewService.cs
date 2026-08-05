@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -120,7 +120,7 @@ namespace CineVision.Services
             if (!await UserCanReviewMovieAsync(userId, request.MovieId))
             {
                 throw new ClientException(
-                    "You can only review a movie after attending a paid or confirmed screening.");
+                    "You can only review a movie after attending a paid or confirmed projection.");
             }
 
             var review = new Review
@@ -202,11 +202,11 @@ namespace CineVision.Services
                 .Where(r =>
                     r.UserId == userId
                     && (r.Status == ReservationStatus.Paid || r.Status == ReservationStatus.Confirmed)
-                    && r.Screening.EndTime <= now)
+                    && r.Projection.EndTime <= now)
                 .Select(r => new
                 {
-                    r.Screening.MovieId,
-                    MovieTitle = r.Screening.Movie != null ? r.Screening.Movie.Title : string.Empty
+                    r.Projection.MovieId,
+                    MovieTitle = r.Projection.Movie != null ? r.Projection.Movie.Title : string.Empty
                 })
                 .Distinct()
                 .ToListAsync();
@@ -241,8 +241,8 @@ namespace CineVision.Services
                 .AnyAsync(r =>
                     r.UserId == userId
                     && (r.Status == ReservationStatus.Paid || r.Status == ReservationStatus.Confirmed)
-                    && r.Screening.MovieId == movieId
-                    && r.Screening.EndTime <= now);
+                    && r.Projection.MovieId == movieId
+                    && r.Projection.EndTime <= now);
         }
 
         private static ReviewResponse MapToResponse(Review r)

@@ -1,4 +1,4 @@
-﻿import 'package:cinevision_mobile/core/constants/app_colors.dart';
+import 'package:cinevision_mobile/core/constants/app_colors.dart';
 import 'package:cinevision_mobile/core/constants/app_defaults.dart';
 import 'package:cinevision_mobile/core/widgets/cine_app_bar.dart';
 import 'package:cinevision_mobile/providers/review_provider.dart';
@@ -123,7 +123,7 @@ class _MovieReviewPageState extends State<MovieReviewPage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Share your experience after the screening',
+                'Share your experience after the projection',
                 style: TextStyle(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),

@@ -3,31 +3,31 @@ import 'package:cinevision_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:cinevision_desktop/models/hall.dart';
 import 'package:cinevision_desktop/models/lookup_item.dart';
 import 'package:cinevision_desktop/models/movie.dart';
-import 'package:cinevision_desktop/models/screening.dart';
+import 'package:cinevision_desktop/models/projection.dart';
 import 'package:cinevision_desktop/models/search_result.dart';
 import 'package:cinevision_desktop/providers/hall_provider.dart';
 import 'package:cinevision_desktop/providers/language_provider.dart';
 import 'package:cinevision_desktop/providers/movie_provider.dart';
-import 'package:cinevision_desktop/providers/screening_provider.dart';
+import 'package:cinevision_desktop/providers/projection_provider.dart';
 import 'package:cinevision_desktop/utils/api_client_exception.dart';
 import 'package:cinevision_desktop/utils/field_validators.dart';
 import 'package:cinevision_desktop/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class ScreeningListScreen extends StatefulWidget {
-  const ScreeningListScreen({super.key, this.editId, this.onEditConsumed});
+class ProjectionListScreen extends StatefulWidget {
+  const ProjectionListScreen({super.key, this.editId, this.onEditConsumed});
 
   final int? editId;
   final VoidCallback? onEditConsumed;
 
   @override
-  State<ScreeningListScreen> createState() => _ScreeningListScreenState();
+  State<ProjectionListScreen> createState() => _ProjectionListScreenState();
 }
 
-class _ScreeningListScreenState extends State<ScreeningListScreen> {
-  late ScreeningProvider _provider;
-  List<Screening> _items = [];
+class _ProjectionListScreenState extends State<ProjectionListScreen> {
+  late ProjectionProvider _provider;
+  List<Projection> _items = [];
   List<Movie> _movies = [];
   List<Hall> _halls = [];
   List<LookupItem> _languages = [];
@@ -44,7 +44,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
   @override
   void initState() {
     super.initState();
-    _provider = context.read<ScreeningProvider>();
+    _provider = context.read<ProjectionProvider>();
     _load();
     // Loaded up front so the toolbar can grey out "Add Projection" with a reason
     // instead of letting the form open and failing afterwards.
@@ -118,7 +118,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
       return _halls.isEmpty
           ? 'Add at least one hall before creating a projection.'
           : 'Every hall is currently unavailable. A projection needs a hall whose '
-              'status allows screenings.';
+              'status allows projections.';
     }
     return null;
   }
@@ -139,14 +139,14 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
     return null;
   }
 
-  String? _moviePoster(Screening s) {
+  String? _moviePoster(Projection s) {
     if (s.moviePosterBase64 != null && s.moviePosterBase64!.isNotEmpty) {
       return s.moviePosterBase64;
     }
     return _movieById(s.movieId)?.posterImageBase64;
   }
 
-  List<Screening> get _filtered {
+  List<Projection> get _filtered {
     final q = _searchController.text.toLowerCase();
     if (q.isEmpty) return _items;
     return _items.where((s) {
@@ -158,17 +158,17 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
   void _maybeOpenEdit() {
     final id = widget.editId;
     if (id == null) return;
-    Screening? screening;
+    Projection? projection;
     for (final s in _items) {
       if (s.id == id) {
-        screening = s;
+        projection = s;
         break;
       }
     }
     widget.onEditConsumed?.call();
-    if (screening != null && mounted) {
+    if (projection != null && mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showDialog(screening: screening);
+        if (mounted) _showDialog(projection: projection);
       });
     }
   }
@@ -252,7 +252,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
     );
   }
 
-  DataRow _buildRow(Screening s) {
+  DataRow _buildRow(Projection s) {
     return DataRow(cells: [
       DataCell(Row(children: [
         posterThumbnail(_moviePoster(s)),
@@ -268,7 +268,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
           icon: Icons.edit_outlined,
           color: AppColors.blue,
           tooltip: 'Edit',
-          onPressed: () => _showDialog(screening: s),
+          onPressed: () => _showDialog(projection: s),
         ),
         ActionIconButton(
           icon: Icons.delete_outline,
@@ -280,7 +280,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
     ]);
   }
 
-  Future<void> _delete(Screening s) async {
+  Future<void> _delete(Projection s) async {
     if (s.id == null) return;
 
     Map<String, dynamic>? impact;
@@ -315,24 +315,24 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
     }
   }
 
-  Future<void> _showDialog({Screening? screening}) async {
+  Future<void> _showDialog({Projection? projection}) async {
     await _ensurePickerData();
     if (!mounted) return;
 
-    final blockedReason = screening == null ? _newProjectionBlockedReason : null;
+    final blockedReason = projection == null ? _newProjectionBlockedReason : null;
     if (blockedReason != null) {
       showAppSnackBar(context, blockedReason, isError: true);
       return;
     }
 
-    int? movieId = screening?.movieId;
-    int? hallId = screening?.hallId;
-    int? languageId = screening?.languageId;
-    final localStart = screening?.startTime?.toLocal();
+    int? movieId = projection?.movieId;
+    int? hallId = projection?.hallId;
+    int? languageId = projection?.languageId;
+    final localStart = projection?.startTime?.toLocal();
     DateTime? date = localStart;
     TimeOfDay? time =
         localStart != null ? TimeOfDay.fromDateTime(localStart) : null;
-    final priceCtrl = TextEditingController(text: '${screening?.basePrice ?? ''}');
+    final priceCtrl = TextEditingController(text: '${projection?.basePrice ?? ''}');
     bool submitting = false;
     final formKey = GlobalKey<FormState>();
 
@@ -340,8 +340,8 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => FormDialogShell(
-          title: screening == null ? 'Add New Projection' : 'Edit Projection',
-          submitLabel: screening == null ? 'Add Projection' : 'Save',
+          title: projection == null ? 'Add New Projection' : 'Edit Projection',
+          submitLabel: projection == null ? 'Add Projection' : 'Save',
           isSubmitting: submitting,
           onSubmit: () async {
             if (!(formKey.currentState?.validate() ?? false)) return;
@@ -355,7 +355,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
               selectedTime.hour,
               selectedTime.minute,
             );
-            final entity = Screening(
+            final entity = Projection(
               movieId: movieId,
               hallId: hallId,
               languageId: languageId,
@@ -364,14 +364,14 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
               isActive: true,
             );
             try {
-              if (screening == null) {
+              if (projection == null) {
                 await _provider.insert(entity.toJson());
               } else {
-                await _provider.update(screening.id!, entity.toJson());
+                await _provider.update(projection.id!, entity.toJson());
               }
               if (context.mounted) {
                 Navigator.pop(context);
-                showAppSnackBar(this.context, screening == null ? 'Projection added' : 'Projection updated');
+                showAppSnackBar(this.context, projection == null ? 'Projection added' : 'Projection updated');
                 await _load();
               }
             } on ApiClientException catch (e) {
@@ -405,7 +405,7 @@ class _ScreeningListScreenState extends State<ScreeningListScreen> {
                 decoration: InputDecoration(
                   labelText: 'Hall',
                   helperText: _halls.any((h) => !hallIsActive(h))
-                      ? 'Halls whose status blocks screenings cannot be selected.'
+                      ? 'Halls whose status blocks projections cannot be selected.'
                       : null,
                 ),
                 // Unavailable halls stay visible but greyed out, with the status

@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace CineVision.Services.Database
 {
-    /// <summary>Reference table: content/age rating of a movie (G, PG, PG-13, Râ€¦).</summary>
+    /// <summary>Reference table: content/age rating of a movie (G, PG, PG-13, R…).</summary>
     public class AgeRating : ILookupEntity
     {
         [Key]

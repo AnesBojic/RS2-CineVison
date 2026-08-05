@@ -1,4 +1,4 @@
-﻿using CineVision.Model.Responses;
+using CineVision.Model.Responses;
 using CineVision.Model.SearchObjects;
 using CineVision.Services.Database;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +22,7 @@ namespace CineVision.Services
 
         /// <summary>
         /// Applies search filters against an <see cref="IQueryable{T}"/> so EF can push them to SQL.
-        /// Override in derived classes â€” do not materialize the query here.
+        /// Override in derived classes — do not materialize the query here.
         /// </summary>
         protected abstract IQueryable<TEntity> ApplyFilters(IQueryable<TEntity> query, TSearch? search);
 
@@ -54,7 +54,7 @@ namespace CineVision.Services
                 query = query.OrderBy(sortBy);
             }
 
-            // Filter â†’ count â†’ sort â†’ page, then materialize. Loading the whole table first is
+            // Filter → count → sort → page, then materialize. Loading the whole table first is
             // exactly what the performance rules forbid.
             query = query
                 .Skip((search.Page!.Value - 1) * search.PageSize!.Value)

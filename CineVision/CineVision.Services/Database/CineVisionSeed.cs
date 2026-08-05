@@ -1,4 +1,4 @@
-﻿using CineVision.Model;
+using CineVision.Model;
 using CineVision.Services.MovieStateMachine;
 using Microsoft.EntityFrameworkCore;
 using CineVision.Model.Enums;
@@ -17,7 +17,7 @@ namespace CineVision.Services.Database
             SeedHalls(modelBuilder);
             SeedSeats(modelBuilder);
             SeedMovies(modelBuilder);
-            SeedScreenings(modelBuilder);
+            SeedProjections(modelBuilder);
             SeedRoles(modelBuilder);
             SeedUsers(modelBuilder);
             SeedUserRoles(modelBuilder);
@@ -51,9 +51,9 @@ namespace CineVision.Services.Database
         private void SeedHallStatuses(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<HallStatus>().HasData(
-                new { Id = 1, Name = "Active", Description = "Hall is open and can host projections", AllowsScreenings = true, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 2, Name = "Maintenance", Description = "Temporarily closed for maintenance", AllowsScreenings = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 3, Name = "Inactive", Description = "Permanently out of use", AllowsScreenings = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+                new { Id = 1, Name = "Active", Description = "Hall is open and can host projections", AllowsProjections = true, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 2, Name = "Maintenance", Description = "Temporarily closed for maintenance", AllowsProjections = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 3, Name = "Inactive", Description = "Permanently out of use", AllowsProjections = false, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
             );
         }
 
@@ -141,11 +141,11 @@ namespace CineVision.Services.Database
             );
         }
 
-        private void SeedScreenings(ModelBuilder modelBuilder)
+        private void SeedProjections(ModelBuilder modelBuilder)
         {
             // 1–5: historical (July 2026) — keep for seeded reservations/analytics.
             // 7–17: upcoming (Aug–Oct 2026). Id 6 skipped — may already exist from admin-created data.
-            modelBuilder.Entity<Screening>().HasData(
+            modelBuilder.Entity<Projection>().HasData(
                 new { Id = 1, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 18, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 5, 19, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 2, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 21, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 5, 22, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 3, MovieId = 2, HallId = 1, StartTime = new DateTime(2026, 7, 6, 17, 30, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 6, 19, 8, 0, DateTimeKind.Utc), BasePrice = 7.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
@@ -220,7 +220,7 @@ namespace CineVision.Services.Database
 
         private void SeedReservations(ModelBuilder modelBuilder)
         {
-            // customer1 (4) and customer2 (5) purchased tickets across screenings for analytics testing.
+            // customer1 (4) and customer2 (5) purchased tickets across projections for analytics testing.
             // Paid reservations drive revenue; Confirmed counts toward tickets/occupancy without revenue.
             modelBuilder.Entity<Reservation>().HasData(
                 new
@@ -231,7 +231,7 @@ namespace CineVision.Services.Database
                     Status = ReservationStatus.Paid,
                     TotalAmount = 25.50m,
                     UserId = 4,
-                    ScreeningId = 1,
+                    ProjectionId = 1,
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
                     PaymentTransactionId = (string?)"pi_seed_001",
@@ -249,7 +249,7 @@ namespace CineVision.Services.Database
                     Status = ReservationStatus.Paid,
                     TotalAmount = 17.00m,
                     UserId = 5,
-                    ScreeningId = 1,
+                    ProjectionId = 1,
                     CustomerName = (string?)"Eve Customer",
                     CustomerEmail = (string?)"customer2@gmail.com",
                     PaymentTransactionId = (string?)"pi_seed_002",
@@ -267,7 +267,7 @@ namespace CineVision.Services.Database
                     Status = ReservationStatus.Paid,
                     TotalAmount = 21.00m,
                     UserId = 4,
-                    ScreeningId = 3,
+                    ProjectionId = 3,
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
                     PaymentTransactionId = (string?)"pi_seed_003",
@@ -285,7 +285,7 @@ namespace CineVision.Services.Database
                     Status = ReservationStatus.Paid,
                     TotalAmount = 36.00m,
                     UserId = 5,
-                    ScreeningId = 4,
+                    ProjectionId = 4,
                     CustomerName = (string?)"Eve Customer",
                     CustomerEmail = (string?)"customer2@gmail.com",
                     PaymentTransactionId = (string?)"pi_seed_004",
@@ -303,7 +303,7 @@ namespace CineVision.Services.Database
                     Status = ReservationStatus.Paid,
                     TotalAmount = 40.00m,
                     UserId = 4,
-                    ScreeningId = 5,
+                    ProjectionId = 5,
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
                     PaymentTransactionId = (string?)"pi_seed_005",
@@ -321,7 +321,7 @@ namespace CineVision.Services.Database
                     Status = ReservationStatus.Paid,
                     TotalAmount = 34.00m,
                     UserId = 5,
-                    ScreeningId = 2,
+                    ProjectionId = 2,
                     CustomerName = (string?)"Eve Customer",
                     CustomerEmail = (string?)"customer2@gmail.com",
                     PaymentTransactionId = (string?)"pi_seed_006",
@@ -339,7 +339,7 @@ namespace CineVision.Services.Database
                     Status = ReservationStatus.Confirmed,
                     TotalAmount = 8.50m,
                     UserId = 4,
-                    ScreeningId = 2,
+                    ProjectionId = 2,
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
                     PaymentTransactionId = (string?)null,
@@ -378,34 +378,34 @@ namespace CineVision.Services.Database
         private void SeedReservationSeats(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<ReservationSeat>().HasData(
-                // R-SEED-001 â€” Edge of Tomorrow, 18:00 screening
-                new { Id = 1, ReservationId = 1, SeatId = 1, ScreeningId = 1, Price = 8.50m },
-                new { Id = 2, ReservationId = 1, SeatId = 2, ScreeningId = 1, Price = 8.50m },
-                new { Id = 3, ReservationId = 1, SeatId = 3, ScreeningId = 1, Price = 8.50m },
-                // R-SEED-002 â€” same screening, different seats
-                new { Id = 4, ReservationId = 2, SeatId = 4, ScreeningId = 1, Price = 8.50m },
-                new { Id = 5, ReservationId = 2, SeatId = 5, ScreeningId = 1, Price = 8.50m },
-                // R-SEED-003 â€” The Last Laugh, afternoon slot
-                new { Id = 6, ReservationId = 3, SeatId = 20, ScreeningId = 3, Price = 7.00m },
-                new { Id = 7, ReservationId = 3, SeatId = 21, ScreeningId = 3, Price = 7.00m },
-                new { Id = 8, ReservationId = 3, SeatId = 22, ScreeningId = 3, Price = 7.00m },
-                // R-SEED-004 â€” Silent Shadows, Hall B
-                new { Id = 9, ReservationId = 4, SeatId = 41, ScreeningId = 4, Price = 9.00m },
-                new { Id = 10, ReservationId = 4, SeatId = 42, ScreeningId = 4, Price = 9.00m },
-                new { Id = 11, ReservationId = 4, SeatId = 43, ScreeningId = 4, Price = 9.00m },
-                new { Id = 12, ReservationId = 4, SeatId = 44, ScreeningId = 4, Price = 9.00m },
-                // R-SEED-005 â€” Final Strike
-                new { Id = 13, ReservationId = 5, SeatId = 47, ScreeningId = 5, Price = 10.00m },
-                new { Id = 14, ReservationId = 5, SeatId = 48, ScreeningId = 5, Price = 10.00m },
-                new { Id = 15, ReservationId = 5, SeatId = 49, ScreeningId = 5, Price = 10.00m },
-                new { Id = 16, ReservationId = 5, SeatId = 50, ScreeningId = 5, Price = 10.00m },
-                // R-SEED-006 â€” Edge of Tomorrow, 21:00 screening (9 PM time slot)
-                new { Id = 17, ReservationId = 6, SeatId = 9, ScreeningId = 2, Price = 8.50m },
-                new { Id = 18, ReservationId = 6, SeatId = 10, ScreeningId = 2, Price = 8.50m },
-                new { Id = 19, ReservationId = 6, SeatId = 11, ScreeningId = 2, Price = 8.50m },
-                new { Id = 20, ReservationId = 6, SeatId = 12, ScreeningId = 2, Price = 8.50m },
-                // R-SEED-007 â€” unpaid hold on late screening
-                new { Id = 21, ReservationId = 7, SeatId = 13, ScreeningId = 2, Price = 8.50m }
+                // R-SEED-001 — Edge of Tomorrow, 18:00 projection
+                new { Id = 1, ReservationId = 1, SeatId = 1, ProjectionId = 1, Price = 8.50m },
+                new { Id = 2, ReservationId = 1, SeatId = 2, ProjectionId = 1, Price = 8.50m },
+                new { Id = 3, ReservationId = 1, SeatId = 3, ProjectionId = 1, Price = 8.50m },
+                // R-SEED-002 — same projection, different seats
+                new { Id = 4, ReservationId = 2, SeatId = 4, ProjectionId = 1, Price = 8.50m },
+                new { Id = 5, ReservationId = 2, SeatId = 5, ProjectionId = 1, Price = 8.50m },
+                // R-SEED-003 — The Last Laugh, afternoon slot
+                new { Id = 6, ReservationId = 3, SeatId = 20, ProjectionId = 3, Price = 7.00m },
+                new { Id = 7, ReservationId = 3, SeatId = 21, ProjectionId = 3, Price = 7.00m },
+                new { Id = 8, ReservationId = 3, SeatId = 22, ProjectionId = 3, Price = 7.00m },
+                // R-SEED-004 — Silent Shadows, Hall B
+                new { Id = 9, ReservationId = 4, SeatId = 41, ProjectionId = 4, Price = 9.00m },
+                new { Id = 10, ReservationId = 4, SeatId = 42, ProjectionId = 4, Price = 9.00m },
+                new { Id = 11, ReservationId = 4, SeatId = 43, ProjectionId = 4, Price = 9.00m },
+                new { Id = 12, ReservationId = 4, SeatId = 44, ProjectionId = 4, Price = 9.00m },
+                // R-SEED-005 — Final Strike
+                new { Id = 13, ReservationId = 5, SeatId = 47, ProjectionId = 5, Price = 10.00m },
+                new { Id = 14, ReservationId = 5, SeatId = 48, ProjectionId = 5, Price = 10.00m },
+                new { Id = 15, ReservationId = 5, SeatId = 49, ProjectionId = 5, Price = 10.00m },
+                new { Id = 16, ReservationId = 5, SeatId = 50, ProjectionId = 5, Price = 10.00m },
+                // R-SEED-006 — Edge of Tomorrow, 21:00 projection (9 PM time slot)
+                new { Id = 17, ReservationId = 6, SeatId = 9, ProjectionId = 2, Price = 8.50m },
+                new { Id = 18, ReservationId = 6, SeatId = 10, ProjectionId = 2, Price = 8.50m },
+                new { Id = 19, ReservationId = 6, SeatId = 11, ProjectionId = 2, Price = 8.50m },
+                new { Id = 20, ReservationId = 6, SeatId = 12, ProjectionId = 2, Price = 8.50m },
+                // R-SEED-007 — unpaid hold on late projection
+                new { Id = 21, ReservationId = 7, SeatId = 13, ProjectionId = 2, Price = 8.50m }
             );
         }
     }

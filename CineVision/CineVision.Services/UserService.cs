@@ -1,4 +1,4 @@
-﻿using CineVision.Model;
+using CineVision.Model;
 using CineVision.Model.Messages;
 using CineVision.Common.Services.CryptoService;
 using CineVision.Model.Access;
@@ -190,7 +190,7 @@ namespace CineVision.Services
                 throw new KeyNotFoundException($"User with id {id} not found.");
             }
 
-            // Oversized photos break desktop edit/email payloads â€” drop them so the user stays manageable.
+            // Oversized photos break desktop edit/email payloads — drop them so the user stays manageable.
             await ClearOversizedProfileImageIfNeededAsync(user);
 
             return MapUserResponse(user);
@@ -431,7 +431,7 @@ namespace CineVision.Services
                 throw new KeyNotFoundException($"User with id {id} not found.");
             }
 
-            // Reservations / reviews use Restrict â€” remove related details so admin delete succeeds.
+            // Reservations / reviews use Restrict — remove related details so admin delete succeeds.
             var reservations = await _dbContext.Reservations
                 .Include(r => r.ReservationSeats)
                 .Where(r => r.UserId == id)

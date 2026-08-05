@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,48 +11,48 @@ using CineVision.Model.Enums;
 namespace CineVision.Services;
 
 /// <summary>
-/// Shared cascade helpers for deleting screenings and their booking graph (children first).
+/// Shared cascade helpers for deleting projections and their booking graph (children first).
 /// </summary>
 internal static class BookingGraphCascade
 {
-    public sealed record ScreeningGraphCounts(
-        int ScreeningCount,
+    public sealed record ProjectionGraphCounts(
+        int ProjectionCount,
         int ReservationCount,
         int ReservationSeatCount);
 
-    public static async Task<ScreeningGraphCounts> CountForScreeningIdsAsync(
+    public static async Task<ProjectionGraphCounts> CountForProjectionIdsAsync(
         CineVisionDbContext db,
-        IReadOnlyCollection<int> screeningIds)
+        IReadOnlyCollection<int> projectionIds)
     {
-        if (screeningIds.Count == 0)
+        if (projectionIds.Count == 0)
         {
-            return new ScreeningGraphCounts(0, 0, 0);
+            return new ProjectionGraphCounts(0, 0, 0);
         }
 
         var reservationCount = await db.Reservations
-            .CountAsync(r => screeningIds.Contains(r.ScreeningId));
+            .CountAsync(r => projectionIds.Contains(r.ProjectionId));
         var seatCount = await db.ReservationSeats
-            .CountAsync(rs => screeningIds.Contains(rs.ScreeningId));
+            .CountAsync(rs => projectionIds.Contains(rs.ProjectionId));
 
-        return new ScreeningGraphCounts(screeningIds.Count, reservationCount, seatCount);
+        return new ProjectionGraphCounts(projectionIds.Count, reservationCount, seatCount);
     }
 
     /// <summary>
-    /// Refunds paid bookings when possible, then hard-deletes reservation seats, reservations, and screenings.
+    /// Refunds paid bookings when possible, then hard-deletes reservation seats, reservations, and projections.
     /// Caller owns the transaction / SaveChanges.
     /// </summary>
-    public static async Task RemoveScreeningsAsync(
+    public static async Task RemoveProjectionsAsync(
         CineVisionDbContext db,
-        IReadOnlyCollection<int> screeningIds,
+        IReadOnlyCollection<int> projectionIds,
         Func<string, Task>? tryRefundPaidAsync = null)
     {
-        if (screeningIds.Count == 0)
+        if (projectionIds.Count == 0)
         {
             return;
         }
 
         var reservations = await db.Reservations
-            .Where(r => screeningIds.Contains(r.ScreeningId))
+            .Where(r => projectionIds.Contains(r.ProjectionId))
             .Include(r => r.ReservationSeats)
             .ToListAsync();
 
@@ -72,7 +72,7 @@ internal static class BookingGraphCascade
         if (seatRows.Count == 0)
         {
             seatRows = await db.ReservationSeats
-                .Where(rs => screeningIds.Contains(rs.ScreeningId))
+                .Where(rs => projectionIds.Contains(rs.ProjectionId))
                 .ToListAsync();
         }
 
@@ -86,12 +86,12 @@ internal static class BookingGraphCascade
             db.Reservations.RemoveRange(reservations);
         }
 
-        var screenings = await db.Screenings
-            .Where(s => screeningIds.Contains(s.Id))
+        var projections = await db.Projections
+            .Where(s => projectionIds.Contains(s.Id))
             .ToListAsync();
-        if (screenings.Count > 0)
+        if (projections.Count > 0)
         {
-            db.Screenings.RemoveRange(screenings);
+            db.Projections.RemoveRange(projections);
         }
     }
 

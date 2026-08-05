@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using CineVision.Model.Exceptions;
@@ -232,19 +232,19 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         var movie = await _dbContext.Movies.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id)
             ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
 
-        var screeningIds = await _dbContext.Screenings
+        var projectionIds = await _dbContext.Projections
             .AsNoTracking()
             .Where(s => s.MovieId == id)
             .Select(s => s.Id)
             .ToListAsync();
 
-        var graph = await BookingGraphCascade.CountForScreeningIdsAsync(_dbContext, screeningIds);
+        var graph = await BookingGraphCascade.CountForProjectionIdsAsync(_dbContext, projectionIds);
         var reviewCount = await _dbContext.Reviews.CountAsync(r => r.MovieId == id);
 
         return BookingGraphCascade.BuildImpact(
             movie.Id,
             movie.Title,
-            ("Projections", graph.ScreeningCount),
+            ("Projections", graph.ProjectionCount),
             ("Reservations", graph.ReservationCount),
             ("Reserved seats", graph.ReservationSeatCount),
             ("Reviews", reviewCount));
@@ -258,14 +258,14 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         await using var tx = await _dbContext.Database.BeginTransactionAsync();
         try
         {
-            var screeningIds = await _dbContext.Screenings
+            var projectionIds = await _dbContext.Projections
                 .Where(s => s.MovieId == id)
                 .Select(s => s.Id)
                 .ToListAsync();
 
-            await BookingGraphCascade.RemoveScreeningsAsync(
+            await BookingGraphCascade.RemoveProjectionsAsync(
                 _dbContext,
-                screeningIds,
+                projectionIds,
                 paymentIntentId => StripeRefundHelper.TryRefundAsync(_stripeSecretKey, paymentIntentId, _logger));
 
             // Reviews cascade via FK; remove root after children that Restrict.

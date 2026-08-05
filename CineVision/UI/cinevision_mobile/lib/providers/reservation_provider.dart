@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:cinevision_mobile/models/reservation.dart';
 import 'package:cinevision_mobile/providers/base_provider.dart';
@@ -16,13 +16,13 @@ class ReservationProvider extends BaseProvider<Reservation> {
   }
 
   Future<Map<String, String>> createPaymentIntent({
-    required int screeningId,
+    required int projectionId,
     required List<int> seatIds,
   }) async {
     final uri = Uri.parse('${BaseProvider.baseUrl}Reservations/CreatePaymentIntent');
     final headers = createHeaders();
     final body = jsonEncode({
-      'screeningId': screeningId,
+      'projectionId': projectionId,
       'seatIds': seatIds,
     });
     final response = await http.post(uri, headers: headers, body: body);
@@ -39,7 +39,7 @@ class ReservationProvider extends BaseProvider<Reservation> {
   }
 
   Future<Reservation> reserve({
-    required int screeningId,
+    required int projectionId,
     required List<int> seatIds,
     String? paymentIntentId,
     String? customerName,
@@ -48,7 +48,7 @@ class ReservationProvider extends BaseProvider<Reservation> {
     final uri = Uri.parse('${BaseProvider.baseUrl}Reservations/Reserve');
     final headers = createHeaders();
     final body = jsonEncode({
-      'screeningId': screeningId,
+      'projectionId': projectionId,
       'seatIds': seatIds,
       if (paymentIntentId != null) 'paymentIntentId': paymentIntentId,
       if (customerName != null && customerName.isNotEmpty)

@@ -1,12 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CineVision.Services.Database
 {
     /// <summary>
     /// A single seat reserved within a reservation. A unique index on
-    /// (ScreeningId, SeatId) guarantees the same physical seat cannot be booked
-    /// twice for the same screening (double-booking prevention).
+    /// (ProjectionId, SeatId) guarantees the same physical seat cannot be booked
+    /// twice for the same projection (double-booking prevention).
     /// </summary>
     public class ReservationSeat
     {
@@ -25,11 +25,11 @@ namespace CineVision.Services.Database
         [ForeignKey("SeatId")]
         public Seat Seat { get; set; } = null!;
 
-        // Screening the seat is reserved for (denormalised for the uniqueness constraint)
-        public int ScreeningId { get; set; }
+        // Projection the seat is reserved for (denormalised for the uniqueness constraint)
+        public int ProjectionId { get; set; }
 
-        [ForeignKey("ScreeningId")]
-        public Screening Screening { get; set; } = null!;
+        [ForeignKey("ProjectionId")]
+        public Projection Projection { get; set; } = null!;
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal Price { get; set; }

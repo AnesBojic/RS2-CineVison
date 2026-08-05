@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace CineVision.Services.Database
 {
@@ -34,9 +34,9 @@ namespace CineVision.Services.Database
                 .HasForeignKey(m => m.LanguageId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            modelBuilder.Entity<Screening>()
+            modelBuilder.Entity<Projection>()
                 .HasOne(s => s.Language)
-                .WithMany(l => l.Screenings)
+                .WithMany(l => l.Projections)
                 .HasForeignKey(s => s.LanguageId)
                 .OnDelete(DeleteBehavior.SetNull);
 
@@ -72,16 +72,16 @@ namespace CineVision.Services.Database
                 .HasForeignKey(s => s.PartnerSeatId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Screening relationships. Restrict deletes to avoid multiple cascade paths.
-            modelBuilder.Entity<Screening>()
+            // Projection relationships. Restrict deletes to avoid multiple cascade paths.
+            modelBuilder.Entity<Projection>()
                 .HasOne(s => s.Movie)
-                .WithMany(m => m.Screenings)
+                .WithMany(m => m.Projections)
                 .HasForeignKey(s => s.MovieId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<Screening>()
+            modelBuilder.Entity<Projection>()
                 .HasOne(s => s.Hall)
-                .WithMany(h => h.Screenings)
+                .WithMany(h => h.Projections)
                 .HasForeignKey(s => s.HallId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -93,9 +93,9 @@ namespace CineVision.Services.Database
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Reservation>()
-                .HasOne(r => r.Screening)
+                .HasOne(r => r.Projection)
                 .WithMany(s => s.Reservations)
-                .HasForeignKey(r => r.ScreeningId)
+                .HasForeignKey(r => r.ProjectionId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Reservation>()
@@ -124,14 +124,14 @@ namespace CineVision.Services.Database
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<ReservationSeat>()
-                .HasOne(rs => rs.Screening)
+                .HasOne(rs => rs.Projection)
                 .WithMany(s => s.ReservationSeats)
-                .HasForeignKey(rs => rs.ScreeningId)
+                .HasForeignKey(rs => rs.ProjectionId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Double-booking prevention: a seat can only be taken once per screening.
+            // Double-booking prevention: a seat can only be taken once per projection.
             modelBuilder.Entity<ReservationSeat>()
-                .HasIndex(rs => new { rs.ScreeningId, rs.SeatId })
+                .HasIndex(rs => new { rs.ProjectionId, rs.SeatId })
                 .IsUnique();
 
             // Review relationships. Deleting a movie removes its reviews; the author FK is
@@ -153,7 +153,7 @@ namespace CineVision.Services.Database
                 .HasIndex(r => new { r.UserId, r.MovieId })
                 .IsUnique();
 
-            // Userâ€“role join
+            // User–role join
             modelBuilder.Entity<UserRole>()
                 .HasOne(ur => ur.User)
                 .WithMany(ur => ur.UserRoles)

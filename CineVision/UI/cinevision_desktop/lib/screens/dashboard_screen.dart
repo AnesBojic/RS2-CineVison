@@ -3,12 +3,12 @@ import 'package:cinevision_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:cinevision_desktop/models/analytics.dart';
 import 'package:cinevision_desktop/models/hall.dart';
 import 'package:cinevision_desktop/models/movie.dart';
-import 'package:cinevision_desktop/models/screening.dart';
+import 'package:cinevision_desktop/models/projection.dart';
 import 'package:cinevision_desktop/models/search_result.dart';
 import 'package:cinevision_desktop/providers/analytics_provider.dart';
 import 'package:cinevision_desktop/providers/hall_provider.dart';
 import 'package:cinevision_desktop/providers/movie_provider.dart';
-import 'package:cinevision_desktop/providers/screening_provider.dart';
+import 'package:cinevision_desktop/providers/projection_provider.dart';
 import 'package:cinevision_desktop/utils/api_client_exception.dart';
 import 'package:cinevision_desktop/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
@@ -28,11 +28,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final _scrollController = ScrollController();
   final _movieFilterCtrl = TextEditingController();
   final _hallFilterCtrl = TextEditingController();
-  final _screeningFilterCtrl = TextEditingController();
+  final _projectionFilterCtrl = TextEditingController();
   DashboardStats? _dashboard;
   List<Movie> _movies = [];
   List<Hall> _halls = [];
-  List<Screening> _screenings = [];
+  List<Projection> _projections = [];
 
   List<Movie> get _filteredMovies {
     final q = _movieFilterCtrl.text.trim().toLowerCase();
@@ -50,10 +50,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return _halls.where((h) => (h.name ?? '').toLowerCase().contains(q)).toList();
   }
 
-  List<Screening> get _filteredScreenings {
-    final q = _screeningFilterCtrl.text.trim().toLowerCase();
-    if (q.isEmpty) return _screenings;
-    return _screenings.where((s) {
+  List<Projection> get _filteredProjections {
+    final q = _projectionFilterCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return _projections;
+    return _projections.where((s) {
       final movie = (_movieById(s.movieId)?.title ?? s.movieTitle ?? '').toLowerCase();
       final hall = (s.hallName ?? '').toLowerCase();
       return movie.contains(q) || hall.contains(q);
@@ -73,7 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _scrollController.dispose();
     _movieFilterCtrl.dispose();
     _hallFilterCtrl.dispose();
-    _screeningFilterCtrl.dispose();
+    _projectionFilterCtrl.dispose();
     super.dispose();
   }
 
@@ -89,13 +89,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final movieProvider = context.read<MovieProvider>();
     final hallProvider = context.read<HallProvider>();
-    final screeningProvider = context.read<ScreeningProvider>();
+    final projectionProvider = context.read<ProjectionProvider>();
     final analyticsProvider = context.read<AnalyticsProvider>();
 
     DashboardStats? dashboard;
     List<Movie> movies = [];
     List<Hall> halls = [];
-    List<Screening> screenings = [];
+    List<Projection> projections = [];
     String? analyticsError;
 
     try {
@@ -105,7 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           includePoster: true,
         ),
         hallProvider.get(filter: {'pageSize': 5}),
-        screeningProvider.get(
+        projectionProvider.get(
           filter: {
             'pageSize': 6,
             'includeSeatStats': false,
@@ -114,10 +114,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ]);
       movies = (catalog[0] as SearchResult<Movie>).items ?? [];
       halls = (catalog[1] as SearchResult<Hall>).items ?? [];
-      screenings = (catalog[2] as SearchResult<Screening>).items ?? [];
+      projections = (catalog[2] as SearchResult<Projection>).items ?? [];
       movies.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
       halls.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
-      screenings.sort((a, b) {
+      projections.sort((a, b) {
         final at = a.startTime ?? DateTime.fromMillisecondsSinceEpoch(0);
         final bt = b.startTime ?? DateTime.fromMillisecondsSinceEpoch(0);
         return bt.compareTo(at);
@@ -143,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _dashboard = dashboard;
       _movies = movies;
       _halls = halls;
-      _screenings = screenings;
+      _projections = projections;
       _loading = false;
     });
 
@@ -201,7 +201,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         StatCard(
           icon: Icons.tv,
           iconColor: AppColors.primary,
-          value: '${d?.totalScreenings ?? 0}',
+          value: '${d?.totalProjections ?? 0}',
           label: 'Total Screens',
           subtitle: 'Active',
         ),
@@ -217,7 +217,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         StatCard(
           icon: Icons.calendar_today,
           iconColor: AppColors.blue,
-          value: '${d?.upcomingScreenings ?? 0}',
+          value: '${d?.upcomingProjections ?? 0}',
           label: 'Total Upcoming',
           subtitle: 'This Month',
         ),
@@ -319,9 +319,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _deleteScreening(Screening s) async {
+  Future<void> _deleteProjection(Projection s) async {
     if (s.id == null) return;
-    final provider = context.read<ScreeningProvider>();
+    final provider = context.read<ProjectionProvider>();
     Map<String, dynamic>? impact;
     try {
       impact = await provider.getDeleteImpact(s.id!);
@@ -486,7 +486,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               SearchField(
-                controller: _screeningFilterCtrl,
+                controller: _projectionFilterCtrl,
                 hint: 'Filter projections',
                 width: 200,
                 onChanged: (_) => setState(() {}),
@@ -501,7 +501,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         DataCard(
-          emptyMessage: _filteredScreenings.isEmpty ? 'No projections scheduled' : null,
+          emptyMessage: _filteredProjections.isEmpty ? 'No projections scheduled' : null,
           child: StyledDataTable(
             columns: const [
               DataColumn(label: Text('Movie')),
@@ -511,7 +511,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               DataColumn(label: Text('Price')),
               actionsDataColumn,
             ],
-            rows: _filteredScreenings.map((s) {
+            rows: _filteredProjections.map((s) {
               final movie = _movieById(s.movieId);
               final poster = movie?.posterImageBase64 ?? s.moviePosterBase64;
               return DataRow(cells: [
@@ -529,7 +529,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 DataCell(Text(formatCurrency(s.basePrice))),
                 DataCell(_actionsCell(
                   onEdit: () => widget.onNavigate?.call(3, editId: s.id),
-                  onDelete: () => _deleteScreening(s),
+                  onDelete: () => _deleteProjection(s),
                 )),
               ]);
             }).toList(),

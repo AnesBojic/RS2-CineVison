@@ -10,7 +10,7 @@ import 'package:cinevision_mobile/providers/auth_provider.dart';
 import 'package:cinevision_mobile/providers/genre_provider.dart';
 import 'package:cinevision_mobile/providers/movie_provider.dart';
 import 'package:cinevision_mobile/providers/notification_provider.dart';
-import 'package:cinevision_mobile/providers/screening_provider.dart';
+import 'package:cinevision_mobile/providers/projection_provider.dart';
 import 'package:cinevision_mobile/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -26,7 +26,7 @@ class MoviesPage extends StatefulWidget {
 class _MoviesPageState extends State<MoviesPage> {
   late MovieProvider _movieProvider;
   late GenreProvider _genreProvider;
-  late ScreeningProvider _screeningProvider;
+  late ProjectionProvider _projectionProvider;
 
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
@@ -58,7 +58,7 @@ class _MoviesPageState extends State<MoviesPage> {
     super.initState();
     _movieProvider = context.read<MovieProvider>();
     _genreProvider = context.read<GenreProvider>();
-    _screeningProvider = context.read<ScreeningProvider>();
+    _projectionProvider = context.read<ProjectionProvider>();
     _scrollController.addListener(_onScroll);
     _loadData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -140,10 +140,10 @@ class _MoviesPageState extends State<MoviesPage> {
 
     try {
       final auth = context.read<AuthProvider>();
-      // Persist search even when there are no upcoming screenings (otherwise history stays empty).
+      // Persist search even when there are no upcoming projections (otherwise history stays empty).
       await _recordSearchIfNeeded(auth);
 
-      // Genres and upcoming-screening ids do not depend on each other.
+      // Genres and upcoming-projection ids do not depend on each other.
       final boot = await Future.wait([
         _genreProvider.get(filter: {'pageSize': 100}),
         _fetchUpcomingMovieIds(),
@@ -203,7 +203,7 @@ class _MoviesPageState extends State<MoviesPage> {
     int? totalCount;
 
     while (true) {
-      final result = await _screeningProvider.get(
+      final result = await _projectionProvider.get(
         filter: {
           'onlyUpcoming': true,
           'page': page,

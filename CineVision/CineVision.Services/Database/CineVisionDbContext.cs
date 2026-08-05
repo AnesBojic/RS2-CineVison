@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace CineVision.Services.Database
 {
@@ -17,7 +17,7 @@ namespace CineVision.Services.Database
         public DbSet<Movie> Movies { get; set; }
         public DbSet<Hall> Halls { get; set; }
         public DbSet<Seat> Seats { get; set; }
-        public DbSet<Screening> Screenings { get; set; }
+        public DbSet<Projection> Projections { get; set; }
         public DbSet<Reservation> Reservations { get; set; }
         public DbSet<ReservationSeat> ReservationSeats { get; set; }
         public DbSet<Review> Reviews { get; set; }

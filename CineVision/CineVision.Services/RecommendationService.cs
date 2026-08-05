@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -84,7 +84,7 @@ namespace CineVision.Services
             var reservationCounts = await _dbContext.ReservationSeats
                 .AsNoTracking()
                 .Where(rs => rs.Reservation.Status != ReservationStatus.Cancelled)
-                .GroupBy(rs => rs.Screening.MovieId)
+                .GroupBy(rs => rs.Projection.MovieId)
                 .Select(g => new { MovieId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.MovieId, x => (double)x.Count);
 
@@ -98,7 +98,7 @@ namespace CineVision.Services
             var reservedMovieIds = (await _dbContext.Reservations
                     .AsNoTracking()
                     .Where(r => r.UserId == userId && r.Status != ReservationStatus.Cancelled)
-                    .Select(r => r.Screening.MovieId)
+                    .Select(r => r.Projection.MovieId)
                     .Distinct()
                     .ToListAsync())
                 .ToHashSet();
@@ -140,7 +140,7 @@ namespace CineVision.Services
 
             int maxGenreWeight = genreWeights.Count > 0 ? genreWeights.Values.Max() : 0;
 
-            // ---- search-history profile (must be used â€” rows are written on search) -
+            // ---- search-history profile (must be used — rows are written on search) -
             var recentSearches = await _dbContext.SearchHistories
                 .AsNoTracking()
                 .Where(s => s.UserId == userId)
@@ -184,7 +184,7 @@ namespace CineVision.Services
 
             int maxSearchGenreWeight = searchGenreWeights.Count > 0 ? searchGenreWeights.Values.Max() : 0;
 
-            // Cold start only when the user has nothing personal to go on â€” including no searches.
+            // Cold start only when the user has nothing personal to go on — including no searches.
             bool coldStart = !hasContentProfile && !hasSearchProfile;
 
             // ---- per-candidate raw signals ---------------------------------------

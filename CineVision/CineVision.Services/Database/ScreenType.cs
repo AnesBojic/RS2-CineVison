@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace CineVision.Services.Database
 {
-    /// <summary>Reference table: screen technology a hall provides (Standard, IMAX, 3Dâ€¦).</summary>
+    /// <summary>Reference table: screen technology a hall provides (Standard, IMAX, 3D…).</summary>
     public class ScreenType : ILookupEntity
     {
         [Key]

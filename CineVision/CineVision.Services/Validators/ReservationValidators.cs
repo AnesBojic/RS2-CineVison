@@ -1,4 +1,4 @@
-﻿using CineVision.Model.Requests;
+using CineVision.Model.Requests;
 using FluentValidation;
 
 namespace CineVision.Services.Validators
@@ -7,8 +7,8 @@ namespace CineVision.Services.Validators
     {
         public ReservationCreateValidator()
         {
-            RuleFor(x => x.ScreeningId)
-                .GreaterThan(0).WithMessage("Screening is required.");
+            RuleFor(x => x.ProjectionId)
+                .GreaterThan(0).WithMessage("Projection is required.");
 
             RuleFor(x => x.SeatIds)
                 .NotNull().WithMessage("No seats were selected.")
@@ -38,8 +38,8 @@ namespace CineVision.Services.Validators
     {
         public CreatePaymentIntentValidator()
         {
-            RuleFor(x => x.ScreeningId)
-                .GreaterThan(0).WithMessage("Screening is required.");
+            RuleFor(x => x.ProjectionId)
+                .GreaterThan(0).WithMessage("Projection is required.");
 
             RuleFor(x => x.SeatIds)
                 .NotNull().WithMessage("No seats were selected.")

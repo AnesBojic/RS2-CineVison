@@ -1,4 +1,4 @@
-﻿using CineVision.Model;
+using CineVision.Model;
 using CineVision.Model.Requests;
 using CineVision.Model.Responses;
 using CineVision.Model.SearchObjects;
@@ -17,7 +17,7 @@ public class ReservationsController : BaseReadController<ReservationResponse, Re
     }
 
     /// <summary>
-    /// Reserves seats for a screening. When paymentIntentId is set, Stripe is verified server-side before Paid.
+    /// Reserves seats for a projection. When paymentIntentId is set, Stripe is verified server-side before Paid.
     /// </summary>
     [HttpPost("Reserve")]
     [ProducesResponseType(typeof(ReservationResponse), StatusCodes.Status200OK)]

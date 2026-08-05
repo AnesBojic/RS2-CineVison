@@ -101,12 +101,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Future<Reservation> _submitReservation({
     required ReservationProvider reservationProvider,
-    required int screeningId,
+    required int projectionId,
     required List<int> seatIds,
     String? paymentIntentId,
   }) {
     return reservationProvider.reserve(
-      screeningId: screeningId,
+      projectionId: projectionId,
       seatIds: seatIds,
       paymentIntentId: paymentIntentId,
       customerName: _nameController.text.trim(),
@@ -118,8 +118,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
     if (!await _ensureLoggedIn()) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final screening = booking.screening;
-    if (screening?.id == null || booking.selectedSeatIds.isEmpty) return;
+    final projection = booking.projection;
+    if (projection?.id == null || booking.selectedSeatIds.isEmpty) return;
 
     final total = booking.totalPrice;
     final confirmed = await showDialog<bool>(
@@ -143,14 +143,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
     try {
       final reservationProvider = context.read<ReservationProvider>();
       final seatIds = booking.selectedSeatIds.toList();
-      final screeningId = screening!.id!;
+      final projectionId = projection!.id!;
 
       Reservation reservation;
 
       if (supportsStripePaymentSheet) {
         try {
           final intentData = await reservationProvider.createPaymentIntent(
-            screeningId: screeningId,
+            projectionId: projectionId,
             seatIds: seatIds,
           );
 
@@ -170,7 +170,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
           reservation = await _submitReservation(
             reservationProvider: reservationProvider,
-            screeningId: screeningId,
+            projectionId: projectionId,
             seatIds: seatIds,
             paymentIntentId: paymentIntentId,
           );
@@ -184,7 +184,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         // Demo checkout for Windows / desktop / web (matches mockup disclaimer).
         reservation = await _submitReservation(
           reservationProvider: reservationProvider,
-          screeningId: screeningId,
+          projectionId: projectionId,
           seatIds: seatIds,
         );
       }
@@ -230,10 +230,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return Consumer<BookingProvider>(
       builder: (context, booking, _) {
         final movie = booking.movie;
-        final screening = booking.screening;
+        final projection = booking.projection;
         final total = booking.totalPrice;
 
-        if (movie == null || screening == null) {
+        if (movie == null || projection == null) {
           return Scaffold(
             appBar: const CineAppBar(title: 'Checkout', showBack: true),
             body: const Center(child: Text('No booking in progress')),
@@ -304,7 +304,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 children: [
                   _SummaryCard(
                     movie: movie,
-                    screening: screening,
+                    projection: projection,
                     seatCount: booking.selectedSeatCount,
                     total: total,
                     formatDate: _formatDate,
@@ -411,7 +411,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.movie,
-    required this.screening,
+    required this.projection,
     required this.seatCount,
     required this.total,
     required this.formatDate,
@@ -419,7 +419,7 @@ class _SummaryCard extends StatelessWidget {
   });
 
   final dynamic movie;
-  final dynamic screening;
+  final dynamic projection;
   final int seatCount;
   final num total;
   final String Function(DateTime) formatDate;
@@ -456,19 +456,19 @@ class _SummaryCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     _InfoRow(
                       icon: Icons.calendar_today,
-                      text: screening.startTime != null
-                          ? formatDate(screening.startTime!.toLocal())
+                      text: projection.startTime != null
+                          ? formatDate(projection.startTime!.toLocal())
                           : '',
                     ),
                     _InfoRow(
                       icon: Icons.access_time,
-                      text: screening.startTime != null
-                          ? formatTime(screening.startTime!.toLocal())
+                      text: projection.startTime != null
+                          ? formatTime(projection.startTime!.toLocal())
                           : '',
                     ),
                     _InfoRow(
                       icon: Icons.location_on_outlined,
-                      text: screening.hallName ?? '',
+                      text: projection.hallName ?? '',
                     ),
                     _InfoRow(
                       icon: Icons.confirmation_number_outlined,

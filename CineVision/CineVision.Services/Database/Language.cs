@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -29,6 +29,6 @@ namespace CineVision.Services.Database
 
         public ICollection<Movie> Movies { get; set; } = new List<Movie>();
 
-        public ICollection<Screening> Screenings { get; set; } = new List<Screening>();
+        public ICollection<Projection> Projections { get; set; } = new List<Projection>();
     }
 }

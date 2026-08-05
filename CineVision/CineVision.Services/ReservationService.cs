@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -88,8 +88,8 @@ namespace CineVision.Services
 
             IQueryable<Reservation> query = _dbContext.Reservations
                 .AsNoTracking()
-                .Include(r => r.Screening).ThenInclude(s => s.Movie)
-                .Include(r => r.Screening).ThenInclude(s => s.Hall)
+                .Include(r => r.Projection).ThenInclude(s => s.Movie)
+                .Include(r => r.Projection).ThenInclude(s => s.Hall)
                 .Include(r => r.ReservationSeats).ThenInclude(rs => rs.Seat);
 
             // Customers see only their bookings; Admin/Staff can manage all.
@@ -102,9 +102,9 @@ namespace CineVision.Services
             {
                 query = query.Where(r => (int)r.Status == search.Status.Value);
             }
-            if (search.ScreeningId.HasValue)
+            if (search.ProjectionId.HasValue)
             {
-                query = query.Where(r => r.ScreeningId == search.ScreeningId.Value);
+                query = query.Where(r => r.ProjectionId == search.ProjectionId.Value);
             }
 
             int? totalCount = null;
@@ -141,8 +141,8 @@ namespace CineVision.Services
         {
             var query = _dbContext.Reservations
                 .AsNoTracking()
-                .Include(r => r.Screening).ThenInclude(s => s.Movie)
-                .Include(r => r.Screening).ThenInclude(s => s.Hall)
+                .Include(r => r.Projection).ThenInclude(s => s.Movie)
+                .Include(r => r.Projection).ThenInclude(s => s.Hall)
                 .Include(r => r.ReservationSeats).ThenInclude(rs => rs.Seat)
                 .Where(r => r.Id == id);
 
@@ -167,7 +167,7 @@ namespace CineVision.Services
                 ? null
                 : request.PaymentIntentId.Trim();
 
-            // Idempotent confirm: same PaymentIntent already booked Ã¢â€ â€™ return existing reservation.
+            // Idempotent confirm: same PaymentIntent already booked → return existing reservation.
             if (paymentIntentId != null)
             {
                 var existing = await FindByPaymentIntentAsync(paymentIntentId);
@@ -185,28 +185,28 @@ namespace CineVision.Services
             await using var tx = await _dbContext.Database.BeginTransactionAsync();
             try
             {
-                var screening = await _dbContext.Screenings
+                var projection = await _dbContext.Projections
                     .Include(s => s.Hall).ThenInclude(h => h.Seats)
-                    .FirstOrDefaultAsync(s => s.Id == request.ScreeningId)
-                    ?? throw new ClientException($"Screening {request.ScreeningId} was not found.");
+                    .FirstOrDefaultAsync(s => s.Id == request.ProjectionId)
+                    ?? throw new ClientException($"Projection {request.ProjectionId} was not found.");
 
-                if (!screening.IsActive)
+                if (!projection.IsActive)
                 {
-                    throw new ClientException("This screening is not available for booking.");
+                    throw new ClientException("This projection is not available for booking.");
                 }
 
-                if (screening.StartTime <= DateTime.UtcNow)
+                if (projection.StartTime <= DateTime.UtcNow)
                 {
-                    throw new ClientException("This screening has already started.");
+                    throw new ClientException("This projection has already started.");
                 }
 
-                var hallSeats = screening.Hall.Seats.ToDictionary(s => s.Id);
+                var hallSeats = projection.Hall.Seats.ToDictionary(s => s.Id);
                 var expandedSeatIds = new HashSet<int>();
                 foreach (var seatId in seatIds)
                 {
                     if (!hallSeats.TryGetValue(seatId, out var seat) || !seat.IsActive)
                     {
-                        throw new ClientException($"Seat {seatId} does not belong to this screening's hall or is not available.");
+                        throw new ClientException($"Seat {seatId} does not belong to this projection's hall or is not available.");
                     }
 
                     expandedSeatIds.Add(seatId);
@@ -224,7 +224,7 @@ namespace CineVision.Services
                 var expandedList = expandedSeatIds.ToList();
 
                 var alreadyTaken = await _dbContext.ReservationSeats
-                    .Where(rs => rs.ScreeningId == screening.Id && expandedList.Contains(rs.SeatId))
+                    .Where(rs => rs.ProjectionId == projection.Id && expandedList.Contains(rs.SeatId))
                     .AnyAsync();
 
                 if (alreadyTaken)
@@ -232,7 +232,7 @@ namespace CineVision.Services
                     throw new ClientException("One or more of the selected seats are already reserved.");
                 }
 
-                var total = screening.BasePrice * expandedList.Count;
+                var total = projection.BasePrice * expandedList.Count;
                 var initialStatus = ReservationStatus.Confirmed;
 
                 if (paymentIntentId != null)
@@ -240,7 +240,7 @@ namespace CineVision.Services
                     await VerifyStripePaymentSucceededAsync(
                         paymentIntentId,
                         expectedAmountCents: (long)(total * 100),
-                        expectedScreeningId: screening.Id,
+                        expectedProjectionId: projection.Id,
                         expectedUserId: userId);
                     initialStatus = ReservationStatus.Paid;
                 }
@@ -253,7 +253,7 @@ namespace CineVision.Services
                 var reservation = new Reservation
                 {
                     UserId = userId,
-                    ScreeningId = screening.Id,
+                    ProjectionId = projection.Id,
                     ReservationDate = DateTime.UtcNow,
                     ReservationNumber = $"R-{DateTime.UtcNow:yyyyMMddHHmmss}-{userId}",
                     Status = initialStatus,
@@ -269,8 +269,8 @@ namespace CineVision.Services
                     reservation.ReservationSeats.Add(new ReservationSeat
                     {
                         SeatId = seatId,
-                        ScreeningId = screening.Id,
-                        Price = screening.BasePrice
+                        ProjectionId = projection.Id,
+                        Price = projection.BasePrice
                     });
                 }
 
@@ -328,7 +328,7 @@ namespace CineVision.Services
         private async Task VerifyStripePaymentSucceededAsync(
             string paymentIntentId,
             long expectedAmountCents,
-            int expectedScreeningId,
+            int expectedProjectionId,
             int expectedUserId)
         {
             ConfigureStripe();
@@ -366,11 +366,11 @@ namespace CineVision.Services
             // Metadata is set when the intent is created; reject mismatched intents.
             if (intent.Metadata != null)
             {
-                if (intent.Metadata.TryGetValue("screeningId", out var metaScreening) &&
-                    int.TryParse(metaScreening, out var screeningId) &&
-                    screeningId != expectedScreeningId)
+                if (intent.Metadata.TryGetValue("projectionId", out var metaProjection) &&
+                    int.TryParse(metaProjection, out var projectionId) &&
+                    projectionId != expectedProjectionId)
                 {
-                    throw new ClientException("Payment was created for a different screening.");
+                    throw new ClientException("Payment was created for a different projection.");
                 }
 
                 if (intent.Metadata.TryGetValue("userId", out var metaUser) &&
@@ -413,7 +413,7 @@ namespace CineVision.Services
                     $"Reservation: {response.ReservationNumber}\n" +
                     $"Movie: {response.MovieTitle}\n" +
                     $"Hall: {response.HallName}\n" +
-                    $"Start: {response.ScreeningStartTime:yyyy-MM-dd HH:mm} UTC\n" +
+                    $"Start: {response.ProjectionStartTime:yyyy-MM-dd HH:mm} UTC\n" +
                     $"Seats: {seats}\n" +
                     $"Total: {response.TotalAmount:0.00}\n\n" +
                     $"Thank you for booking with CineVision.";
@@ -446,7 +446,7 @@ namespace CineVision.Services
 
             var reservation = await _dbContext.Reservations
                 .Include(r => r.ReservationSeats)
-                .Include(r => r.Screening)
+                .Include(r => r.Projection)
                 .FirstOrDefaultAsync(r => r.Id == id)
                 ?? throw new KeyNotFoundException($"Reservation with id {id} not found.");
 
@@ -463,10 +463,10 @@ namespace CineVision.Services
             ReservationStatusTransitions.EnsureCanTransition(reservation.Status, ReservationStatus.Cancelled);
 
             // Customers must cancel at least 4h before showtime; Admin/Staff may cancel anytime.
-            if (!isStaff && reservation.Screening.StartTime <= DateTime.UtcNow.AddHours(4))
+            if (!isStaff && reservation.Projection.StartTime <= DateTime.UtcNow.AddHours(4))
             {
                 throw new ClientException(
-                    "Tickets can only be refunded at least 4 hours before the screening starts.");
+                    "Tickets can only be refunded at least 4 hours before the projection starts.");
             }
 
             // Paid Stripe bookings: refund money before freeing seats.
@@ -486,7 +486,7 @@ namespace CineVision.Services
                 cancelledByUserId: userId,
                 cancellationReason: reason);
 
-            // Free the seats so they become available again for the screening.
+            // Free the seats so they become available again for the projection.
             // Analytics read from ReservationSeats, so occupancy/revenue update automatically.
             _dbContext.ReservationSeats.RemoveRange(reservation.ReservationSeats);
             await _dbContext.SaveChangesAsync();
@@ -556,29 +556,29 @@ namespace CineVision.Services
 
             var seatIds = request.SeatIds.Distinct().ToList();
 
-            var screening = await _dbContext.Screenings
+            var projection = await _dbContext.Projections
                 .Include(s => s.Hall).ThenInclude(h => h.Seats)
-                .FirstOrDefaultAsync(s => s.Id == request.ScreeningId)
-                ?? throw new ClientException($"Screening {request.ScreeningId} was not found.");
+                .FirstOrDefaultAsync(s => s.Id == request.ProjectionId)
+                ?? throw new ClientException($"Projection {request.ProjectionId} was not found.");
 
-            if (!screening.IsActive)
+            if (!projection.IsActive)
             {
-                throw new ClientException("This screening is not available for booking.");
+                throw new ClientException("This projection is not available for booking.");
             }
 
-            var hallSeats = screening.Hall.Seats.ToDictionary(s => s.Id);
+            var hallSeats = projection.Hall.Seats.ToDictionary(s => s.Id);
             var expandedCount = 0;
             foreach (var seatId in seatIds)
             {
                 if (!hallSeats.TryGetValue(seatId, out var seat) || !seat.IsActive)
                 {
-                    throw new ClientException($"Seat {seatId} does not belong to this screening's hall or is not available.");
+                    throw new ClientException($"Seat {seatId} does not belong to this projection's hall or is not available.");
                 }
 
                 expandedCount += seat.SeatType == SeatType.Couple ? 2 : 1;
             }
 
-            var total = screening.BasePrice * expandedCount;
+            var total = projection.BasePrice * expandedCount;
             var amountCents = (long)(total * 100);
 
             ConfigureStripe();
@@ -592,7 +592,7 @@ namespace CineVision.Services
                 },
                 Metadata = new Dictionary<string, string>
                 {
-                    ["screeningId"] = screening.Id.ToString(),
+                    ["projectionId"] = projection.Id.ToString(),
                     ["userId"] = userId.ToString(),
                     ["seatCount"] = expandedCount.ToString()
                 }
@@ -628,7 +628,7 @@ namespace CineVision.Services
                 await NotifySafeAsync(
                     response.UserId,
                     "Payment confirmed",
-                    $"Payment received for {response.ReservationNumber} â€” {response.MovieTitle}. Seats are reserved.",
+                    $"Payment received for {response.ReservationNumber} — {response.MovieTitle}. Seats are reserved.",
                     NotificationType.Payment);
             }
             else
@@ -666,12 +666,12 @@ namespace CineVision.Services
                 UserId = r.UserId,
                 CustomerName = r.CustomerName,
                 CustomerEmail = r.CustomerEmail,
-                ScreeningId = r.ScreeningId,
-                MovieId = r.Screening?.MovieId ?? 0,
-                MovieTitle = r.Screening?.Movie?.Title ?? string.Empty,
-                HallName = r.Screening?.Hall?.Name ?? string.Empty,
-                ScreeningStartTime = r.Screening?.StartTime ?? default,
-                ScreeningEndTime = r.Screening?.EndTime ?? default,
+                ProjectionId = r.ProjectionId,
+                MovieId = r.Projection?.MovieId ?? 0,
+                MovieTitle = r.Projection?.Movie?.Title ?? string.Empty,
+                HallName = r.Projection?.Hall?.Name ?? string.Empty,
+                ProjectionStartTime = r.Projection?.StartTime ?? default,
+                ProjectionEndTime = r.Projection?.EndTime ?? default,
                 PaymentTransactionId = r.PaymentTransactionId,
                 PaymentDate = r.PaymentDate,
                 CancelledByUserId = r.CancelledByUserId,

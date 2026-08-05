@@ -1,4 +1,4 @@
-﻿namespace CineVision.Model.Responses
+namespace CineVision.Model.Responses
 {
     public class HallResponse
     {
@@ -12,7 +12,7 @@
         public string StatusName { get; set; } = string.Empty;
 
         /// <summary>Copied from the hall's status so clients can tell whether it can be scheduled.</summary>
-        public bool AllowsScreenings { get; set; }
+        public bool AllowsProjections { get; set; }
 
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
@@ -22,7 +22,7 @@
         /// <summary>Total bookable seats in the hall.</summary>
         public int Capacity { get; set; }
 
-        /// <summary>Number of seat rows (A, B, Câ€¦).</summary>
+        /// <summary>Number of seat rows (A, B, C…).</summary>
         public int RowCount { get; set; }
 
         /// <summary>Number of seat columns per row.</summary>

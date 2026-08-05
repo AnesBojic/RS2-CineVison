@@ -1,7 +1,7 @@
-﻿namespace CineVision.Model.Requests;
+namespace CineVision.Model.Requests;
 
 /// <summary>
-/// Public self-registration payload. Role / privilege fields are intentionally absent â€”
+/// Public self-registration payload. Role / privilege fields are intentionally absent —
 /// new accounts are always created as Customer.
 /// </summary>
 public class UserRegisterRequest

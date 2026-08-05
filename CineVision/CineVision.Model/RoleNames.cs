@@ -1,4 +1,4 @@
-﻿namespace CineVision.Model;
+namespace CineVision.Model;
 
 /// <summary>
 /// Canonical application role names. Use these instead of magic strings in
@@ -10,7 +10,7 @@ public static class RoleNames
     public const string Staff = "Staff";
     public const string Customer = "Customer";
 
-    /// <summary>Admin or Staff â€” desktop / management operations.</summary>
+    /// <summary>Admin or Staff — desktop / management operations.</summary>
     public const string AdminStaff = Admin + "," + Staff;
 
     /// <summary>Any authenticated app role.</summary>

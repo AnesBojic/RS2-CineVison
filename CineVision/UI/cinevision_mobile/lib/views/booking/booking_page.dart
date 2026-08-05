@@ -6,13 +6,13 @@ import 'package:cinevision_mobile/core/utils/date_formatters.dart';
 import 'package:cinevision_mobile/core/widgets/cine_app_bar.dart';
 import 'package:cinevision_mobile/models/movie.dart';
 import 'package:cinevision_mobile/models/review.dart';
-import 'package:cinevision_mobile/models/screening.dart';
-import 'package:cinevision_mobile/models/screening_seat.dart';
+import 'package:cinevision_mobile/models/projection.dart';
+import 'package:cinevision_mobile/models/projection_seat.dart';
 import 'package:cinevision_mobile/models/search_result.dart';
 import 'package:cinevision_mobile/providers/booking_provider.dart';
 import 'package:cinevision_mobile/providers/movie_provider.dart';
 import 'package:cinevision_mobile/providers/review_provider.dart';
-import 'package:cinevision_mobile/providers/screening_provider.dart';
+import 'package:cinevision_mobile/providers/projection_provider.dart';
 import 'package:cinevision_mobile/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -28,21 +28,21 @@ class BookingPage extends StatefulWidget {
 }
 
 class _BookingPageState extends State<BookingPage> {
-  late ScreeningProvider _screeningProvider;
+  late ProjectionProvider _projectionProvider;
   late BookingProvider _bookingProvider;
 
   Movie? _movie;
-  List<Screening> _screenings = [];
+  List<Projection> _projections = [];
   List<Review> _reviews = [];
   DateTime? _selectedDate;
-  bool _loadingScreenings = true;
+  bool _loadingProjections = true;
   bool _loadingReviews = true;
   bool _loadingSeats = false;
 
   @override
   void initState() {
     super.initState();
-    _screeningProvider = context.read<ScreeningProvider>();
+    _projectionProvider = context.read<ProjectionProvider>();
     _bookingProvider = context.read<BookingProvider>();
     _movie = widget.movie;
     _bookingProvider.startBooking(widget.movie);
@@ -51,7 +51,7 @@ class _BookingPageState extends State<BookingPage> {
 
   Future<void> _loadData() async {
     setState(() {
-      _loadingScreenings = true;
+      _loadingProjections = true;
       _loadingReviews = true;
     });
     try {
@@ -62,7 +62,7 @@ class _BookingPageState extends State<BookingPage> {
       final movieId = widget.movie.id;
 
       final loaded = await Future.wait([
-        _screeningProvider.get(
+        _projectionProvider.get(
           filter: {
             'movieId': movieId,
             'onlyUpcoming': true,
@@ -81,7 +81,7 @@ class _BookingPageState extends State<BookingPage> {
           Future.value(<Review>[]),
       ]);
 
-      final result = loaded[0] as SearchResult<Screening>;
+      final result = loaded[0] as SearchResult<Projection>;
       if (needsPoster) {
         _movie = loaded[1] as Movie;
         _bookingProvider.startBooking(_movie!);
@@ -103,16 +103,16 @@ class _BookingPageState extends State<BookingPage> {
 
       if (!mounted) return;
       setState(() {
-        _screenings = items;
+        _projections = items;
         _reviews = reviews;
         _selectedDate = firstDate;
-        _loadingScreenings = false;
+        _loadingProjections = false;
         _loadingReviews = false;
       });
     } on Exception catch (e) {
       if (!mounted) return;
       setState(() {
-        _loadingScreenings = false;
+        _loadingProjections = false;
         _loadingReviews = false;
       });
       alertBox(context, 'Error', e.toString());
@@ -121,35 +121,35 @@ class _BookingPageState extends State<BookingPage> {
 
   List<DateTime> get _availableDates {
     final dates = <DateTime>{};
-    for (final s in _screenings) {
+    for (final s in _projections) {
       if (s.startTime == null) continue;
       dates.add(DateFormatters.dateOnly(s.startTime!.toLocal()));
     }
     return dates.toList()..sort();
   }
 
-  List<Screening> get _dayScreenings {
+  List<Projection> get _dayProjections {
     if (_selectedDate == null) return [];
-    return _screenings.where((s) {
+    return _projections.where((s) {
       if (s.startTime == null) return false;
       return DateFormatters.dateOnly(s.startTime!.toLocal()) == _selectedDate;
     }).toList();
   }
 
-  Map<String, List<Screening>> get _groupedShowtimes {
-    final map = <String, List<Screening>>{};
-    for (final s in _dayScreenings) {
+  Map<String, List<Projection>> get _groupedShowtimes {
+    final map = <String, List<Projection>>{};
+    for (final s in _dayProjections) {
       final key = DateFormatters.timeOfDayCategory(s.startTime!.toLocal());
       map.putIfAbsent(key, () => []).add(s);
     }
     return map;
   }
 
-  Future<void> _onScreeningSelected(Screening screening) async {
-    _bookingProvider.selectScreening(screening);
+  Future<void> _onProjectionSelected(Projection projection) async {
+    _bookingProvider.selectProjection(projection);
     setState(() => _loadingSeats = true);
     try {
-      final seats = await _screeningProvider.getSeats(screening.id!);
+      final seats = await _projectionProvider.getSeats(projection.id!);
       if (!mounted) return;
       _bookingProvider.setSeats(seats);
       setState(() => _loadingSeats = false);
@@ -164,7 +164,7 @@ class _BookingPageState extends State<BookingPage> {
     setState(() {
       _selectedDate = date;
     });
-    _bookingProvider.selectScreening(null);
+    _bookingProvider.selectProjection(null);
   }
 
   @override
@@ -174,7 +174,7 @@ class _BookingPageState extends State<BookingPage> {
     return Consumer<BookingProvider>(
       builder: (context, booking, _) {
         final grouped = _groupedShowtimes;
-        final selectedId = booking.screening?.id;
+        final selectedId = booking.projection?.id;
         final seatCount = booking.selectedSeatCount;
 
         return Scaffold(
@@ -202,7 +202,7 @@ class _BookingPageState extends State<BookingPage> {
                   ),
                 )
               : null,
-          body: _loadingScreenings
+          body: _loadingProjections
               ? const Center(child: CircularProgressIndicator())
               : SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(
@@ -235,7 +235,7 @@ class _BookingPageState extends State<BookingPage> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: _screenings.isEmpty
+                            child: _projections.isEmpty
                                 ? const Padding(
                                     padding: EdgeInsets.only(top: 24),
                                     child: Text(
@@ -304,7 +304,7 @@ class _BookingPageState extends State<BookingPage> {
                       ),
                       const SizedBox(height: 16),
                       _MovieDetails(movie: movie),
-                      if (_screenings.isNotEmpty) ...[
+                      if (_projections.isNotEmpty) ...[
                         const SizedBox(height: 24),
                         const Text(
                           'Showtimes:',
@@ -314,7 +314,7 @@ class _BookingPageState extends State<BookingPage> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (_dayScreenings.isEmpty)
+                        if (_dayProjections.isEmpty)
                           const Text(
                             'No showtimes on this date',
                             style: TextStyle(color: AppColors.textSecondary),
@@ -341,9 +341,9 @@ class _BookingPageState extends State<BookingPage> {
                                                   8) /
                                               2,
                                       child: _ShowtimeButton(
-                                        screening: s,
+                                        projection: s,
                                         selected: selectedId == s.id,
-                                        onTap: () => _onScreeningSelected(s),
+                                        onTap: () => _onProjectionSelected(s),
                                       ),
                                     );
                                   }).toList(),
@@ -353,9 +353,9 @@ class _BookingPageState extends State<BookingPage> {
                                   (s) => Padding(
                                     padding: const EdgeInsets.only(bottom: 8),
                                     child: _ShowtimeButton(
-                                      screening: s,
+                                      projection: s,
                                       selected: selectedId == s.id,
-                                      onTap: () => _onScreeningSelected(s),
+                                      onTap: () => _onProjectionSelected(s),
                                       fullWidth: true,
                                     ),
                                   ),
@@ -526,22 +526,22 @@ class _ReviewTile extends StatelessWidget {
 
 class _ShowtimeButton extends StatelessWidget {
   const _ShowtimeButton({
-    required this.screening,
+    required this.projection,
     required this.selected,
     required this.onTap,
     this.fullWidth = false,
   });
 
-  final Screening screening;
+  final Projection projection;
   final bool selected;
   final VoidCallback onTap;
   final bool fullWidth;
 
   @override
   Widget build(BuildContext context) {
-    final local = screening.startTime!.toLocal();
+    final local = projection.startTime!.toLocal();
     final label =
-        '${DateFormatters.timeHm(local)} - ${screening.hallName ?? 'Theater'}';
+        '${DateFormatters.timeHm(local)} - ${projection.hallName ?? 'Theater'}';
 
     final child = GestureDetector(
       onTap: onTap,
@@ -579,7 +579,7 @@ class _SeatSelectionSection extends StatelessWidget {
 
         if (booking.seats.isEmpty) return const SizedBox.shrink();
 
-        final rows = <String, List<ScreeningSeat>>{};
+        final rows = <String, List<ProjectionSeat>>{};
         for (final seat in booking.seats) {
           if (booking.isPartnerSlot(seat)) continue;
           rows.putIfAbsent(seat.rowLabel, () => []).add(seat);
@@ -694,7 +694,7 @@ class _SeatSelectionSection extends StatelessWidget {
 class _SeatWidget extends StatelessWidget {
   const _SeatWidget({required this.seat});
 
-  final ScreeningSeat seat;
+  final ProjectionSeat seat;
 
   @override
   Widget build(BuildContext context) {

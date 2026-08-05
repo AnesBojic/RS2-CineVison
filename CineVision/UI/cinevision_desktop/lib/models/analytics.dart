@@ -14,9 +14,9 @@ class DashboardStats {
 
   final int activeMovies;
 
-  final int totalScreenings;
+  final int totalProjections;
 
-  final int upcomingScreenings;
+  final int upcomingProjections;
 
   final double averageOccupancyPercent;
 
@@ -38,9 +38,9 @@ class DashboardStats {
 
     required this.activeMovies,
 
-    required this.totalScreenings,
+    required this.totalProjections,
 
-    required this.upcomingScreenings,
+    required this.upcomingProjections,
 
     required this.averageOccupancyPercent,
 
@@ -66,9 +66,9 @@ class DashboardStats {
 
       activeMovies: json['activeMovies'] as int? ?? 0,
 
-      totalScreenings: json['totalScreenings'] as int? ?? 0,
+      totalProjections: json['totalProjections'] as int? ?? 0,
 
-      upcomingScreenings: json['upcomingScreenings'] as int? ?? 0,
+      upcomingProjections: json['upcomingProjections'] as int? ?? 0,
 
       averageOccupancyPercent:
 
@@ -91,7 +91,7 @@ class DashboardStats {
 class MoviePerformance {
   final int movieId;
   final String title;
-  final int screeningsCount;
+  final int projectionsCount;
   final int reservationsCount;
   final int ticketsSold;
   final num revenue;
@@ -102,7 +102,7 @@ class MoviePerformance {
   MoviePerformance({
     required this.movieId,
     required this.title,
-    required this.screeningsCount,
+    required this.projectionsCount,
     required this.reservationsCount,
     required this.ticketsSold,
     required this.revenue,
@@ -115,7 +115,7 @@ class MoviePerformance {
     return MoviePerformance(
       movieId: json['movieId'] as int? ?? 0,
       title: json['title'] as String? ?? '',
-      screeningsCount: json['screeningsCount'] as int? ?? 0,
+      projectionsCount: json['projectionsCount'] as int? ?? 0,
       reservationsCount: json['reservationsCount'] as int? ?? 0,
       ticketsSold: json['ticketsSold'] as int? ?? 0,
       revenue: json['revenue'] as num? ?? 0,
@@ -182,7 +182,7 @@ class HallUtilization {
 
   final int capacity;
 
-  final int screeningsCount;
+  final int projectionsCount;
 
   final int showCount;
 
@@ -204,7 +204,7 @@ class HallUtilization {
 
     required this.capacity,
 
-    required this.screeningsCount,
+    required this.projectionsCount,
 
     required this.showCount,
 
@@ -230,7 +230,7 @@ class HallUtilization {
 
       capacity: json['capacity'] as int? ?? 0,
 
-      screeningsCount: json['screeningsCount'] as int? ?? 0,
+      projectionsCount: json['projectionsCount'] as int? ?? 0,
 
       showCount: json['showCount'] as int? ?? 0,
 

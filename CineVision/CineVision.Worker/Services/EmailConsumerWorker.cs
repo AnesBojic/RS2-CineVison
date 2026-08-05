@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.Json;
 using CineVision.Model.Messages;
 using MailKit.Net.Smtp;
@@ -261,7 +261,7 @@ public sealed class EmailConsumerWorker : BackgroundService
         };
     }
 
-    /// <summary>1s â†’ 2s â†’ 4s â†’ 8s â€¦ capped at 30s.</summary>
+    /// <summary>1s → 2s → 4s → 8s … capped at 30s.</summary>
     private static TimeSpan GetBackoff(int attempt)
     {
         var seconds = Math.Min(30, Math.Pow(2, Math.Max(0, attempt - 1)));

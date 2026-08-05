@@ -1,29 +1,29 @@
-﻿namespace CineVision.Model.SearchObjects
+namespace CineVision.Model.SearchObjects
 {
-    public class ScreeningSearchObject : BaseSearchObject
+    public class ProjectionSearchObject : BaseSearchObject
     {
         /// <summary>
-        /// Filter screenings by movie id.
+        /// Filter projections by movie id.
         /// </summary>
         public int? MovieId { get; set; }
 
         /// <summary>
-        /// Filter screenings by hall id.
+        /// Filter projections by hall id.
         /// </summary>
         public int? HallId { get; set; }
 
         /// <summary>
-        /// Only include screenings starting at or after this moment (UTC).
+        /// Only include projections starting at or after this moment (UTC).
         /// </summary>
         public DateTime? FromDate { get; set; }
 
         /// <summary>
-        /// Only include screenings starting at or before this moment (UTC).
+        /// Only include projections starting at or before this moment (UTC).
         /// </summary>
         public DateTime? ToDate { get; set; }
 
         /// <summary>
-        /// When true, only returns screenings that have not started yet.
+        /// When true, only returns projections that have not started yet.
         /// </summary>
         public bool? OnlyUpcoming { get; set; }
 

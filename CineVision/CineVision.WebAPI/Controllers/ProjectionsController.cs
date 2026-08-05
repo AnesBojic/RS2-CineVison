@@ -1,4 +1,4 @@
-﻿using CineVision.Model;
+using CineVision.Model;
 using CineVision.Model.Requests;
 using CineVision.Model.Responses;
 using CineVision.Model.SearchObjects;
@@ -9,21 +9,21 @@ using Microsoft.AspNetCore.Mvc;
 namespace CineVision.WebAPI.Controllers;
 
 [Authorize]
-public class ScreeningsController : BaseCRUDController<ScreeningResponse, ScreeningSearchObject, ScreeningInsertRequest, ScreeningUpdateRequest, IScreeningService>
+public class ProjectionsController : BaseCRUDController<ProjectionResponse, ProjectionSearchObject, ProjectionInsertRequest, ProjectionUpdateRequest, IProjectionService>
 {
-    public ScreeningsController(IScreeningService screeningService) : base(screeningService)
+    public ProjectionsController(IProjectionService projectionService) : base(projectionService)
     {
     }
 
     /// <summary>Public showtimes for guest browsing.</summary>
     [AllowAnonymous]
     [HttpGet]
-    public override Task<PageResult<ScreeningResponse>> GetAll([FromQuery] ScreeningSearchObject? search)
+    public override Task<PageResult<ProjectionResponse>> GetAll([FromQuery] ProjectionSearchObject? search)
         => base.GetAll(search);
 
     [AllowAnonymous]
     [HttpGet("{id}")]
-    public override Task<ActionResult<ScreeningResponse>> GetById(int id)
+    public override Task<ActionResult<ProjectionResponse>> GetById(int id)
         => base.GetById(id);
 
     /// <summary>Public seat map so guests can pick seats before signing in at checkout.</summary>
@@ -31,7 +31,7 @@ public class ScreeningsController : BaseCRUDController<ScreeningResponse, Screen
     [HttpGet("{id}/Seats")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<List<ScreeningSeatResponse>>> GetSeats(int id)
+    public async Task<ActionResult<List<ProjectionSeatResponse>>> GetSeats(int id)
     {
         var result = await _service.GetSeatsAsync(id);
         return Ok(result);

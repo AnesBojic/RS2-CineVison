@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Dynamic.Core;
@@ -82,7 +82,7 @@ namespace CineVision.Services
                 ScreenTypeId = screenType.Id,
                 StatusId = status.Id,
                 // Keep the legacy IsActive flag in sync with the richer status.
-                IsActive = status.AllowsScreenings,
+                IsActive = status.AllowsProjections,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -188,7 +188,7 @@ namespace CineVision.Services
             hall.ScreenTypeId = screenType.Id;
             hall.Status = status;
             hall.StatusId = status.Id;
-            hall.IsActive = status.AllowsScreenings;
+            hall.IsActive = status.AllowsProjections;
             hall.UpdatedAt = DateTime.UtcNow;
 
             await _dbContext.SaveChangesAsync();
@@ -201,19 +201,19 @@ namespace CineVision.Services
             var hall = await _dbContext.Halls.AsNoTracking().FirstOrDefaultAsync(h => h.Id == id)
                 ?? throw new KeyNotFoundException($"Hall with id {id} not found.");
 
-            var screeningIds = await _dbContext.Screenings
+            var projectionIds = await _dbContext.Projections
                 .AsNoTracking()
                 .Where(s => s.HallId == id)
                 .Select(s => s.Id)
                 .ToListAsync();
 
-            var graph = await BookingGraphCascade.CountForScreeningIdsAsync(_dbContext, screeningIds);
+            var graph = await BookingGraphCascade.CountForProjectionIdsAsync(_dbContext, projectionIds);
             var seatCount = await _dbContext.Seats.CountAsync(s => s.HallId == id);
 
             return BookingGraphCascade.BuildImpact(
                 hall.Id,
                 hall.Name,
-                ("Projections", graph.ScreeningCount),
+                ("Projections", graph.ProjectionCount),
                 ("Reservations", graph.ReservationCount),
                 ("Reserved seats", graph.ReservationSeatCount),
                 ("Seats", seatCount));
@@ -229,17 +229,17 @@ namespace CineVision.Services
             await using var tx = await _dbContext.Database.BeginTransactionAsync();
             try
             {
-                var screeningIds = await _dbContext.Screenings
+                var projectionIds = await _dbContext.Projections
                     .Where(s => s.HallId == id)
                     .Select(s => s.Id)
                     .ToListAsync();
 
-                await BookingGraphCascade.RemoveScreeningsAsync(
+                await BookingGraphCascade.RemoveProjectionsAsync(
                     _dbContext,
-                    screeningIds,
+                    projectionIds,
                     paymentIntentId => StripeRefundHelper.TryRefundAsync(_stripeSecretKey, paymentIntentId, _logger));
 
-                // PartnerSeat is Restrict â€” clear links before seats cascade with the hall.
+                // PartnerSeat is Restrict — clear links before seats cascade with the hall.
                 foreach (var seat in hall.Seats)
                 {
                     seat.PartnerSeatId = null;
@@ -323,7 +323,7 @@ namespace CineVision.Services
                 if (index < 0 || index >= rowSeats.Count - 1)
                 {
                     throw new ClientException(
-                        $"Seat {seat.RowLabel}{seat.SeatNumber} cannot be a couple seat â€” there is no seat to the right.");
+                        $"Seat {seat.RowLabel}{seat.SeatNumber} cannot be a couple seat — there is no seat to the right.");
                 }
 
                 var partner = rowSeats[index + 1];
@@ -362,7 +362,7 @@ namespace CineVision.Services
             var response = _mapper.Map<HallResponse>(hall);
             response.ScreenTypeName = hall.ScreenType?.Name ?? string.Empty;
             response.StatusName = hall.Status?.Name ?? string.Empty;
-            response.AllowsScreenings = hall.Status?.AllowsScreenings ?? false;
+            response.AllowsProjections = hall.Status?.AllowsProjections ?? false;
             response.SeatCount = hall.Seats.Count(s => s.IsActive);
             response.Capacity = hall.Seats.Count(s => s.IsActive);
             var rowGroups = hall.Seats.GroupBy(s => s.RowLabel).ToList();

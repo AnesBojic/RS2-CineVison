@@ -1,6 +1,6 @@
-﻿namespace CineVision.Model.Responses
+namespace CineVision.Model.Responses
 {
-    public class ScreeningResponse
+    public class ProjectionResponse
     {
         public int Id { get; set; }
         public int MovieId { get; set; }

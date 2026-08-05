@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Headers;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -135,11 +135,11 @@ namespace CineVision.Services
         private static string BuildSystemPrompt(string userRole, string contextSnapshot)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("You are the CineVision Cinema Assistant â€” a helpful internal tool for cinema staff.");
+            sb.AppendLine("You are the CineVision Cinema Assistant — a helpful internal tool for cinema staff.");
             sb.AppendLine($"The current user role is: {userRole}.");
             sb.AppendLine();
             sb.AppendLine("Answer questions about:");
-            sb.AppendLine("- How to use the CineVision desktop workflow (movies, halls, screenings/projections, users, analytics).");
+            sb.AppendLine("- How to use the CineVision desktop workflow (movies, halls, projections/projections, users, analytics).");
             sb.AppendLine("- What data is currently stored in the cinema system (use the LIVE DATA SNAPSHOT below).");
             sb.AppendLine("- Operational guidance: scheduling projections, hall maintenance, reservations, payments.");
             sb.AppendLine();
@@ -147,13 +147,13 @@ namespace CineVision.Services
             sb.AppendLine("- Be concise, practical, and accurate. Use bullet points when listing items.");
             sb.AppendLine("- Base factual answers about current data ONLY on the snapshot below. If something is not in the snapshot, say you do not have that detail.");
             sb.AppendLine("- Never reveal password hashes, JWT secrets, or Stripe secret keys.");
-            sb.AppendLine("- Do not invent movies, halls, or screenings that are not in the snapshot.");
+            sb.AppendLine("- Do not invent movies, halls, or projections that are not in the snapshot.");
             sb.AppendLine("- Customers use the mobile app; staff/admins use the desktop app.");
             sb.AppendLine();
             sb.AppendLine("=== WORKFLOW CHEAT SHEET ===");
-            sb.AppendLine("1. Movies: create in Draft Ã¢â€ â€™ Activate when ready. Poster via PosterImageBase64 or PUT /Movies/{id}/Poster.");
-            sb.AppendLine("2. Halls: create with RowsCount Ã— SeatsPerRow to auto-generate seats. Screen types: Standard, IMAX, 3D. Status: Active, Maintenance, Inactive.");
-            sb.AppendLine("3. Projections (Screenings): pick an existing Movie + an Active Hall + date/time + price. Cannot schedule in Maintenance/Inactive halls.");
+            sb.AppendLine("1. Movies: create in Draft → Activate when ready. Poster via PosterImageBase64 or PUT /Movies/{id}/Poster.");
+            sb.AppendLine("2. Halls: create with RowsCount × SeatsPerRow to auto-generate seats. Screen types: Standard, IMAX, 3D. Status: Active, Maintenance, Inactive.");
+            sb.AppendLine("3. Projections (Projections): pick an existing Movie + an Active Hall + date/time + price. Cannot schedule in Maintenance/Inactive halls.");
             sb.AppendLine("4. Reservations: customers reserve seats on mobile; payment via Stripe. Admin/Staff manage content; only Admin manages user accounts.");
             sb.AppendLine("5. Analytics: dashboard shows revenue (Paid reservations), tickets sold, occupancy, hall utilization.");
             sb.AppendLine("6. Email: admin can email users; reservation confirmations are queued via RabbitMQ when configured.");
@@ -183,7 +183,7 @@ namespace CineVision.Services
                 .OrderBy(h => h.Name)
                 .ToListAsync();
 
-            var upcomingScreenings = await _dbContext.Screenings
+            var upcomingProjections = await _dbContext.Projections
                 .AsNoTracking()
                 .Include(s => s.Movie)
                 .Include(s => s.Hall)
@@ -209,8 +209,8 @@ namespace CineVision.Services
 
             var topMoviesByTickets = await _dbContext.ReservationSeats
                 .AsNoTracking()
-                .Include(rs => rs.Screening)
-                .GroupBy(rs => rs.Screening!.MovieId)
+                .Include(rs => rs.Projection)
+                .GroupBy(rs => rs.Projection!.MovieId)
                 .Select(g => new { MovieId = g.Key, Tickets = g.Count() })
                 .OrderByDescending(x => x.Tickets)
                 .Take(5)
@@ -231,10 +231,10 @@ namespace CineVision.Services
             sb.AppendLine($"Movies: {movies.Count} total, {movies.Count(m => m.IsActive)} active, {movies.Count(m => m.MovieState == MovieLifecycleState.Active)} in Active state, {movies.Count(m => m.MovieState == MovieLifecycleState.Draft)} in Draft.");
             foreach (var m in movies.Where(m => m.IsActive).Take(12))
             {
-                var genre = m.Genre?.Name ?? "â€”";
+                var genre = m.Genre?.Name ?? "—";
                 var rating = avgRatings.FirstOrDefault(r => r.MovieId == m.Id);
                 var ratingText = rating != null ? $"{rating.Avg:F1} ({rating.Count} reviews)" : "no reviews";
-                sb.AppendLine($"  - {m.Title} | {genre} | {m.AgeRating?.Name ?? "â€”"} | {m.DurationMinutes} min | state={m.MovieState} | views={m.ViewCount} | avg rating={ratingText}");
+                sb.AppendLine($"  - {m.Title} | {genre} | {m.AgeRating?.Name ?? "—"} | {m.DurationMinutes} min | state={m.MovieState} | views={m.ViewCount} | avg rating={ratingText}");
             }
             if (movies.Count(m => m.IsActive) > 12)
             {
@@ -246,12 +246,12 @@ namespace CineVision.Services
             foreach (var h in halls)
             {
                 var cap = h.Seats.Count(s => s.IsActive);
-                sb.AppendLine($"  - {h.Name} | {cap} seats | {h.ScreenType?.Name ?? "â€”"} | status={h.Status?.Name ?? "â€”"} | active={h.IsActive}");
+                sb.AppendLine($"  - {h.Name} | {cap} seats | {h.ScreenType?.Name ?? "—"} | status={h.Status?.Name ?? "—"} | active={h.IsActive}");
             }
 
             sb.AppendLine();
-            sb.AppendLine($"Upcoming screenings (next 14 days, max 25 shown): {upcomingScreenings.Count}");
-            foreach (var s in upcomingScreenings)
+            sb.AppendLine($"Upcoming projections (next 14 days, max 25 shown): {upcomingProjections.Count}");
+            foreach (var s in upcomingProjections)
             {
                 sb.AppendLine($"  - {s.Movie?.Title} in {s.Hall?.Name} | {s.StartTime:yyyy-MM-dd HH:mm} UTC | ${s.BasePrice:F2}");
             }

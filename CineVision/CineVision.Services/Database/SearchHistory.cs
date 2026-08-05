@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CineVision.Services.Database
 {
     /// <summary>
-    /// Real search queries performed by users â€” feeds the recommender (not mock UI history).
+    /// Real search queries performed by users — feeds the recommender (not mock UI history).
     /// </summary>
     public class SearchHistory
     {

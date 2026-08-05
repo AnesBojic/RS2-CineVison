@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -55,8 +55,8 @@ namespace CineVision.Services.Database
         [ForeignKey("GenreId")]
         public Genre? Genre { get; set; }
 
-        // Navigation property for screenings of this movie
-        public ICollection<Screening> Screenings { get; set; } = new List<Screening>();
+        // Navigation property for projections of this movie
+        public ICollection<Projection> Projections { get; set; } = new List<Projection>();
 
         // Navigation property for customer reviews of this movie
         public ICollection<Review> Reviews { get; set; } = new List<Review>();

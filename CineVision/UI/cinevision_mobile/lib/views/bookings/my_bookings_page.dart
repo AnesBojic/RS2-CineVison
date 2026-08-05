@@ -1,4 +1,4 @@
-﻿import 'package:cinevision_mobile/core/widgets/cine_app_bar.dart';
+import 'package:cinevision_mobile/core/widgets/cine_app_bar.dart';
 import 'package:cinevision_mobile/core/constants/app_colors.dart';
 import 'package:cinevision_mobile/core/constants/app_defaults.dart';
 import 'package:cinevision_mobile/core/routes/app_routes.dart';
@@ -249,7 +249,7 @@ class _BookingCard extends StatelessWidget {
   final bool isRefunding;
 
   bool get _showReviewButton {
-    if (!reservation.isPaidOrConfirmed || !reservation.isScreeningPast) {
+    if (!reservation.isPaidOrConfirmed || !reservation.isProjectionPast) {
       return false;
     }
     if (eligibility == null) return false;
@@ -277,7 +277,7 @@ class _BookingCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            formatDateTime(reservation.screeningStartTime),
+            formatDateTime(reservation.projectionStartTime),
             style: const TextStyle(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 4),
@@ -362,10 +362,10 @@ class _BookingCard extends StatelessWidget {
               ],
             ),
           ] else if (reservation.isPaidOrConfirmed &&
-              !reservation.isScreeningPast) ...[
+              !reservation.isProjectionPast) ...[
             const SizedBox(height: 12),
             const Text(
-              'Review available after the screening ends',
+              'Review available after the projection ends',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             ),
           ],

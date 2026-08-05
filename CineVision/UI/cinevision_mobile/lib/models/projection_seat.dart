@@ -1,6 +1,6 @@
 import '../core/enums/api_enums.dart';
 
-class ScreeningSeat {
+class ProjectionSeat {
   final int seatId;
   final int hallId;
   final String rowLabel;
@@ -11,7 +11,7 @@ class ScreeningSeat {
   final bool isTaken;
   final num price;
 
-  ScreeningSeat({
+  ProjectionSeat({
     required this.seatId,
     required this.hallId,
     required this.rowLabel,
@@ -23,8 +23,8 @@ class ScreeningSeat {
     this.price = 0,
   });
 
-  factory ScreeningSeat.fromJson(Map<String, dynamic> json) {
-    return ScreeningSeat(
+  factory ProjectionSeat.fromJson(Map<String, dynamic> json) {
+    return ProjectionSeat(
       seatId: json['seatId'] as int,
       hallId: json['hallId'] as int,
       rowLabel: json['rowLabel'] as String? ?? '',

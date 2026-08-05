@@ -1,4 +1,4 @@
-﻿using CineVision.Model;
+using CineVision.Model;
 using CineVision.Model.Responses;
 using CineVision.Model.SearchObjects;
 using CineVision.Services;
@@ -44,7 +44,7 @@ public class AnalyticsController : ControllerBase
         return Ok(await _analyticsService.GetRevenueByPeriodAsync(search));
     }
 
-    /// <summary>How intensively each hall is used across its screenings.</summary>
+    /// <summary>How intensively each hall is used across its projections.</summary>
     [HttpGet("HallUtilization")]
     public async Task<ActionResult<List<HallUtilizationResponse>>> GetHallUtilization([FromQuery] ReportSearchObject? search)
     {

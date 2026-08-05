@@ -1,4 +1,4 @@
-﻿using CineVision.Model;
+using CineVision.Model;
 using CineVision.Model.Access;
 using CineVision.Model.Requests;
 using CineVision.Model.Responses;
@@ -47,7 +47,7 @@ public class ChatBotController : ControllerBase
         var userId = _userAccessor.GetUserId();
         if (userId != null && !string.IsNullOrWhiteSpace(result.Reply))
         {
-            var preview = result.Reply.Length > 180 ? result.Reply[..180] + "â€¦" : result.Reply;
+            var preview = result.Reply.Length > 180 ? result.Reply[..180] + "…" : result.Reply;
             await _notificationService.CreateAsync(
                 userId.Value,
                 "Cinema Assistant replied",

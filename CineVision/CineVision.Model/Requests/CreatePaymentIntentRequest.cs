@@ -1,11 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace CineVision.Model.Requests
 {
     public class CreatePaymentIntentRequest
     {
         [Required]
-        public int ScreeningId { get; set; }
+        public int ProjectionId { get; set; }
 
         [Required]
         public List<int> SeatIds { get; set; } = new();

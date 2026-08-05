@@ -1,4 +1,4 @@
-﻿using CineVision.Model;
+using CineVision.Model;
 using CineVision.Model.Access;
 using CineVision.Model.Messages;
 using CineVision.Model.Requests;
@@ -69,7 +69,7 @@ public class UsersController : BaseCRUDController<UserResponse, UserSearch, User
         });
 
         var senderName = User.FindFirst(ClaimNames.FirstName)?.Value ?? "Admin";
-        var preview = request.Body.Length > 180 ? request.Body[..180] + "â€¦" : request.Body;
+        var preview = request.Body.Length > 180 ? request.Body[..180] + "…" : request.Body;
         await _notificationService.CreateAsync(
             id,
             $"New email: {request.Subject}",

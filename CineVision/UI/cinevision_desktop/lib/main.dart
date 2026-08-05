@@ -1,4 +1,4 @@
-﻿import 'package:cinevision_desktop/core/theme/app_theme.dart';
+import 'package:cinevision_desktop/core/theme/app_theme.dart';
 import 'package:cinevision_desktop/providers/age_rating_provider.dart';
 import 'package:cinevision_desktop/providers/analytics_provider.dart';
 import 'package:cinevision_desktop/providers/auth_provider.dart';
@@ -12,7 +12,7 @@ import 'package:cinevision_desktop/providers/news_provider.dart';
 import 'package:cinevision_desktop/providers/notification_provider.dart';
 import 'package:cinevision_desktop/providers/role_provider.dart';
 import 'package:cinevision_desktop/providers/screen_type_provider.dart';
-import 'package:cinevision_desktop/providers/screening_provider.dart';
+import 'package:cinevision_desktop/providers/projection_provider.dart';
 import 'package:cinevision_desktop/providers/user_provider.dart';
 import 'package:cinevision_desktop/screens/login_screen.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +30,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => AgeRatingProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => HallProvider()),
-        ChangeNotifierProvider(create: (_) => ScreeningProvider()),
+        ChangeNotifierProvider(create: (_) => ProjectionProvider()),
         ChangeNotifierProvider(create: (_) => NewsProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => RoleProvider()),

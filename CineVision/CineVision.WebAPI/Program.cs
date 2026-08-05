@@ -1,4 +1,4 @@
-﻿using CineVision.Common.Services.CryptoService;
+using CineVision.Common.Services.CryptoService;
 using CineVision.Model.Requests;
 using CineVision.Model.Responses;
 using CineVision.Model.Access;
@@ -72,7 +72,7 @@ TypeAdapterConfig<HallStatus, HallStatusResponse>.NewConfig().IgnoreNullValues(t
 TypeAdapterConfig<AgeRating, AgeRatingResponse>.NewConfig().IgnoreNullValues(true);
 TypeAdapterConfig<Language, LanguageResponse>.NewConfig().IgnoreNullValues(true);
 
-// Lookup names are flattened into the movie/screening/hall responses so clients can render
+// Lookup names are flattened into the movie/projection/hall responses so clients can render
 // a label without fetching the reference tables.
 TypeAdapterConfig<Movie, MovieResponse>.NewConfig()
     .IgnoreNullValues(true)
@@ -83,9 +83,9 @@ TypeAdapterConfig<Hall, HallResponse>.NewConfig()
     .IgnoreNullValues(true)
     .Map(dest => dest.ScreenTypeName, src => src.ScreenType != null ? src.ScreenType.Name : string.Empty)
     .Map(dest => dest.StatusName, src => src.Status != null ? src.Status.Name : string.Empty)
-    .Map(dest => dest.AllowsScreenings, src => src.Status != null && src.Status.AllowsScreenings);
+    .Map(dest => dest.AllowsProjections, src => src.Status != null && src.Status.AllowsProjections);
 TypeAdapterConfig<Seat, SeatResponse>.NewConfig().IgnoreNullValues(true);
-TypeAdapterConfig<Screening, ScreeningResponse>.NewConfig()
+TypeAdapterConfig<Projection, ProjectionResponse>.NewConfig()
     .IgnoreNullValues(true)
     .Map(dest => dest.Language, src => src.Language != null ? src.Language.Name : null)
     .Ignore(dest => dest.Movie)
@@ -113,7 +113,7 @@ builder.Services.AddScoped<ILanguageService, LanguageService>();
 builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<IHallService, HallService>();
 builder.Services.AddScoped<ISeatService, SeatService>();
-builder.Services.AddScoped<IScreeningService, ScreeningService>();
+builder.Services.AddScoped<IProjectionService, ProjectionService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IAnalyticsRealtimePublisher, AnalyticsRealtimePublisher>();
@@ -172,8 +172,8 @@ builder.Services.AddScoped<IValidator<HallInsertRequest>, HallInsertValidator>()
 builder.Services.AddScoped<IValidator<HallUpdateRequest>, HallUpdateValidator>();
 builder.Services.AddScoped<IValidator<SeatInsertRequest>, SeatInsertValidator>();
 builder.Services.AddScoped<IValidator<SeatUpdateRequest>, SeatUpdateValidator>();
-builder.Services.AddScoped<IValidator<ScreeningInsertRequest>, ScreeningInsertValidator>();
-builder.Services.AddScoped<IValidator<ScreeningUpdateRequest>, ScreeningUpdateValidator>();
+builder.Services.AddScoped<IValidator<ProjectionInsertRequest>, ProjectionInsertValidator>();
+builder.Services.AddScoped<IValidator<ProjectionUpdateRequest>, ProjectionUpdateValidator>();
 builder.Services.AddScoped<IValidator<UserInsertRequest>, UserInsertValidator>();
 builder.Services.AddScoped<IValidator<UserRegisterRequest>, UserRegisterValidator>();
 builder.Services.AddScoped<IValidator<UserUpdateRequest>, UserUpdateValidator>();
@@ -265,7 +265,7 @@ builder.Services.AddSwaggerGen(
         {
             Version = "v1",
             Title = "CineVision API",
-            Description = "API for managing movies, halls, screenings and seat reservations"
+            Description = "API for managing movies, halls, projections and seat reservations"
         });
 
         var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -354,7 +354,7 @@ app.UseAuthentication();
 
 app.UseAuthorization();
 
-// Liveness probe for Docker â€” no secrets; kept outside IsDevelopment on purpose.
+// Liveness probe for Docker — no secrets; kept outside IsDevelopment on purpose.
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 app.MapControllers();

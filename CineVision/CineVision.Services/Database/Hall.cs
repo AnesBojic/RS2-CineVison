@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -35,7 +35,7 @@ namespace CineVision.Services.Database
         // Navigation property for seats in this hall
         public ICollection<Seat> Seats { get; set; } = new List<Seat>();
 
-        // Navigation property for screenings scheduled in this hall
-        public ICollection<Screening> Screenings { get; set; } = new List<Screening>();
+        // Navigation property for projections scheduled in this hall
+        public ICollection<Projection> Projections { get; set; } = new List<Projection>();
     }
 }

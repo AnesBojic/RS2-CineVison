@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using CineVision.Model.Enums;
@@ -29,10 +29,10 @@ namespace CineVision.Services.Database
         [ForeignKey("UserId")]
         public User User { get; set; } = null!;
 
-        public int ScreeningId { get; set; }
+        public int ProjectionId { get; set; }
 
-        [ForeignKey("ScreeningId")]
-        public Screening Screening { get; set; } = null!;
+        [ForeignKey("ProjectionId")]
+        public Projection Projection { get; set; } = null!;
 
         [MaxLength(100)]
         public string? CustomerName { get; set; }

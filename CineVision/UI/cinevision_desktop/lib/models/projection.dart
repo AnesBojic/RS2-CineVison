@@ -1,6 +1,6 @@
 import '../core/utils/utc_datetime.dart';
 
-class Screening {
+class Projection {
   final int? id;
   final int? movieId;
   final String? movieTitle;
@@ -10,12 +10,15 @@ class Screening {
   final DateTime? startTime;
   final DateTime? endTime;
   final num? basePrice;
+
+  /// Reference table id + name for display.
+  final int? languageId;
   final String? language;
   final bool? isActive;
   final int? totalSeats;
   final int? availableSeats;
 
-  Screening({
+  Projection({
     this.id,
     this.movieId,
     this.movieTitle,
@@ -25,30 +28,41 @@ class Screening {
     this.startTime,
     this.endTime,
     this.basePrice,
+    this.languageId,
     this.language,
     this.isActive,
     this.totalSeats,
     this.availableSeats,
   });
 
-  factory Screening.fromJson(Map<String, dynamic> json) {
+  factory Projection.fromJson(Map<String, dynamic> json) {
     final movie = json['movie'];
-    return Screening(
+    final nestedPoster =
+        movie is Map ? movie['posterImageBase64'] as String? : null;
+    return Projection(
       id: json['id'] as int?,
       movieId: json['movieId'] as int?,
       movieTitle: json['movieTitle'] as String?,
-      moviePosterBase64: movie is Map
-          ? movie['posterImageBase64'] as String?
-          : null,
+      moviePosterBase64: (json['moviePosterBase64'] as String?) ?? nestedPoster,
       hallId: json['hallId'] as int?,
       hallName: json['hallName'] as String?,
       startTime: UtcDateTime.tryParse(json['startTime']),
       endTime: UtcDateTime.tryParse(json['endTime']),
       basePrice: json['basePrice'] as num?,
+      languageId: json['languageId'] as int?,
       language: json['language'] as String?,
       isActive: json['isActive'] as bool?,
       totalSeats: json['totalSeats'] as int?,
       availableSeats: json['availableSeats'] as int?,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'movieId': movieId,
+        'hallId': hallId,
+        'startTime': UtcDateTime.toApi(startTime),
+        'basePrice': basePrice,
+        'languageId': languageId,
+        'isActive': isActive ?? true,
+      };
 }

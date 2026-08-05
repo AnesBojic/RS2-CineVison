@@ -11,7 +11,7 @@ class Hall {
   final String? statusName;
 
   /// Copied from the hall's status: projections may only be scheduled when true.
-  final bool? allowsScreenings;
+  final bool? allowsProjections;
   final bool? isActive;
   final int? seatCount;
   final int? capacity;
@@ -28,7 +28,7 @@ class Hall {
     this.screenTypeName,
     this.statusId,
     this.statusName,
-    this.allowsScreenings,
+    this.allowsProjections,
     this.isActive,
     this.seatCount,
     this.capacity,
@@ -48,7 +48,7 @@ class Hall {
       screenTypeName: json['screenTypeName'] as String?,
       statusId: json['statusId'] as int?,
       statusName: json['statusName'] as String?,
-      allowsScreenings: json['allowsScreenings'] as bool?,
+      allowsProjections: json['allowsProjections'] as bool?,
       isActive: json['isActive'] as bool?,
       seatCount: json['seatCount'] as int?,
       capacity: json['capacity'] as int?,
@@ -100,9 +100,9 @@ int derivedSeatsPerRow(Hall hall) {
 }
 
 Color hallStatusColor(Hall hall) =>
-    hall.allowsScreenings == true ? const Color(0xFF22C55E) : const Color(0xFFF59E0B);
+    hall.allowsProjections == true ? const Color(0xFF22C55E) : const Color(0xFFF59E0B);
 
-bool hallIsActive(Hall hall) => hall.allowsScreenings == true;
+bool hallIsActive(Hall hall) => hall.allowsProjections == true;
 
 String inactiveHallMessage(Hall hall) {
   final statusLabel = hall.statusName ?? 'unavailable';

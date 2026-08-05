@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -36,7 +36,7 @@ namespace CineVision.Services
             var snapshot = await GetSnapshotAsync();
             var now = DateTime.UtcNow;
 
-            var topMovies = BuildMoviePerformance(snapshot.Screenings, snapshot.SeatSales, snapshot.CapByHall, snapshot.AvgRatings)
+            var topMovies = BuildMoviePerformance(snapshot.Projections, snapshot.SeatSales, snapshot.CapByHall, snapshot.AvgRatings)
                 .Take(5)
                 .ToList();
             await AttachPostersAsync(topMovies);
@@ -49,9 +49,9 @@ namespace CineVision.Services
                 TotalCustomers = snapshot.TotalCustomers,
                 TotalMovies = snapshot.TotalMovies,
                 ActiveMovies = snapshot.ActiveMovies,
-                TotalScreenings = snapshot.Screenings.Count,
-                UpcomingScreenings = snapshot.Screenings.Count(s => s.IsActive && s.StartTime > now),
-                AverageOccupancyPercent = ComputeAverageOccupancy(snapshot.Screenings, snapshot.SeatSales, snapshot.CapByHall),
+                TotalProjections = snapshot.Projections.Count,
+                UpcomingProjections = snapshot.Projections.Count(s => s.IsActive && s.StartTime > now),
+                AverageOccupancyPercent = ComputeAverageOccupancy(snapshot.Projections, snapshot.SeatSales, snapshot.CapByHall),
                 TopMovies = topMovies
             };
         }
@@ -59,11 +59,11 @@ namespace CineVision.Services
         public async Task<List<MoviePerformanceResponse>> GetMoviePerformanceAsync(ReportSearchObject? search)
         {
             var snapshot = await GetSnapshotAsync();
-            var screenings = FilterScreenings(snapshot.Screenings, search);
-            var screeningIds = screenings.Select(s => s.Id).ToHashSet();
-            var seatSales = snapshot.SeatSales.Where(s => screeningIds.Contains(s.ScreeningId));
+            var projections = FilterProjections(snapshot.Projections, search);
+            var projectionIds = projections.Select(s => s.Id).ToHashSet();
+            var seatSales = snapshot.SeatSales.Where(s => projectionIds.Contains(s.ProjectionId));
 
-            var result = BuildMoviePerformance(screenings, seatSales, snapshot.CapByHall, snapshot.AvgRatings);
+            var result = BuildMoviePerformance(projections, seatSales, snapshot.CapByHall, snapshot.AvgRatings);
             await AttachPostersAsync(result);
             return result;
         }
@@ -106,13 +106,13 @@ namespace CineVision.Services
         public async Task<List<HallUtilizationResponse>> GetHallUtilizationAsync(ReportSearchObject? search)
         {
             var snapshot = await GetSnapshotAsync();
-            var screenings = FilterScreenings(snapshot.Screenings, search);
-            var screeningIds = screenings.Select(s => s.Id).ToHashSet();
-            var seatSales = snapshot.SeatSales.Where(s => screeningIds.Contains(s.ScreeningId)).ToList();
+            var projections = FilterProjections(snapshot.Projections, search);
+            var projectionIds = projections.Select(s => s.Id).ToHashSet();
+            var seatSales = snapshot.SeatSales.Where(s => projectionIds.Contains(s.ProjectionId)).ToList();
 
-            var screeningsByHall = screenings.GroupBy(s => s.HallId).ToDictionary(g => g.Key, g => g.Count());
+            var projectionsByHall = projections.GroupBy(s => s.HallId).ToDictionary(g => g.Key, g => g.Count());
             var soldByHall = seatSales.GroupBy(s => s.HallId).ToDictionary(g => g.Key, g => g.Count());
-            var totalScreenings = Math.Max(1, screenings.Count);
+            var totalProjections = Math.Max(1, projections.Count);
 
             var halls = await _dbContext.Halls
                 .AsNoTracking()
@@ -123,17 +123,17 @@ namespace CineVision.Services
                 .Select(hall =>
                 {
                     snapshot.CapByHall.TryGetValue(hall.Id, out var capacity);
-                    screeningsByHall.TryGetValue(hall.Id, out var screeningsCount);
+                    projectionsByHall.TryGetValue(hall.Id, out var projectionsCount);
                     soldByHall.TryGetValue(hall.Id, out var sold);
-                    var seatsOffered = capacity * screeningsCount;
+                    var seatsOffered = capacity * projectionsCount;
                     return new HallUtilizationResponse
                     {
                         HallId = hall.Id,
                         HallName = hall.Name,
                         Capacity = capacity,
-                        ScreeningsCount = screeningsCount,
-                        ShowCount = screeningsCount,
-                        SharePercent = Math.Round((double)screeningsCount / totalScreenings * 100, 1),
+                        ProjectionsCount = projectionsCount,
+                        ShowCount = projectionsCount,
+                        SharePercent = Math.Round((double)projectionsCount / totalProjections * 100, 1),
                         SeatsOffered = seatsOffered,
                         SeatsSold = sold,
                         UtilizationPercent = seatsOffered > 0 ? Math.Round((double)sold / seatsOffered * 100, 1) : 0
@@ -147,26 +147,26 @@ namespace CineVision.Services
         public async Task<List<TimeSlotPerformanceResponse>> GetPerformanceByTimeSlotAsync(ReportSearchObject? search)
         {
             var snapshot = await GetSnapshotAsync();
-            var screenings = FilterScreenings(snapshot.Screenings, search);
-            var soldByScreening = snapshot.SeatSales
-                .GroupBy(s => s.ScreeningId)
+            var projections = FilterProjections(snapshot.Projections, search);
+            var soldByProjection = snapshot.SeatSales
+                .GroupBy(s => s.ProjectionId)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
             var slots = new (string Label, Func<DateTime, bool> Match)[]
             {
                 ("Morning (before 12:00)", t => t.Hour < 12),
-                ("Afternoon (12:00â€“17:00)", t => t.Hour is >= 12 and < 17),
-                ("Evening (17:00â€“21:00)", t => t.Hour is >= 17 and < 21),
+                ("Afternoon (12:00–17:00)", t => t.Hour is >= 12 and < 17),
+                ("Evening (17:00–21:00)", t => t.Hour is >= 17 and < 21),
                 ("Night (after 21:00)", t => t.Hour >= 21)
             };
 
             var result = new List<TimeSlotPerformanceResponse>();
             foreach (var (label, match) in slots)
             {
-                var slotScreenings = screenings.Where(s => match(s.StartTime)).ToList();
-                int offered = slotScreenings.Sum(s => snapshot.CapByHall.TryGetValue(s.HallId, out var c) ? c : 0);
-                var sales = slotScreenings
-                    .SelectMany(s => soldByScreening.TryGetValue(s.Id, out var list) ? list : Enumerable.Empty<SeatSale>())
+                var slotProjections = projections.Where(s => match(s.StartTime)).ToList();
+                int offered = slotProjections.Sum(s => snapshot.CapByHall.TryGetValue(s.HallId, out var c) ? c : 0);
+                var sales = slotProjections
+                    .SelectMany(s => soldByProjection.TryGetValue(s.Id, out var list) ? list : Enumerable.Empty<SeatSale>())
                     .ToList();
 
                 result.Add(new TimeSlotPerformanceResponse
@@ -228,7 +228,7 @@ namespace CineVision.Services
         private async Task<AnalyticsSnapshot> LoadSnapshotAsync()
         {
             var capByHall = await GetHallCapacitiesAsync();
-            var screenings = await GetScreeningsAsync();
+            var projections = await GetProjectionsAsync();
             var seatSales = await GetSeatSalesAsync();
             var avgRatings = await GetAvgRatingsAsync();
 
@@ -241,7 +241,7 @@ namespace CineVision.Services
 
             return new AnalyticsSnapshot(
                 capByHall,
-                screenings,
+                projections,
                 seatSales,
                 avgRatings,
                 totalReservations,
@@ -273,11 +273,11 @@ namespace CineVision.Services
             return rows.ToDictionary(x => x.MovieId, x => Math.Round(x.Avg, 1));
         }
 
-        private async Task<List<ScreeningRow>> GetScreeningsAsync()
+        private async Task<List<ProjectionRow>> GetProjectionsAsync()
         {
-            return await _dbContext.Screenings
+            return await _dbContext.Projections
                 .AsNoTracking()
-                .Select(s => new ScreeningRow
+                .Select(s => new ProjectionRow
                 {
                     Id = s.Id,
                     MovieId = s.MovieId,
@@ -296,9 +296,9 @@ namespace CineVision.Services
                 .Select(rs => new SeatSale
                 {
                     ReservationId = rs.ReservationId,
-                    ScreeningId = rs.ScreeningId,
-                    MovieId = rs.Screening.MovieId,
-                    HallId = rs.Screening.HallId,
+                    ProjectionId = rs.ProjectionId,
+                    MovieId = rs.Projection.MovieId,
+                    HallId = rs.Projection.HallId,
                     Price = rs.Price,
                     Status = rs.Reservation.Status,
                     ReservationDate = rs.Reservation.ReservationDate
@@ -306,15 +306,15 @@ namespace CineVision.Services
                 .ToListAsync();
         }
 
-        private static List<ScreeningRow> FilterScreenings(List<ScreeningRow> screenings, ReportSearchObject? search)
+        private static List<ProjectionRow> FilterProjections(List<ProjectionRow> projections, ReportSearchObject? search)
         {
-            return screenings
+            return projections
                 .Where(s => InRange(s.StartTime, search?.DateFrom, search?.DateTo))
                 .ToList();
         }
 
         private static List<MoviePerformanceResponse> BuildMoviePerformance(
-            IEnumerable<ScreeningRow> screenings,
+            IEnumerable<ProjectionRow> projections,
             IEnumerable<SeatSale> seatSales,
             IReadOnlyDictionary<int, int> capByHall,
             IReadOnlyDictionary<int, double> avgRatingByMovie)
@@ -322,7 +322,7 @@ namespace CineVision.Services
             var salesByMovie = seatSales.GroupBy(s => s.MovieId).ToDictionary(g => g.Key, g => g.ToList());
             var result = new List<MoviePerformanceResponse>();
 
-            foreach (var group in screenings.GroupBy(s => s.MovieId))
+            foreach (var group in projections.GroupBy(s => s.MovieId))
             {
                 int movieId = group.Key;
                 int offered = group.Sum(s => capByHall.TryGetValue(s.HallId, out var c) ? c : 0);
@@ -341,7 +341,7 @@ namespace CineVision.Services
                 {
                     MovieId = movieId,
                     Title = group.First().MovieTitle,
-                    ScreeningsCount = group.Count(),
+                    ProjectionsCount = group.Count(),
                     ReservationsCount = reservations,
                     TicketsSold = tickets,
                     Revenue = revenue,
@@ -357,20 +357,20 @@ namespace CineVision.Services
         }
 
         private static double ComputeAverageOccupancy(
-            IEnumerable<ScreeningRow> screenings,
+            IEnumerable<ProjectionRow> projections,
             IEnumerable<SeatSale> seatSales,
             IReadOnlyDictionary<int, int> capByHall)
         {
-            var soldByScreening = seatSales.GroupBy(s => s.ScreeningId).ToDictionary(g => g.Key, g => g.Count());
+            var soldByProjection = seatSales.GroupBy(s => s.ProjectionId).ToDictionary(g => g.Key, g => g.Count());
 
             var occupancies = new List<double>();
-            foreach (var s in screenings)
+            foreach (var s in projections)
             {
                 if (!capByHall.TryGetValue(s.HallId, out var capacity) || capacity <= 0)
                 {
                     continue;
                 }
-                soldByScreening.TryGetValue(s.Id, out var sold);
+                soldByProjection.TryGetValue(s.Id, out var sold);
                 occupancies.Add((double)sold / capacity * 100);
             }
 
@@ -392,7 +392,7 @@ namespace CineVision.Services
 
         private sealed record AnalyticsSnapshot(
             Dictionary<int, int> CapByHall,
-            List<ScreeningRow> Screenings,
+            List<ProjectionRow> Projections,
             List<SeatSale> SeatSales,
             Dictionary<int, double> AvgRatings,
             int TotalReservations,
@@ -400,7 +400,7 @@ namespace CineVision.Services
             int TotalMovies,
             int ActiveMovies);
 
-        private sealed class ScreeningRow
+        private sealed class ProjectionRow
         {
             public int Id { get; set; }
             public int MovieId { get; set; }
@@ -413,7 +413,7 @@ namespace CineVision.Services
         private sealed class SeatSale
         {
             public int ReservationId { get; set; }
-            public int ScreeningId { get; set; }
+            public int ProjectionId { get; set; }
             public int MovieId { get; set; }
             public int HallId { get; set; }
             public decimal Price { get; set; }

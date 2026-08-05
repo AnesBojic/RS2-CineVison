@@ -1,4 +1,4 @@
-﻿import 'package:cinevision_mobile/core/enums/api_enums.dart';
+import 'package:cinevision_mobile/core/enums/api_enums.dart';
 import 'package:cinevision_mobile/core/widgets/cine_app_bar.dart';
 import 'package:cinevision_mobile/core/utils/date_formatters.dart';
 import 'package:cinevision_mobile/core/constants/app_colors.dart';
@@ -30,7 +30,7 @@ class BookingConfirmedPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final start = reservation.screeningStartTime.toLocal();
+    final start = reservation.projectionStartTime.toLocal();
     final subtitle = genreLine ?? '';
 
     return Scaffold(

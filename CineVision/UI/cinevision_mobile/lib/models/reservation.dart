@@ -40,12 +40,12 @@ class Reservation {
   final int userId;
   final String? customerName;
   final String? customerEmail;
-  final int screeningId;
+  final int projectionId;
   final int movieId;
   final String movieTitle;
   final String hallName;
-  final DateTime screeningStartTime;
-  final DateTime screeningEndTime;
+  final DateTime projectionStartTime;
+  final DateTime projectionEndTime;
   final String? paymentTransactionId;
   final DateTime? paymentDate;
   final List<ReservationSeat> seats;
@@ -60,12 +60,12 @@ class Reservation {
     required this.userId,
     this.customerName,
     this.customerEmail,
-    required this.screeningId,
+    required this.projectionId,
     required this.movieId,
     required this.movieTitle,
     required this.hallName,
-    required this.screeningStartTime,
-    required this.screeningEndTime,
+    required this.projectionStartTime,
+    required this.projectionEndTime,
     this.paymentTransactionId,
     this.paymentDate,
     this.seats = const [],
@@ -84,14 +84,14 @@ class Reservation {
       userId: json['userId'] as int? ?? 0,
       customerName: json['customerName'] as String?,
       customerEmail: json['customerEmail'] as String?,
-      screeningId: json['screeningId'] as int? ?? 0,
+      projectionId: json['projectionId'] as int? ?? 0,
       movieId: json['movieId'] as int? ?? 0,
       movieTitle: json['movieTitle'] as String? ?? '',
       hallName: json['hallName'] as String? ?? '',
-      screeningStartTime:
-          UtcDateTime.tryParse(json['screeningStartTime']) ?? fallback,
-      screeningEndTime: UtcDateTime.tryParse(json['screeningEndTime']) ??
-          UtcDateTime.tryParse(json['screeningStartTime']) ??
+      projectionStartTime:
+          UtcDateTime.tryParse(json['projectionStartTime']) ?? fallback,
+      projectionEndTime: UtcDateTime.tryParse(json['projectionEndTime']) ??
+          UtcDateTime.tryParse(json['projectionStartTime']) ??
           fallback,
       paymentTransactionId: json['paymentTransactionId'] as String?,
       paymentDate: UtcDateTime.tryParse(json['paymentDate']),
@@ -109,14 +109,14 @@ class Reservation {
 
   bool get isPaid => status == ReservationStatus.paid;
 
-  bool get isScreeningPast =>
-      screeningEndTime.toUtc().isBefore(UtcDateTime.now());
+  bool get isProjectionPast =>
+      projectionEndTime.toUtc().isBefore(UtcDateTime.now());
 
-  /// Refund/cancel only until 4 hours before the screening starts.
+  /// Refund/cancel only until 4 hours before the projection starts.
   bool get canRefund {
     if (!isPaidOrConfirmed || isCancelled) return false;
     final deadline =
-        screeningStartTime.toUtc().subtract(const Duration(hours: 4));
+        projectionStartTime.toUtc().subtract(const Duration(hours: 4));
     return UtcDateTime.now().isBefore(deadline);
   }
 }

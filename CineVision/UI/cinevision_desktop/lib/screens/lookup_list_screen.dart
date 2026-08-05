@@ -14,7 +14,7 @@ enum LookupExtraField {
   none,
 
   /// Hall statuses: whether projections may be scheduled in halls with this status.
-  allowsScreenings,
+  allowsProjections,
 
   /// Age ratings: the minimum viewer age.
   minimumAge,
@@ -119,7 +119,7 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
       text: existing?.minimumAge?.toString() ?? '',
     );
     var isActive = existing?.isActive ?? true;
-    var allowsScreenings = existing?.allowsScreenings ?? false;
+    var allowsProjections = existing?.allowsProjections ?? false;
     var submitting = false;
 
     final saved = await showDialog<bool>(
@@ -140,8 +140,8 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
                 name: nameCtrl.text.trim(),
                 description: descCtrl.text.trim(),
                 isActive: isActive,
-                allowsScreenings: widget.extraField == LookupExtraField.allowsScreenings
-                    ? allowsScreenings
+                allowsProjections: widget.extraField == LookupExtraField.allowsProjections
+                    ? allowsProjections
                     : null,
                 minimumAge: widget.extraField == LookupExtraField.minimumAge
                     ? int.tryParse(minAgeCtrl.text.trim())
@@ -215,15 +215,15 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
                   maxLines: 3,
                   decoration: const InputDecoration(labelText: 'Description'),
                 ),
-                if (widget.extraField == LookupExtraField.allowsScreenings)
+                if (widget.extraField == LookupExtraField.allowsProjections)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Projections can be scheduled'),
                     subtitle: const Text(
                       'Halls with this status appear when scheduling a projection.',
                     ),
-                    value: allowsScreenings,
-                    onChanged: (v) => setLocal(() => allowsScreenings = v),
+                    value: allowsProjections,
+                    onChanged: (v) => setLocal(() => allowsProjections = v),
                   ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -264,8 +264,8 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
         'Code: ${item.code}',
       if (widget.extraField == LookupExtraField.minimumAge && item.minimumAge != null)
         'Minimum age: ${item.minimumAge}',
-      if (widget.extraField == LookupExtraField.allowsScreenings)
-        item.allowsScreenings == true
+      if (widget.extraField == LookupExtraField.allowsProjections)
+        item.allowsProjections == true
             ? 'Projections allowed'
             : 'Projections not allowed',
       if ((item.description ?? '').isNotEmpty) item.description!,

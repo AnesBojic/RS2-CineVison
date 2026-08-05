@@ -1,13 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace CineVision.Model.Requests
 {
     public class ReservationCreateRequest
     {
         [Required]
-        public int ScreeningId { get; set; }
+        public int ProjectionId { get; set; }
 
-        /// <summary>Identifiers of the seats the customer wants to reserve for the screening.</summary>
+        /// <summary>Identifiers of the seats the customer wants to reserve for the projection.</summary>
         [Required]
         public List<int> SeatIds { get; set; } = new();
 
