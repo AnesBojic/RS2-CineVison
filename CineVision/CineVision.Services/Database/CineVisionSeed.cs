@@ -143,12 +143,31 @@ namespace CineVision.Services.Database
 
         private void SeedScreenings(ModelBuilder modelBuilder)
         {
+            // 1–5: historical (July 2026) — keep for seeded reservations/analytics.
+            // 7–17: upcoming (Aug–Oct 2026). Id 6 skipped — may already exist from admin-created data.
             modelBuilder.Entity<Screening>().HasData(
                 new { Id = 1, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 18, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 5, 19, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 2, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 21, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 5, 22, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 3, MovieId = 2, HallId = 1, StartTime = new DateTime(2026, 7, 6, 17, 30, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 6, 19, 8, 0, DateTimeKind.Utc), BasePrice = 7.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 4, MovieId = 3, HallId = 2, StartTime = new DateTime(2026, 7, 6, 20, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 6, 21, 45, 0, DateTimeKind.Utc), BasePrice = 9.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 5, MovieId = 5, HallId = 2, StartTime = new DateTime(2026, 7, 7, 19, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 7, 20, 58, 0, DateTimeKind.Utc), BasePrice = 10.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+                new { Id = 5, MovieId = 5, HallId = 2, StartTime = new DateTime(2026, 7, 7, 19, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 7, 7, 20, 58, 0, DateTimeKind.Utc), BasePrice = 10.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+
+                // August 2026
+                new { Id = 7, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 8, 10, 18, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 8, 10, 19, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 8, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 8, 10, 21, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 8, 10, 22, 53, 0, DateTimeKind.Utc), BasePrice = 9.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 9, MovieId = 2, HallId = 2, StartTime = new DateTime(2026, 8, 12, 17, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 8, 12, 18, 38, 0, DateTimeKind.Utc), BasePrice = 7.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 10, MovieId = 3, HallId = 1, StartTime = new DateTime(2026, 8, 15, 19, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 8, 15, 20, 45, 0, DateTimeKind.Utc), BasePrice = 9.00m, LanguageId = (int?)2, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 11, MovieId = 5, HallId = 2, StartTime = new DateTime(2026, 8, 20, 20, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 8, 20, 21, 58, 0, DateTimeKind.Utc), BasePrice = 10.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+
+                // September 2026
+                new { Id = 12, MovieId = 4, HallId = 1, StartTime = new DateTime(2026, 9, 5, 18, 30, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 9, 5, 20, 37, 0, DateTimeKind.Utc), BasePrice = 8.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 13, MovieId = 1, HallId = 2, StartTime = new DateTime(2026, 9, 12, 19, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 9, 12, 20, 53, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 14, MovieId = 2, HallId = 1, StartTime = new DateTime(2026, 9, 18, 16, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 9, 18, 17, 38, 0, DateTimeKind.Utc), BasePrice = 7.50m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+
+                // October 2026
+                new { Id = 15, MovieId = 5, HallId = 1, StartTime = new DateTime(2026, 10, 3, 20, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 10, 3, 21, 58, 0, DateTimeKind.Utc), BasePrice = 10.50m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 16, MovieId = 3, HallId = 2, StartTime = new DateTime(2026, 10, 10, 18, 0, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 10, 10, 19, 45, 0, DateTimeKind.Utc), BasePrice = 9.00m, LanguageId = (int?)1, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 17, MovieId = 4, HallId = 2, StartTime = new DateTime(2026, 10, 22, 19, 30, 0, DateTimeKind.Utc), EndTime = new DateTime(2026, 10, 22, 21, 37, 0, DateTimeKind.Utc), BasePrice = 8.00m, LanguageId = (int?)2, IsActive = true, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
             );
         }
 
