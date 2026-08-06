@@ -351,12 +351,14 @@ namespace CineVision.Services.Database
                 }
             );
 
+            // ImageBase64 is filled on first API startup by NewsImageSeed (SeedAssets/news-{id}.jpg).
             modelBuilder.Entity<News>().HasData(
                 new
                 {
                     Id = 1,
                     Title = "Summer premiere nights",
                     Content = "Join us every Friday for premiere nights with discounted snacks and late shows.",
+                    ImageBase64 = (string?)null,
                     PublishedAt = new DateTime(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc),
                     IsActive = true,
                     CreatedAt = new DateTime(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc),
@@ -367,9 +369,21 @@ namespace CineVision.Services.Database
                     Id = 2,
                     Title = "Student discount weekdays",
                     Content = "Show your student ID Monday–Thursday for 20% off base ticket prices.",
+                    ImageBase64 = (string?)null,
                     PublishedAt = new DateTime(2026, 6, 20, 9, 0, 0, DateTimeKind.Utc),
                     IsActive = true,
                     CreatedAt = new DateTime(2026, 6, 20, 9, 0, 0, DateTimeKind.Utc),
+                    UpdatedAt = (DateTime?)null
+                },
+                new
+                {
+                    Id = 3,
+                    Title = "IMAX weekend marathon",
+                    Content = "This weekend Hall A hosts an all-day sci-fi marathon. Combo snacks included with every ticket.",
+                    ImageBase64 = (string?)null,
+                    PublishedAt = new DateTime(2026, 7, 5, 15, 0, 0, DateTimeKind.Utc),
+                    IsActive = true,
+                    CreatedAt = new DateTime(2026, 7, 5, 15, 0, 0, DateTimeKind.Utc),
                     UpdatedAt = (DateTime?)null
                 }
             );

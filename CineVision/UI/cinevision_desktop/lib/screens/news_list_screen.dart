@@ -1,10 +1,14 @@
+import 'dart:convert';
+
 import 'package:cinevision_desktop/core/theme/app_theme.dart';
 import 'package:cinevision_desktop/core/utils/utc_datetime.dart';
 import 'package:cinevision_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:cinevision_desktop/models/news.dart';
 import 'package:cinevision_desktop/providers/news_provider.dart';
 import 'package:cinevision_desktop/utils/field_validators.dart';
+import 'package:cinevision_desktop/utils/image_utils.dart';
 import 'package:cinevision_desktop/utils/utils_widgets.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -79,6 +83,7 @@ class _NewsListScreenState extends State<NewsListScreen> {
     final titleCtrl = TextEditingController(text: existing?.title ?? '');
     final contentCtrl = TextEditingController(text: existing?.content ?? '');
     var isActive = existing?.isActive ?? true;
+    String? imageBase64 = existing?.imageBase64;
     var submitting = false;
 
     final saved = await showDialog<bool>(
@@ -93,11 +98,16 @@ class _NewsListScreenState extends State<NewsListScreen> {
               maxWidth: 520,
               onSubmit: () async {
                 if (!(formKey.currentState?.validate() ?? false)) return;
+                if (imageBase64 == null || imageBase64!.isEmpty) {
+                  showAppSnackBar(ctx, 'News image is required.', isError: true);
+                  return;
+                }
                 setLocal(() => submitting = true);
                 try {
                   final payload = NewsItem(
                     title: titleCtrl.text.trim(),
                     content: contentCtrl.text.trim(),
+                    imageBase64: imageBase64,
                     publishedAt: existing?.publishedAt ?? UtcDateTime.now(),
                     isActive: isActive,
                   );
@@ -116,6 +126,22 @@ class _NewsListScreenState extends State<NewsListScreen> {
                 key: formKey,
                 child: Column(
                   children: [
+                    PosterUploadBox(
+                      base64: imageBase64,
+                      hint: 'Click to upload news image',
+                      onPick: () async {
+                        final result = await FilePicker.pickFiles(
+                          type: FileType.image,
+                          withData: true,
+                        );
+                        if (result != null && result.files.single.bytes != null) {
+                          final compressed =
+                              await preparePosterBase64(result.files.single.bytes!);
+                          setLocal(() => imageBase64 = compressed);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
                     TextFormField(
                       controller: titleCtrl,
                       decoration: const InputDecoration(labelText: 'Title'),
@@ -176,9 +202,22 @@ class _NewsListScreenState extends State<NewsListScreen> {
               itemBuilder: (context, index) {
                 final item = _items[index];
                 final published = item.publishedAt?.toLocal();
+                final hasImage =
+                    item.imageBase64 != null && item.imageBase64!.isNotEmpty;
                 return Card(
                   color: AppColors.card,
                   child: ListTile(
+                    leading: hasImage
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.memory(
+                              base64Decode(item.imageBase64!),
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : const CircleAvatar(child: Icon(Icons.article_outlined)),
                     title: Text(item.title ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: Text(
                       [

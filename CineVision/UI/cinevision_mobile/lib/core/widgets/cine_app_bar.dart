@@ -50,7 +50,7 @@ class CineAppBar extends StatefulWidget implements PreferredSizeWidget {
     if (confirmed == true && context.mounted) {
       final navigator = Navigator.of(context);
       await context.read<AuthProvider>().logout();
-      navigator.pushNamedAndRemoveUntil(AppRoutes.entryPoint, (_) => false);
+      navigator.pushNamedAndRemoveUntil(AppRoutes.authLanding, (_) => false);
     }
   }
 }
@@ -81,13 +81,14 @@ class _CineAppBarState extends State<CineAppBar> {
   void _goBack(BuildContext context) {
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
-    } else {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.entryPoint,
-        (_) => false,
-      );
+      return;
     }
+    final authed = context.read<AuthProvider>().isAuthenticated;
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      authed ? AppRoutes.entryPoint : AppRoutes.authLanding,
+      (_) => false,
+    );
   }
 
   @override

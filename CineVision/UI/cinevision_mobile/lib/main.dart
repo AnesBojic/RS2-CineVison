@@ -68,7 +68,7 @@ class _MyAppState extends State<MyApp> {
           theme: AppTheme.defaultTheme,
           scrollBehavior: const AppScrollBehavior(),
           onGenerateRoute: RouteGenerator.onGenerate,
-          initialRoute: AppRoutes.entryPoint,
+          initialRoute: AppRoutes.authLanding,
         );
       },
     );

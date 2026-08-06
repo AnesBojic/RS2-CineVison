@@ -14,7 +14,7 @@ class AuthLandingPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
-      appBar: const CineAppBar(showBack: true, showAuthAction: false),
+      appBar: const CineAppBar(showBack: false, showAuthAction: false),
       body: SafeArea(
         top: false,
         child: Column(
@@ -36,7 +36,7 @@ class AuthLandingPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Sign in or create an account to book tickets.',
+                      'Sign in or create an account to browse movies and book tickets.',
                       style: TextStyle(color: AppColors.textSecondary),
                       textAlign: TextAlign.center,
                     ),

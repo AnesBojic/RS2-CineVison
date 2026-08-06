@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace CineVision.WebAPI.Controllers
 {
     /// <summary>
-    /// Auth endpoints. <see cref="AllowAnonymousAttribute"/> only on Login/Register;
-    /// Forgot/Reset/Refresh stay public (no class-level authorize).
+    /// Auth endpoints. <see cref="AllowAnonymousAttribute"/> only on Login/Register
+    /// (RS2: no anonymous access elsewhere). Forgot/Reset have no class-level [Authorize].
     /// </summary>
     [ApiController]
     [Route("[controller]")]

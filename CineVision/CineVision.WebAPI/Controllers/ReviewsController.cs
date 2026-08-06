@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CineVision.WebAPI.Controllers;
 
-/// <summary>Reviews: public reads; writes require auth and ownership checks in the service.</summary>
+/// <summary>Reviews: authenticated reads; writes require ownership checks in the service.</summary>
 [Authorize]
 public class ReviewsController : BaseReadController<ReviewResponse, ReviewSearchObject, IReviewService>
 {
@@ -15,14 +15,12 @@ public class ReviewsController : BaseReadController<ReviewResponse, ReviewSearch
     {
     }
 
-    [AllowAnonymous]
     [HttpGet]
     public override async Task<PageResult<ReviewResponse>> GetAll([FromQuery] ReviewSearchObject? search)
     {
         return await _service.GetAllAsync(search);
     }
 
-    [AllowAnonymous]
     [HttpGet("{id}")]
     public override async Task<ActionResult<ReviewResponse>> GetById(int id)
     {

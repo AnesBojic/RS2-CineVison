@@ -13,15 +13,4 @@ public class NewsController : BaseCRUDController<NewsResponse, NewsSearchObject,
     public NewsController(INewsService newsService) : base(newsService)
     {
     }
-
-    /// <summary>Public news feed for guests.</summary>
-    [AllowAnonymous]
-    [HttpGet]
-    public override Task<PageResult<NewsResponse>> GetAll([FromQuery] NewsSearchObject? search)
-        => base.GetAll(search);
-
-    [AllowAnonymous]
-    [HttpGet("{id}")]
-    public override Task<ActionResult<NewsResponse>> GetById(int id)
-        => base.GetById(id);
 }

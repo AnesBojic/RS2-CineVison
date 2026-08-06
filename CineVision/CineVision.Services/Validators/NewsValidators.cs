@@ -14,6 +14,12 @@ namespace CineVision.Services.Validators
             RuleFor(x => x.Content)
                 .NotEmpty().WithMessage("Content is required.")
                 .MaximumLength(4000).WithMessage("Content cannot exceed 4000 characters.");
+
+            RuleFor(x => x.ImageBase64)
+                .NotEmpty().WithMessage("News image is required.")
+                .Must(base64 => ImageContentValidator.TryValidateBase64(base64!, out _, out _))
+                .WithMessage("News image must be a valid JPEG, PNG, GIF, or WebP file.")
+                .When(x => !string.IsNullOrWhiteSpace(x.ImageBase64));
         }
     }
 
@@ -28,6 +34,12 @@ namespace CineVision.Services.Validators
             RuleFor(x => x.Content)
                 .NotEmpty().WithMessage("Content is required.")
                 .MaximumLength(4000).WithMessage("Content cannot exceed 4000 characters.");
+
+            RuleFor(x => x.ImageBase64)
+                .NotEmpty().WithMessage("News image is required.")
+                .Must(base64 => ImageContentValidator.TryValidateBase64(base64!, out _, out _))
+                .WithMessage("News image must be a valid JPEG, PNG, GIF, or WebP file.")
+                .When(x => !string.IsNullOrWhiteSpace(x.ImageBase64));
         }
     }
 }

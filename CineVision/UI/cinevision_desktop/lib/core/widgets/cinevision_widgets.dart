@@ -871,10 +871,16 @@ class _FormDialogShellState extends State<FormDialogShell> {
 }
 
 class PosterUploadBox extends StatelessWidget {
-  const PosterUploadBox({super.key, this.base64, required this.onPick});
+  const PosterUploadBox({
+    super.key,
+    this.base64,
+    required this.onPick,
+    this.hint = 'Click to upload poster',
+  });
 
   final String? base64;
   final VoidCallback onPick;
+  final String hint;
 
   @override
   Widget build(BuildContext context) {
@@ -894,13 +900,13 @@ class PosterUploadBox extends StatelessWidget {
               )
             : CustomPaint(
                 painter: _DashedBorderPainter(color: AppColors.cardBorder.withValues(alpha: 0.45)),
-                child: const Center(
+                child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.cloud_upload_outlined, color: AppColors.textSecondary, size: 28),
-                      SizedBox(height: 8),
-                      Text('Click to upload poster', style: TextStyle(color: AppColors.textSecondary)),
+                      const Icon(Icons.cloud_upload_outlined, color: AppColors.textSecondary, size: 28),
+                      const SizedBox(height: 8),
+                      Text(hint, style: const TextStyle(color: AppColors.textSecondary)),
                     ],
                   ),
                 ),

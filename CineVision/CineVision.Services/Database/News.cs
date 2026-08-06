@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 namespace CineVision.Services.Database
 {
     /// <summary>
-    /// Announcements / news shown to customers (title, body, published time).
+    /// Announcements / news shown to customers (title, body, image, published time).
     /// </summary>
     public class News
     {
@@ -18,6 +18,9 @@ namespace CineVision.Services.Database
         [Required]
         [MaxLength(4000)]
         public string Content { get; set; } = string.Empty;
+
+        /// <summary>News image as base64 (same pattern as movie posters).</summary>
+        public string? ImageBase64 { get; set; }
 
         public DateTime PublishedAt { get; set; } = DateTime.UtcNow;
 

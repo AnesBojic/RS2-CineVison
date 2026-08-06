@@ -1,4 +1,6 @@
-﻿import 'package:cinevision_mobile/core/components/app_back_button.dart';
+﻿import 'dart:convert';
+
+import 'package:cinevision_mobile/core/components/app_back_button.dart';
 import 'package:cinevision_mobile/core/constants/app_defaults.dart';
 import 'package:cinevision_mobile/models/news.dart';
 import 'package:cinevision_mobile/providers/news_provider.dart';
@@ -76,30 +78,45 @@ class _NewsPageState extends State<NewsPage> {
                       itemBuilder: (context, index) {
                         final item = _items[index];
                         final published = item.publishedAt?.toLocal();
+                        final hasImage = item.imageBase64 != null &&
+                            item.imageBase64!.isNotEmpty;
                         return Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.title ?? '',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(fontWeight: FontWeight.bold),
+                          clipBehavior: Clip.antiAlias,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (hasImage)
+                                Image.memory(
+                                  base64Decode(item.imageBase64!),
+                                  height: 160,
+                                  fit: BoxFit.cover,
                                 ),
-                                if (published != null) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${published.year}-${published.month.toString().padLeft(2, '0')}-${published.day.toString().padLeft(2, '0')}',
-                                    style: Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                ],
-                                const SizedBox(height: 8),
-                                Text(item.content ?? ''),
-                              ],
-                            ),
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.title ?? '',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(fontWeight: FontWeight.bold),
+                                    ),
+                                    if (published != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${published.year}-${published.month.toString().padLeft(2, '0')}-${published.day.toString().padLeft(2, '0')}',
+                                        style:
+                                            Theme.of(context).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                    const SizedBox(height: 8),
+                                    Text(item.content ?? ''),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         );
                       },

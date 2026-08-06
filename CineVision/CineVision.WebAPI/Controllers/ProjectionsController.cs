@@ -15,19 +15,6 @@ public class ProjectionsController : BaseCRUDController<ProjectionResponse, Proj
     {
     }
 
-    /// <summary>Public showtimes for guest browsing.</summary>
-    [AllowAnonymous]
-    [HttpGet]
-    public override Task<PageResult<ProjectionResponse>> GetAll([FromQuery] ProjectionSearchObject? search)
-        => base.GetAll(search);
-
-    [AllowAnonymous]
-    [HttpGet("{id}")]
-    public override Task<ActionResult<ProjectionResponse>> GetById(int id)
-        => base.GetById(id);
-
-    /// <summary>Public seat map so guests can pick seats before signing in at checkout.</summary>
-    [AllowAnonymous]
     [HttpGet("{id}/Seats")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

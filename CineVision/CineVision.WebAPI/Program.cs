@@ -378,7 +378,8 @@ static async Task EnsureDatabaseReadyAsync(WebApplication app)
         {
             await db.Database.MigrateAsync();
             await MoviePosterSeed.EnsureSeededAsync(db);
-            logger.LogInformation("Database migrated and poster seed ensured.");
+            await NewsImageSeed.EnsureSeededAsync(db);
+            logger.LogInformation("Database migrated; poster and news image seed ensured.");
             return;
         }
         catch (Exception ex) when (attempt < maxAttempts)
