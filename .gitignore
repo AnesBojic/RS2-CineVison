@@ -386,6 +386,9 @@ FodyWeavers.xsd
 !.vscode/extensions.json
 *.code-workspace
 
+# JetBrains / IntelliJ / Android Studio
+.idea/
+
 # Local History for Visual Studio Code
 .history/
 
@@ -402,5 +405,3 @@ eCommerce/UI/ecommerce_mobile/FIT_RS2_LAB_Flutter_Cart_Orders_Reviews.md
 eCommerce/eCommerce.WebAPI/appsettings.Development.json
 eCommerce/eCommerce.WebAPI/appsettings.json
 eCommerce/.env.example
-/eCommerce/.idea
-eCommerce/.idea/caches/deviceStreaming.xml

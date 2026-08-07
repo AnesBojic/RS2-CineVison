@@ -1,5 +1,6 @@
 ﻿import 'dart:convert';
 
+import 'package:cinevision_desktop/core/constants/api_config.dart';
 import 'package:cinevision_desktop/core/enums/api_enums.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -47,10 +48,7 @@ class AuthProvider extends ChangeNotifier {
 
   AuthProvider() {
     _active = this;
-    _baseUrl = const String.fromEnvironment(
-      'BASE_URL',
-      defaultValue: 'http://localhost:5126/Access',
-    );
+    _baseUrl = resolveAuthBaseUrl();
   }
 
   bool get isAuthenticated => _isAuthenticated;

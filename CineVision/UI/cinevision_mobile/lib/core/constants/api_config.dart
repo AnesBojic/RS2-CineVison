@@ -2,22 +2,21 @@ import 'package:flutter/foundation.dart';
 
 /// Resolves the Web API base URL for the current platform.
 ///
-/// Override at build/run time with:
-/// `flutter run --dart-define=baseUrl=http://192.168.x.x:5126/`
+/// Override at build/run time (RS2 upute):
+/// `flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5126/`
 String resolveApiBaseUrl() {
-  const fromEnv = String.fromEnvironment('baseUrl');
-  if (fromEnv.isNotEmpty) return fromEnv;
+  const fromEnv = String.fromEnvironment('API_BASE_URL');
+  var url = fromEnv.isNotEmpty
+      ? fromEnv
+      : (defaultTargetPlatform == TargetPlatform.android
+          ? 'http://10.0.2.2:5126/'
+          : 'http://localhost:5126/');
 
-  if (defaultTargetPlatform == TargetPlatform.android) {
-    return 'http://10.0.2.2:5126/';
+  if (!url.endsWith('/')) {
+    url = '$url/';
   }
-
-  return 'http://localhost:5126/';
+  return url;
 }
 
-String resolveAuthBaseUrl() {
-  const fromEnv = String.fromEnvironment('BASE_URL');
-  if (fromEnv.isNotEmpty) return fromEnv;
-
-  return '${resolveApiBaseUrl()}Access';
-}
+/// Auth controller base: `{API_BASE_URL}Access`.
+String resolveAuthBaseUrl() => '${resolveApiBaseUrl()}Access';

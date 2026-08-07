@@ -6,20 +6,19 @@ import 'package:http/http.dart' as http;
 import 'package:cinevision_desktop/providers/auth_provider.dart';
 import 'package:http/http.dart';
 
+import '../core/constants/api_config.dart';
 import '../utils/api_client_exception.dart';
 
 abstract class BaseProvider<T> with ChangeNotifier {
-    static String? _baseUrl;
+  static String? _baseUrl;
 
   static String? get baseUrl => _baseUrl;
 
   /// API resource segment, e.g. `Movies` → `{baseUrl}Movies`.
   final String endpoint;
 
-
   BaseProvider(this.endpoint) {
-    _baseUrl = const String.fromEnvironment("baseUrl",
-        defaultValue: "http://localhost:5126/");
+    _baseUrl ??= resolveApiBaseUrl();
   }
 
   Future<SearchResult<T>> get({dynamic filter}) async {
