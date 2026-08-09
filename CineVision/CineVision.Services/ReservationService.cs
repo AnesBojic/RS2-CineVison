@@ -413,7 +413,7 @@ namespace CineVision.Services
                     $"Reservation: {response.ReservationNumber}\n" +
                     $"Movie: {response.MovieTitle}\n" +
                     $"Hall: {response.HallName}\n" +
-                    $"Start: {response.ProjectionStartTime:yyyy-MM-dd HH:mm} UTC\n" +
+                    $"Start: {CinemaDateTime.FormatLocal(response.ProjectionStartTime)}\n" +
                     $"Seats: {seats}\n" +
                     $"Total: {response.TotalAmount:0.00}\n\n" +
                     $"Thank you for booking with CineVision.";

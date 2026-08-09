@@ -417,7 +417,7 @@ namespace CineVision.Services
                     $"Your booking(s) for the following projection were cancelled because the projection was deleted by admin/staff.\n\n" +
                     $"Movie: {movieTitle}\n" +
                     $"Hall: {hallName}\n" +
-                    $"Start: {startTime:yyyy-MM-dd HH:mm} UTC\n\n" +
+                    $"Start: {CinemaDateTime.FormatLocal(startTime)}\n\n" +
                     $"Reservations:\n{string.Join("\n", seatLines)}\n\n" +
                     $"If you have already paid, a refund will be attempted automatically.\n\n" +
                     $"Thank you,\nCineVision";
