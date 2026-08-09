@@ -1,59 +1,120 @@
-﻿# CineVision (FIT RS2 — IB200017)
+# CineVision (FIT RS2 — IB200017)
 
-Cinema booking platform: **ASP.NET Core API** (Docker) + **Flutter desktop** (Admin/Staff) + **Flutter mobile** (Customer).
+Cinema booking platform:
 
-Database: **`200017`** · Recommender docs: [`recommender-dokumentacija.md`](recommender-dokumentacija.md)
+| Part | Description |
+|------|-------------|
+| Backend | ASP.NET Core Web API + SQL Server + RabbitMQ email worker (**Docker**) |
+| Desktop | Flutter Windows — **Admin / Staff** |
+| Mobile | Flutter Android — **Customer** (bookings, Stripe, recommendations) |
+
+Database name (seed / `.env`): **`200017`**
+
+Recommender documentation: [`recommender-dokumentacija.md`](recommender-dokumentacija.md)
 
 ---
 
-## 1. Backend setup
+## Prerequisites
 
-**Prerequisites:** Docker Desktop running, Flutter (optional if you only use prebuilt UI).
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — **must be running**
+- [Flutter](https://docs.flutter.dev/get-started/install) (stable) + Windows desktop / Android emulator (AVD)
+- Optional: SSMS 
+- Stripe test keys, SMTP (e.g. Gmail app password), OpenAI key — in `.env`
+
+---
+
+## 1. Configuration (`.env`)
+ 
+ Unzip folder with name "env-tajne", there is .env file in it allready setted up for use.
+
+---
+
+## 2. Start the backend
 
 ```powershell
 cd CineVision
-Copy-Item .env.example .env
-# Fill MSSQL_SA_PASSWORD (required), JWT, Stripe, SMTP, OpenAI
 .\start.ps1
 ```
 
-Wait for **Backend is up.**
+Wait for **Backend is up.** The first run takes longer (image build, migrations, seed).
+
+### Services
 
 | Service | Address |
 |---------|---------|
-| API / Health / Swagger | http://localhost:5126 · `/health` · `/swagger` |
-| RabbitMQ UI | http://localhost:15672 (`guest` / `guest`) |
-| SQL Server | `localhost,1435` — user `sa`, password = `MSSQL_SA_PASSWORD` from `.env`, database `200017` |
+| API | http://localhost:5126 |
+| Health | http://localhost:5126/health |
+| Swagger | http://localhost:5126/swagger |
+| RabbitMQ UI | http://localhost:15672 |
+| SQL Server | `localhost,1435` |
+| Email worker | `cinevision-worker` (no public HTTP port) |
 
-Stop: `docker compose down`  
-If SQL is *unhealthy* / `sa` login fails: set `MSSQL_SA_PASSWORD`, or `docker compose down -v` then `.\start.ps1` (wipes local DB).
+Stop:
 
-> Do not commit `.env`. For submission use a password-protected `.env-tajne.zip` (password goes on the DL system, not in the GitHub Release).
+```powershell
+cd CineVision
+docker compose down
+```
+
+Rebuild after backend code changes:
+
+```powershell
+.\start.ps1 -Build
+```
 
 ---
 
-## 2. Seed logins
+## 3. Login credentials (seed)
 
-Password for all seed users: **`Test123`** (username, lowercase).
+All seeded users share password **`Test123`**.  
+Login uses **username** (not email), lowercase.
 
-| App | Username | Role |
-|-----|----------|------|
-| Desktop | `admin1` | Admin |
-| Desktop | `admin2`, `admin3` | Staff |
-| Mobile | `customer1`, `customer2` | Customer |
+| App | Username | Password | Role |
+|-----|----------|----------|------|
+| Desktop | `admin1` | `Test123` | Admin |
+| Desktop | `admin2` | `Test123` | Staff |
+| Desktop | `admin3` | `Test123` | Staff |
+| Mobile | `customer1` | `Test123` | Customer |
+| Mobile | `customer2` | `Test123` | Customer |
+
+
+
+- Desktop → Admin / Staff  
+- Mobile → Customer (or register a new account)
 
 ---
 
-## 3. Desktop (Windows)
+## 4. Other connections
 
-Prebuilt files are already in **`Buildovi/Release/`** — you can use the app right away (backend must be running):
+### SQL Server Management Studio / Azure Data Studio
 
-1. Open `Buildovi\Release\`
-2. Run `cinevision_desktop.exe`
-3. Sign in with `admin1` / `Test123`  
-   API: `http://localhost:5126/`
+| Field | Value |
+|-------|--------|
+| Server | `localhost,1435` (comma, not colon) |
+| Auth | SQL Server Authentication |
+| Login | `sa` |
+| Password | `MSSQL_SA_PASSWORD` from `.env` |
+| Database | `200017` |
+| Trust server certificate | Yes |
 
-### Optional — run from terminal (dev)
+### RabbitMQ
+
+| Field | Value |
+|-------|--------|
+| URL | http://localhost:15672 |
+| User / pass | `guest` / `guest` (or from `.env`) |
+
+### Stripe (mobile)
+
+Put test keys in `.env`. Test card e.g. `4242 4242 4242 4242`.
+
+---
+
+## 5. Desktop (Windows)
+
+API must be running. Default URL: **`http://localhost:5126/`**
+
+### Dev
 
 ```powershell
 cd CineVision\UI\cinevision_desktop
@@ -61,21 +122,34 @@ flutter pub get
 flutter run -d windows --dart-define=API_BASE_URL=http://localhost:5126/
 ```
 
-Project path: `CineVision/UI/cinevision_desktop`
+### Release build (submission 9.2.2)
+
+```powershell
+cd CineVision\UI\cinevision_desktop
+flutter clean
+flutter pub get
+flutter build windows --release --dart-define=API_BASE_URL=http://localhost:5126/
+```
+
+Output:
+
+```text
+CineVision\UI\cinevision_desktop\build\windows\x64\runner\Release\
+```
+
+Run `cinevision_desktop.exe` from that folder. Login: `admin1` / `Test123`.
 
 ---
 
-## 4. Mobile (Android emulator / AVD)
+## 6. Mobile (Android emulator / AVD)
 
-Prebuilt APK is already in **`Buildovi/app-release.apk`** — you can use the app right away (backend must be running).  
-On the emulator the API host is **`10.0.2.2`** (not `localhost`).
+API must be running. On the emulator the URL is **`http://10.0.2.2:5126/`** (host machine localhost).  
+**Do not use `localhost` on the Android emulator.**
 
-1. Start an AVD (Android Studio → Device Manager)
-2. Uninstall any old CineVision app on the emulator
-3. Drag `Buildovi\app-release.apk` onto the emulator (or `adb install -r Buildovi\app-release.apk`)
-4. Sign in with `customer1` / `Test123`
+### Dev
 
-### Optional — run from terminal (dev)
+1. Start an AVD (Android Studio → Device Manager → ▶️)  
+2:
 
 ```powershell
 cd CineVision\UI\cinevision_mobile
@@ -83,30 +157,57 @@ flutter pub get
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5126/
 ```
 
-Project path: `CineVision/UI/cinevision_mobile`
+Login: `customer1` / `Test123`.
 
----
+### Release APK (submission 9.2.1)
 
-## 5. Submission notes (RS2 §9.2)
+```powershell
+cd CineVision\UI\cinevision_mobile
+flutter clean
+flutter pub get
+flutter build apk --release --dart-define=API_BASE_URL=http://10.0.2.2:5126/
+```
 
-- Put builds in a **GitHub Release** ZIP (do not commit binaries into git history). Suggested name: `fit-build-20gg-mm-dd.zip`
-- ZIP should contain the mobile APK and the Windows `Release` folder (same artifacts as in `Buildovi/`)
-- Use an **immutable** release: Draft → add ZIP → verify → Publish
-- Do **not** put `.env` or other secrets in the Release
-- On the DL system: link to the **exact release tag** (not `/releases/latest`) + password for the `.env` ZIP
-- Prefer **HTTP** for the API (avoid self-signed HTTPS)
-
----
-
-## 6. Project layout
+Output (install the **`.apk`**, not the `.sha1`):
 
 ```text
-RS2-CineVison/
-  Buildovi/                     # prebuilt UI (APK + Windows Release)
-  README.md
-  recommender-dokumentacija.md
-  CineVision/
-    start.ps1 · docker-compose.yml · .env.example
-    CineVision.WebAPI/ · Services/ · Worker/ · Model/
-    UI/cinevision_desktop/ · UI/cinevision_mobile/
+CineVision\UI\cinevision_mobile\build\app\outputs\flutter-apk\app-release.apk
 ```
+
+### Test the APK in AVD
+
+1. Uninstall the old CineVision app (App info → Uninstall), or:  
+   `adb uninstall com.example.cinevision_mobile`
+2. Drag `app-release.apk` onto the emulator window, or:  
+   `adb install -r "....\app-release.apk"`
+3. Open the app and sign in
+
+> The first `assembleRelease` can take 5–15+ minutes — that is normal.
+
+---
+
+## 8. Useful commands
+
+```powershell
+# Health
+Invoke-WebRequest http://localhost:5126/health
+
+# Containers / logs
+cd CineVision
+docker compose ps
+docker compose logs -f cinevision-sql
+docker compose logs -f cinevision-api
+```
+
+---
+
+## 9. Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `cinevision-sql` unhealthy / *Login failed for user 'sa'* | `MSSQL_SA_PASSWORD` in `.env` is empty or does not match the existing Docker volume. Set the password, or run `docker compose down -v` then `.\start.ps1` (wipes the local DB). |
+| Desktop: *connection refused* on `localhost:5126` | API is not up — fix SQL/backend first. |
+| Mobile cannot reach API | Use `10.0.2.2`, not `localhost`. Use an AVD emulator. |
+| Login fails | Username lowercase: `admin1` / `customer1`, password `Test123`. |
+| Flutter symlink error (Windows) | Delete `windows\flutter\ephemeral\.plugin_symlinks`, run `flutter clean`, enable Developer Mode. |
+| SSMS cannot connect | Server `localhost,1435`, password = `MSSQL_SA_PASSWORD`. |
