@@ -1,4 +1,4 @@
-﻿# Start the full CineVision backend (SQL + RabbitMQ + API) with one command.
+# Start the full CineVision backend (SQL + RabbitMQ + API) with one command.
 # Usage (from this folder):
 #   .\start.ps1
 #   .\start.ps1 -Build   # force image rebuild
@@ -22,6 +22,15 @@ if (-not (Test-Path ".env")) {
     else {
         Write-Error "Missing .env next to docker-compose.yml. Copy .env.example to .env and fill secrets."
     }
+}
+
+# Docker Compose fails on UTF-8 BOM ("\ufeff" in variable name). Strip it if present
+# (Notepad / some editors add BOM when saving .env).
+$envPath = Join-Path $PSScriptRoot ".env"
+$envBytes = [System.IO.File]::ReadAllBytes($envPath)
+if ($envBytes.Length -ge 3 -and $envBytes[0] -eq 0xEF -and $envBytes[1] -eq 0xBB -and $envBytes[2] -eq 0xBF) {
+    [System.IO.File]::WriteAllBytes($envPath, $envBytes[3..($envBytes.Length - 1)])
+    Write-Host "Removed UTF-8 BOM from .env (required for docker compose)." -ForegroundColor Yellow
 }
 
 Write-Host "Starting CineVision stack (SQL Server + RabbitMQ + API + email Worker)..." -ForegroundColor Cyan
