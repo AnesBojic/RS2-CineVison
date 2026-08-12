@@ -36,11 +36,6 @@ namespace CineVision.Services
                 query = query.Where(n => n.Title.Contains(title));
             }
 
-            if (search.IsActive.HasValue)
-            {
-                query = query.Where(n => n.IsActive == search.IsActive.Value);
-            }
-
             return query;
         }
 

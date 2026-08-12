@@ -76,7 +76,6 @@ class _GenreListScreenState extends State<GenreListScreen> {
     final formKey = GlobalKey<FormState>();
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
-    var isActive = existing?.isActive ?? true;
     var submitting = false;
 
     final saved = await showDialog<bool>(
@@ -96,7 +95,6 @@ class _GenreListScreenState extends State<GenreListScreen> {
                   final payload = Genre(
                     name: nameCtrl.text.trim(),
                     description: descCtrl.text.trim(),
-                    isActive: isActive,
                   );
                   if (existing?.id == null) {
                     await _provider.insert(payload.toInsertJson());
@@ -125,12 +123,6 @@ class _GenreListScreenState extends State<GenreListScreen> {
                       controller: descCtrl,
                       maxLines: 3,
                       decoration: const InputDecoration(labelText: 'Description'),
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Active'),
-                      value: isActive,
-                      onChanged: (v) => setLocal(() => isActive = v),
                     ),
                   ],
                 ),
@@ -182,10 +174,9 @@ class _GenreListScreenState extends State<GenreListScreen> {
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     subtitle: Text(
-                      [
-                        item.isActive == true ? 'Active' : 'Inactive',
-                        if ((item.description ?? '').isNotEmpty) item.description!,
-                      ].join(' · '),
+                      (item.description ?? '').isNotEmpty
+                          ? item.description!
+                          : 'No description',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),

@@ -190,11 +190,6 @@ namespace CineVision.Services
                     .FirstOrDefaultAsync(s => s.Id == request.ProjectionId)
                     ?? throw new ClientException($"Projection {request.ProjectionId} was not found.");
 
-                if (!projection.IsActive)
-                {
-                    throw new ClientException("This projection is not available for booking.");
-                }
-
                 if (projection.StartTime <= DateTime.UtcNow)
                 {
                     throw new ClientException("This projection has already started.");
@@ -561,11 +556,6 @@ namespace CineVision.Services
                 .FirstOrDefaultAsync(s => s.Id == request.ProjectionId)
                 ?? throw new ClientException($"Projection {request.ProjectionId} was not found.");
 
-            if (!projection.IsActive)
-            {
-                throw new ClientException("This projection is not available for booking.");
-            }
-
             var hallSeats = projection.Hall.Seats.ToDictionary(s => s.Id);
             var expandedCount = 0;
             foreach (var seatId in seatIds)
@@ -671,7 +661,9 @@ namespace CineVision.Services
                 MovieTitle = r.Projection?.Movie?.Title ?? string.Empty,
                 HallName = r.Projection?.Hall?.Name ?? string.Empty,
                 ProjectionStartTime = r.Projection?.StartTime ?? default,
-                ProjectionEndTime = r.Projection?.EndTime ?? default,
+                ProjectionEndTime = r.Projection?.Movie != null
+                    ? r.Projection.StartTime.AddMinutes(r.Projection.Movie.DurationMinutes)
+                    : default,
                 PaymentTransactionId = r.PaymentTransactionId,
                 PaymentDate = r.PaymentDate,
                 CancelledByUserId = r.CancelledByUserId,

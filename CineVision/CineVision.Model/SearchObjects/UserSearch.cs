@@ -21,5 +21,10 @@
         /// Filter by active/inactive users.
         /// </summary>
         public bool? IsActive { get; set; }
+
+        /// <summary>
+        /// Filter by role name (Admin, Staff, Customer).
+        /// </summary>
+        public string? Role { get; set; }
     }
 }

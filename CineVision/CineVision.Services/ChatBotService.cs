@@ -8,7 +8,6 @@ using CineVision.Model.Exceptions;
 using CineVision.Model.Requests;
 using CineVision.Model.Responses;
 using CineVision.Services.Database;
-using CineVision.Services.MovieStateMachine;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -151,7 +150,7 @@ namespace CineVision.Services
             sb.AppendLine("- Customers use the mobile app; staff/admins use the desktop app.");
             sb.AppendLine();
             sb.AppendLine("=== WORKFLOW CHEAT SHEET ===");
-            sb.AppendLine("1. Movies: create in Draft → Activate when ready. Poster via PosterImageBase64 or PUT /Movies/{id}/Poster.");
+            sb.AppendLine("1. Movies: create via desktop admin, set poster with PUT /Movies/{id}/Poster.");
             sb.AppendLine("2. Halls: create with RowsCount × SeatsPerRow to auto-generate seats. Screen types: Standard, IMAX, 3D. Status: Active, Maintenance, Inactive.");
             sb.AppendLine("3. Projections (Projections): pick an existing Movie + an Active Hall + date/time + price. Cannot schedule in Maintenance/Inactive halls.");
             sb.AppendLine("4. Reservations: customers reserve seats on mobile; payment via Stripe. Admin/Staff manage content; only Admin manages user accounts.");
@@ -187,7 +186,7 @@ namespace CineVision.Services
                 .AsNoTracking()
                 .Include(s => s.Movie)
                 .Include(s => s.Hall)
-                .Where(s => s.IsActive && s.StartTime >= now && s.StartTime <= horizon)
+                .Where(s => s.StartTime >= now && s.StartTime <= horizon)
                 .OrderBy(s => s.StartTime)
                 .Take(25)
                 .ToListAsync();
@@ -228,17 +227,17 @@ namespace CineVision.Services
             sb.AppendLine($"Generated at: {now:yyyy-MM-dd HH:mm} UTC");
             sb.AppendLine();
 
-            sb.AppendLine($"Movies: {movies.Count} total, {movies.Count(m => m.IsActive)} active, {movies.Count(m => m.MovieState == MovieLifecycleState.Active)} in Active state, {movies.Count(m => m.MovieState == MovieLifecycleState.Draft)} in Draft.");
-            foreach (var m in movies.Where(m => m.IsActive).Take(12))
+            sb.AppendLine($"Movies: {movies.Count} total.");
+            foreach (var m in movies.Take(12))
             {
                 var genre = m.Genre?.Name ?? "—";
                 var rating = avgRatings.FirstOrDefault(r => r.MovieId == m.Id);
                 var ratingText = rating != null ? $"{rating.Avg:F1} ({rating.Count} reviews)" : "no reviews";
-                sb.AppendLine($"  - {m.Title} | {genre} | {m.AgeRating?.Name ?? "—"} | {m.DurationMinutes} min | state={m.MovieState} | views={m.ViewCount} | avg rating={ratingText}");
+                sb.AppendLine($"  - {m.Title} | {genre} | {m.AgeRating?.Name ?? "—"} | {m.DurationMinutes} min | views={m.ViewCount} | avg rating={ratingText}");
             }
-            if (movies.Count(m => m.IsActive) > 12)
+            if (movies.Count > 12)
             {
-                sb.AppendLine($"  ... and {movies.Count(m => m.IsActive) - 12} more active movies");
+                sb.AppendLine($"  ... and {movies.Count - 12} more movies");
             }
 
             sb.AppendLine();
@@ -246,7 +245,7 @@ namespace CineVision.Services
             foreach (var h in halls)
             {
                 var cap = h.Seats.Count(s => s.IsActive);
-                sb.AppendLine($"  - {h.Name} | {cap} seats | {h.ScreenType?.Name ?? "—"} | status={h.Status?.Name ?? "—"} | active={h.IsActive}");
+                sb.AppendLine($"  - {h.Name} | {cap} seats | {h.ScreenType?.Name ?? "—"} | status={h.Status?.Name ?? "—"}");
             }
 
             sb.AppendLine();

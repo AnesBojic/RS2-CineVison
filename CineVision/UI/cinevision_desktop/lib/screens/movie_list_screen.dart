@@ -37,7 +37,6 @@ class _MovieListScreenState extends State<MovieListScreen> {
   bool _loading = true;
   final _searchController = TextEditingController();
   String? _genreFilter;
-  String? _statusFilter;
 
   @override
   void initState() {
@@ -58,7 +57,7 @@ class _MovieListScreenState extends State<MovieListScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      const lookupFilter = {'pageSize': 100, 'isActive': true};
+      const lookupFilter = {'pageSize': 100};
       final genres = await _genreProvider.get(filter: {'pageSize': 100});
       final ageRatings = await _ageRatingProvider.get(filter: lookupFilter);
       final languages = await _languageProvider.get(filter: lookupFilter);
@@ -66,9 +65,6 @@ class _MovieListScreenState extends State<MovieListScreen> {
       final filter = <String, dynamic>{'includeGenre': true, 'pageSize': 50};
       if (_searchController.text.isNotEmpty) filter['title'] = _searchController.text;
       if (_genreFilter != null) filter['genreId'] = int.tryParse(_genreFilter!);
-      if (_statusFilter != null) {
-        filter['movieState'] = _statusFilter;
-      }
 
       final data = await _movieProvider.get(filter: filter, includePoster: true);
       if (!mounted) return;
@@ -129,20 +125,6 @@ class _MovieListScreenState extends State<MovieListScreen> {
             },
           ),
           const SizedBox(width: 10),
-          FilterDropdown(
-            hint: 'All Status',
-            value: _statusFilter,
-            items: [
-              const DropdownMenuItem(value: null, child: Text('All Status')),
-              for (final state in MovieState.all)
-                DropdownMenuItem(value: state, child: Text(state)),
-            ],
-            onChanged: (v) {
-              setState(() => _statusFilter = v);
-              _load();
-            },
-          ),
-          const SizedBox(width: 10),
           SearchField(
             controller: _searchController,
             hint: 'Search movies...',
@@ -159,14 +141,13 @@ class _MovieListScreenState extends State<MovieListScreen> {
       child: DataCard(
         emptyMessage: _movies.isEmpty ? 'No movies found' : null,
         child: StyledDataTable(
-          key: ValueKey(_movies.map((m) => '${m.id}-${m.displayState}').join('|')),
+          key: ValueKey(_movies.map((m) => '${m.id}').join('|')),
           columns: const [
             DataColumn(label: Text('Movie Title')),
             DataColumn(label: Text('Genre')),
             DataColumn(label: Text('Rating')),
             DataColumn(label: Text('Duration')),
             DataColumn(label: Text('Release Date')),
-            DataColumn(label: Text('Status')),
             actionsDataColumn,
           ],
           rows: _movies.map(_buildRow).toList(),
@@ -176,7 +157,6 @@ class _MovieListScreenState extends State<MovieListScreen> {
   }
 
   DataRow _buildRow(Movie m) {
-    final isActive = m.isActiveState;
     return DataRow(cells: [
       DataCell(Row(children: [
         posterThumbnail(m.posterImageBase64),
@@ -187,11 +167,6 @@ class _MovieListScreenState extends State<MovieListScreen> {
       DataCell(Text(m.ageRating ?? '—')),
       DataCell(Text('${m.durationMinutes ?? 0} min')),
       DataCell(Text(formatDate(m.releaseDate))),
-      DataCell(StatusBadge(
-        label: m.displayState,
-        color: isActive ? AppColors.green : AppColors.orange,
-        filled: true,
-      )),
       actionButtonsCell([
         ActionIconButton(
           icon: Icons.edit_outlined,
@@ -275,8 +250,6 @@ class _MovieListScreenState extends State<MovieListScreen> {
     int? languageId = fullMovie?.languageId;
     int? genreId = fullMovie?.genreId;
     DateTime? releaseDate = fullMovie?.releaseDate;
-    String statusSelection =
-        fullMovie?.isActiveState == true ? MovieState.active : MovieState.draft;
     String? posterBase64 = fullMovie?.posterImageBase64;
     String? originalPoster = fullMovie?.posterImageBase64;
     bool submitting = false;
@@ -309,21 +282,9 @@ class _MovieListScreenState extends State<MovieListScreen> {
               languageId: languageId,
             );
             try {
-              Movie saved;
-              if (movie == null) {
-                saved = await _movieProvider.insert(payload.toInsertJson());
-                if (statusSelection == MovieState.active) {
-                  saved = await _movieProvider.activate(saved.id!);
-                }
-              } else {
-                saved = await _movieProvider.update(movie.id!, payload.toUpdateJson());
-                final wantsActive = statusSelection == MovieState.active;
-                if (wantsActive && !movie.isActiveState) {
-                  saved = await _movieProvider.activate(movie.id!);
-                } else if (!wantsActive && movie.isActiveState) {
-                  saved = await _movieProvider.deactivate(movie.id!);
-                }
-              }
+              final Movie saved = movie == null
+                  ? await _movieProvider.insert(payload.toInsertJson())
+                  : await _movieProvider.update(movie.id!, payload.toUpdateJson());
 
               if (posterBase64 != null &&
                   posterBase64!.isNotEmpty &&
@@ -429,39 +390,21 @@ class _MovieListScreenState extends State<MovieListScreen> {
                 validator: (v) => v == null ? 'Language is required' : null,
               ),
               const SizedBox(height: 12),
-              Row(children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: releaseDate ?? DateTime.now(),
-                        firstDate: DateTime(1900),
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) setDialogState(() => releaseDate = picked);
-                    },
-                    child: InputDecorator(
-                      decoration: const InputDecoration(labelText: 'Release Date'),
-                      child: Text(formatDate(releaseDate)),
-                    ),
-                  ),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: releaseDate ?? DateTime.now(),
+                    firstDate: DateTime(1900),
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) setDialogState(() => releaseDate = picked);
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Release Date'),
+                  child: Text(formatDate(releaseDate)),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: statusSelection,
-                    dropdownColor: AppColors.card,
-                    decoration: const InputDecoration(labelText: 'Status'),
-                    items: [
-                      for (final state in MovieState.all)
-                        DropdownMenuItem(value: state, child: Text(state)),
-                    ],
-                    onChanged: (v) =>
-                        setDialogState(() => statusSelection = v ?? MovieState.draft),
-                  ),
-                ),
-              ]),
+              ),
             ],
             ),
           ),

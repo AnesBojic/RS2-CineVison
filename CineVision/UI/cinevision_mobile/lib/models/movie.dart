@@ -1,8 +1,5 @@
-import '../core/enums/api_enums.dart';
 import '../core/utils/utc_datetime.dart';
 import 'genre.dart';
-
-export '../core/enums/api_enums.dart' show MovieState;
 
 class Movie {
   final int? id;
@@ -14,11 +11,9 @@ class Movie {
   final String? language;
   final String? ageRating;
   final String? posterImageBase64;
-  final bool? isActive;
   final int? viewCount;
   final DateTime? createdAt;
   final DateTime? updatedAt;
-  final String? movieState;
   final Genre? genre;
 
   Movie({
@@ -31,15 +26,11 @@ class Movie {
     this.language,
     this.ageRating,
     this.posterImageBase64,
-    this.isActive,
     this.viewCount,
     this.createdAt,
     this.updatedAt,
-    this.movieState,
     this.genre,
   });
-
-  bool get isActiveState => MovieState.isActive(movieState);
 
   Movie withoutPoster() => Movie(
         id: id,
@@ -51,11 +42,9 @@ class Movie {
         language: language,
         ageRating: ageRating,
         posterImageBase64: null,
-        isActive: isActive,
         viewCount: viewCount,
         createdAt: createdAt,
         updatedAt: updatedAt,
-        movieState: movieState,
         genre: genre,
       );
 
@@ -77,11 +66,9 @@ class Movie {
       language: json['language'] as String?,
       ageRating: json['ageRating'] as String?,
       posterImageBase64: json['posterImageBase64'] as String?,
-      isActive: json['isActive'] as bool?,
       viewCount: json['viewCount'] as int?,
       createdAt: UtcDateTime.tryParse(json['createdAt']),
       updatedAt: UtcDateTime.tryParse(json['updatedAt']),
-      movieState: json['movieState'] as String?,
       genre: json['genre'] != null
           ? Genre.fromJson(json['genre'] as Map<String, dynamic>)
           : null,

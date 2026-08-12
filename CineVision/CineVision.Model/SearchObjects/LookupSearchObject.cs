@@ -8,8 +8,5 @@
     {
         /// <summary>Substring to match against the name (case-insensitive).</summary>
         public string? Name { get; set; }
-
-        /// <summary>When set, returns only active or only inactive rows.</summary>
-        public bool? IsActive { get; set; }
     }
 }

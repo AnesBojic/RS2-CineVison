@@ -1,6 +1,4 @@
-﻿using CineVision.Model.Enums;
-
-namespace CineVision.Model.Responses
+﻿namespace CineVision.Model.Responses
 {
     public class MovieResponse
     {
@@ -22,14 +20,9 @@ namespace CineVision.Model.Responses
         public string? AgeRating { get; set; }
 
         public string? PosterImageBase64 { get; set; }
-        public bool IsActive { get; set; }
         public int ViewCount { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
-
-        /// <summary>Serialized by name, so clients still receive "Draft" or "Active".</summary>
-        public MovieLifecycleState MovieState { get; set; }
         public GenreResponse? Genre { get; set; }
-        public List<string> AllowedActions { get; set; } = new List<string>();
     }
 }

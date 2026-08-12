@@ -6,10 +6,6 @@ namespace CineVision.Services
 {
     public interface IMovieService : IBaseCRUDService<MovieResponse, MovieSearchObject, MovieInsertRequest, MovieUpdateRequest>
     {
-        Task<MovieResponse> ActivateAsync(int id);
-        Task<MovieResponse> DeactivateAsync(int id);
-        Task<List<string>> GetAllowedActionsAsync(int id);
-
         /// <summary>Increments the movie's view counter (called when its details are opened).</summary>
         Task RegisterViewAsync(int id);
 

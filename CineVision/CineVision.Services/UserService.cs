@@ -78,12 +78,22 @@ namespace CineVision.Services
                 if (!string.IsNullOrWhiteSpace(search.Name))
                 {
                     var name = search.Name;
-                    query = query.Where(u => u.FirstName.Contains(name) || u.LastName.Contains(name));
+                    query = query.Where(u =>
+                        u.FirstName.Contains(name) ||
+                        u.LastName.Contains(name) ||
+                        u.Username.Contains(name) ||
+                        u.Email.Contains(name));
                 }
 
                 if (search.IsActive.HasValue)
                 {
                     query = query.Where(u => u.IsActive == search.IsActive.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(search.Role))
+                {
+                    var role = search.Role;
+                    query = query.Where(u => u.UserRoles.Any(ur => ur.Role != null && ur.Role.Name == role));
                 }
             }
 
@@ -342,6 +352,7 @@ namespace CineVision.Services
 
             EnsureProfileImageSize(request.ProfileImageBase64);
 
+            var wasActive = entity.IsActive;
             MapUpdateRequestToEntity(request, entity);
             entity.UpdatedAt = DateTime.UtcNow;
 
@@ -350,7 +361,23 @@ namespace CineVision.Services
                 await AssignRoleAsync(id, request.Role);
             }
 
+            // Deactivating kicks active sessions so the account cannot keep using the API.
+            if (wasActive && !entity.IsActive)
+            {
+                entity.TokenVersion++;
+                var tokens = await _dbContext.RefreshTokens.Where(t => t.UserId == id).ToListAsync();
+                if (tokens.Count > 0)
+                {
+                    _dbContext.RefreshTokens.RemoveRange(tokens);
+                }
+            }
+
             await _dbContext.SaveChangesAsync();
+
+            if (wasActive && !entity.IsActive)
+            {
+                _tokenRevocationService.InvalidateCache(id);
+            }
 
             return await GetByIdAsync(id);
         }
@@ -422,53 +449,60 @@ namespace CineVision.Services
 
         public override async Task DeleteAsync(int id)
         {
-            var entity = await _dbContext.Users
-                .Include(u => u.RefreshTokens)
-                .Include(u => u.UserRoles)
-                .FirstOrDefaultAsync(u => u.Id == id);
-            if (entity == null)
+            // Users are never hard-deleted — admin deactivates via IsActive so history/FK data stay intact.
+            _ = await _dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id)
+                ?? throw new KeyNotFoundException($"User with id {id} not found.");
+
+            throw new ClientException(
+                "Users cannot be deleted. Deactivate the account instead so the user stays visible in the admin list.");
+        }
+
+        public async Task<UserResponse> SetActiveAsync(int id, bool isActive)
+        {
+            var entity = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id)
+                ?? throw new KeyNotFoundException($"User with id {id} not found.");
+
+            var wasActive = entity.IsActive;
+            if (wasActive == isActive)
             {
-                throw new KeyNotFoundException($"User with id {id} not found.");
+                return await GetByIdAsync(id);
             }
 
-            // Reservations / reviews use Restrict — remove related details so admin delete succeeds.
-            var reservations = await _dbContext.Reservations
-                .Include(r => r.ReservationSeats)
-                .Where(r => r.UserId == id)
-                .ToListAsync();
-            if (reservations.Count > 0)
+            entity.IsActive = isActive;
+            entity.UpdatedAt = DateTime.UtcNow;
+
+            if (wasActive && !isActive)
             {
-                _dbContext.Reservations.RemoveRange(reservations);
+                entity.TokenVersion++;
+                var tokens = await _dbContext.RefreshTokens.Where(t => t.UserId == id).ToListAsync();
+                if (tokens.Count > 0)
+                {
+                    _dbContext.RefreshTokens.RemoveRange(tokens);
+                }
             }
 
-            var reviews = await _dbContext.Reviews.Where(r => r.UserId == id).ToListAsync();
-            if (reviews.Count > 0)
+            await _dbContext.SaveChangesAsync();
+
+            if (wasActive && !isActive)
             {
-                _dbContext.Reviews.RemoveRange(reviews);
+                _tokenRevocationService.InvalidateCache(id);
             }
 
-            var notifications = await _dbContext.UserNotifications.Where(n => n.UserId == id).ToListAsync();
-            if (notifications.Count > 0)
-            {
-                _dbContext.UserNotifications.RemoveRange(notifications);
-            }
+            return await GetByIdAsync(id);
+        }
 
-            if (entity.RefreshTokens.Count > 0)
-            {
-                _dbContext.RefreshTokens.RemoveRange(entity.RefreshTokens);
-            }
+        public async Task RecordLastLoginAsync(int userId)
+        {
+            var entity = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId)
+                ?? throw new KeyNotFoundException($"User with id {userId} not found.");
 
-            if (entity.UserRoles.Count > 0)
-            {
-                _dbContext.UserRoles.RemoveRange(entity.UserRoles);
-            }
-
-            _dbContext.Users.Remove(entity);
+            entity.LastLoginAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync();
         }
 
         public async Task<UserDeleteImpactResponse> GetDeleteImpactAsync(int id)
         {
+            // Kept for API compatibility; deletion is disabled — impact is unused by the desktop app.
             var user = await _dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id)
                 ?? throw new KeyNotFoundException($"User with id {id} not found.");
 

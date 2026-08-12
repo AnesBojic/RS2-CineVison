@@ -12,7 +12,6 @@ class Hall {
 
   /// Copied from the hall's status: projections may only be scheduled when true.
   final bool? allowsProjections;
-  final bool? isActive;
   final int? seatCount;
   final int? capacity;
   final int? rowCount;
@@ -29,7 +28,6 @@ class Hall {
     this.statusId,
     this.statusName,
     this.allowsProjections,
-    this.isActive,
     this.seatCount,
     this.capacity,
     this.rowCount,
@@ -49,7 +47,6 @@ class Hall {
       statusId: json['statusId'] as int?,
       statusName: json['statusName'] as String?,
       allowsProjections: json['allowsProjections'] as bool?,
-      isActive: json['isActive'] as bool?,
       seatCount: json['seatCount'] as int?,
       capacity: json['capacity'] as int?,
       rowCount: json['rowCount'] as int?,

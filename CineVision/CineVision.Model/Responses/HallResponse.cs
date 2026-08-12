@@ -14,7 +14,6 @@ namespace CineVision.Model.Responses
         /// <summary>Copied from the hall's status so clients can tell whether it can be scheduled.</summary>
         public bool AllowsProjections { get; set; }
 
-        public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public int SeatCount { get; set; }

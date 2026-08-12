@@ -6,18 +6,15 @@ using CineVision.Model.Requests;
 using CineVision.Model.Responses;
 using CineVision.Model.SearchObjects;
 using CineVision.Services.Database;
-using CineVision.Services.MovieStateMachine;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using CineVision.Model.Enums;
 
 namespace CineVision.Services;
 
 public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObject>, IMovieService
 {
-    protected BaseMovieState MovieState { get; }
     private readonly IAuthenticatedUserAccessor _userAccessor;
     private readonly IAnalyticsNotifier _analyticsNotifier;
     private readonly string? _stripeSecretKey;
@@ -27,7 +24,6 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
     public MovieService(
         CineVisionDbContext dbContext,
         MapsterMapper.IMapper mapper,
-        BaseMovieState movieState,
         IAuthenticatedUserAccessor userAccessor,
         IAnalyticsNotifier analyticsNotifier,
         IConfiguration configuration,
@@ -35,7 +31,6 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         IValidator<MoviePosterUpdateRequest> posterValidator)
         : base(mapper, dbContext)
     {
-        MovieState = movieState;
         _userAccessor = userAccessor;
         _analyticsNotifier = analyticsNotifier;
         _stripeSecretKey = configuration["Stripe:SecretKey"];
@@ -151,53 +146,22 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
             {
                 query = query.Where(m => m.GenreId == search.GenreId.Value);
             }
-            if (search.MovieState.HasValue)
-            {
-                query = query.Where(m => m.MovieState == search.MovieState.Value);
-            }
         }
 
         return query;
-    }
-
-    public async Task<MovieResponse> ActivateAsync(int id)
-    {
-        var entity = await _dbContext.Movies.FindAsync(id)
-            ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
-
-        var state = MovieState.GetMovieState(entity.MovieState);
-        return await state.ActivateAsync(id);
-    }
-
-    public async Task<MovieResponse> DeactivateAsync(int id)
-    {
-        var entity = await _dbContext.Movies.FindAsync(id)
-            ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
-
-        var state = MovieState.GetMovieState(entity.MovieState);
-        return await state.DeactivateAsync(id);
-    }
-
-    public async Task<List<string>> GetAllowedActionsAsync(int id)
-    {
-        if (id <= 0)
-        {
-            return MovieState.GetInitialState().GetAllowedActions();
-        }
-
-        var entity = await _dbContext.Movies.FindAsync(id)
-            ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
-
-        var state = MovieState.GetMovieState(entity.MovieState);
-        return state.GetAllowedActions();
     }
 
     public async Task<MovieResponse> InsertAsync(MovieInsertRequest request)
     {
         await EnsureReferencesExistAsync(request.LanguageId, request.AgeRatingId);
 
-        var state = MovieState.GetInitialState();
-        return await state.InsertAsync(request);
+        var entity = _mapper.Map<Movie>(request);
+        entity.CreatedAt = DateTime.UtcNow;
+        _dbContext.Movies.Add(entity);
+        await _dbContext.SaveChangesAsync();
+
+        await _analyticsNotifier.NotifyAnalyticsChangedAsync();
+        return await MapWithReferencesAsync(entity);
     }
 
     public async Task<MovieResponse> UpdateAsync(int id, MovieUpdateRequest request)
@@ -207,8 +171,21 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 
         await EnsureReferencesExistAsync(request.LanguageId, request.AgeRatingId);
 
-        var state = MovieState.GetMovieState(entity.MovieState);
-        return await state.UpdateAsync(id, request);
+        _mapper.Map(request, entity);
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync();
+
+        await _analyticsNotifier.NotifyAnalyticsChangedAsync();
+        return await MapWithReferencesAsync(entity);
+    }
+
+    private async Task<MovieResponse> MapWithReferencesAsync(Movie entity)
+    {
+        var entry = _dbContext.Entry(entity);
+        await entry.Reference(m => m.Genre).LoadAsync();
+        await entry.Reference(m => m.Language).LoadAsync();
+        await entry.Reference(m => m.AgeRating).LoadAsync();
+        return _mapper.Map<MovieResponse>(entity);
     }
 
     /// <summary>
@@ -319,9 +296,6 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
             .FirstOrDefaultAsync(m => m.Id == id)
             ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
 
-        var response = _mapper.Map<MovieResponse>(entity);
-        response.AllowedActions = await GetAllowedActionsAsync(id);
-
-        return response;
+        return _mapper.Map<MovieResponse>(entity);
     }
 }

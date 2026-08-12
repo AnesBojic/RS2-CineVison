@@ -81,8 +81,6 @@ namespace CineVision.Services
                 Name = request.Name,
                 ScreenTypeId = screenType.Id,
                 StatusId = status.Id,
-                // Keep the legacy IsActive flag in sync with the richer status.
-                IsActive = status.AllowsProjections,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -188,7 +186,6 @@ namespace CineVision.Services
             hall.ScreenTypeId = screenType.Id;
             hall.Status = status;
             hall.StatusId = status.Id;
-            hall.IsActive = status.AllowsProjections;
             hall.UpdatedAt = DateTime.UtcNow;
 
             await _dbContext.SaveChangesAsync();

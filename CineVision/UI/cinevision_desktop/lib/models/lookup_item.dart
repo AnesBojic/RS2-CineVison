@@ -3,7 +3,6 @@ class LookupItem {
   final int? id;
   final String? name;
   final String? description;
-  final bool? isActive;
 
   final int inUseCount;
   final bool canDelete;
@@ -22,7 +21,6 @@ class LookupItem {
     this.id,
     this.name,
     this.description,
-    this.isActive,
     this.inUseCount = 0,
     this.canDelete = true,
     this.deleteBlockedReason,
@@ -36,7 +34,6 @@ class LookupItem {
       id: json['id'] as int?,
       name: json['name'] as String?,
       description: json['description'] as String?,
-      isActive: json['isActive'] as bool?,
       inUseCount: json['inUseCount'] as int? ?? 0,
       canDelete: json['canDelete'] as bool? ?? true,
       deleteBlockedReason: json['deleteBlockedReason'] as String?,
@@ -50,7 +47,6 @@ class LookupItem {
   Map<String, dynamic> toJson() => {
         'name': name,
         'description': description ?? '',
-        'isActive': isActive ?? true,
         if (allowsProjections != null) 'allowsProjections': allowsProjections,
         if (minimumAge != null) 'minimumAge': minimumAge,
         if (code != null) 'code': code,

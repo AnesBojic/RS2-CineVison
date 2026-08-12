@@ -9,6 +9,7 @@ namespace CineVision.Model.Responses
         public int HallId { get; set; }
         public string HallName { get; set; } = string.Empty;
         public DateTime StartTime { get; set; }
+        /// <summary>Computed as StartTime + movie duration (not stored).</summary>
         public DateTime EndTime { get; set; }
         public decimal BasePrice { get; set; }
 
@@ -16,7 +17,6 @@ namespace CineVision.Model.Responses
 
         /// <summary>Name of the referenced language, flattened for display.</summary>
         public string? Language { get; set; }
-        public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 

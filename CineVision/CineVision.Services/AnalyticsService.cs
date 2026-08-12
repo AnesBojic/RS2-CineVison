@@ -50,7 +50,7 @@ namespace CineVision.Services
                 TotalMovies = snapshot.TotalMovies,
                 ActiveMovies = snapshot.ActiveMovies,
                 TotalProjections = snapshot.Projections.Count,
-                UpcomingProjections = snapshot.Projections.Count(s => s.IsActive && s.StartTime > now),
+                UpcomingProjections = snapshot.Projections.Count(s => s.StartTime > now),
                 AverageOccupancyPercent = ComputeAverageOccupancy(snapshot.Projections, snapshot.SeatSales, snapshot.CapByHall),
                 TopMovies = topMovies
             };
@@ -237,7 +237,7 @@ namespace CineVision.Services
                 u.IsActive &&
                 u.UserRoles.Any(ur => ur.Role != null && ur.Role.Name == RoleNames.Customer));
             var totalMovies = await _dbContext.Movies.CountAsync();
-            var activeMovies = await _dbContext.Movies.CountAsync(m => m.IsActive);
+            var activeMovies = totalMovies;
 
             return new AnalyticsSnapshot(
                 capByHall,
@@ -283,8 +283,7 @@ namespace CineVision.Services
                     MovieId = s.MovieId,
                     MovieTitle = s.Movie.Title,
                     HallId = s.HallId,
-                    StartTime = s.StartTime,
-                    IsActive = s.IsActive
+                    StartTime = s.StartTime
                 })
                 .ToListAsync();
         }
@@ -407,7 +406,6 @@ namespace CineVision.Services
             public string MovieTitle { get; set; } = string.Empty;
             public int HallId { get; set; }
             public DateTime StartTime { get; set; }
-            public bool IsActive { get; set; }
         }
 
         private sealed class SeatSale

@@ -130,7 +130,9 @@ class AppTheme {
 }
 
 void showAppSnackBar(BuildContext context, String message, {bool isError = false}) {
-  ScaffoldMessenger.of(context).showSnackBar(
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  if (messenger == null) return;
+  messenger.showSnackBar(
     SnackBar(
       content: Row(
         children: [

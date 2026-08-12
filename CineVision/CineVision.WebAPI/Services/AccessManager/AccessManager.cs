@@ -1,4 +1,4 @@
-﻿using CineVision.Common.Services.CryptoService;
+using CineVision.Common.Services.CryptoService;
 using CineVision.Model;
 using CineVision.Model.Access;
 using CineVision.Model.Exceptions;
@@ -61,6 +61,13 @@ namespace CineVision.WebAPI.Services.AccessManager
             {
                 throw new ClientException("Invalid username or password.");
             }
+
+            if (!user.IsActive)
+            {
+                throw new ClientException("This account has been deactivated. Contact an administrator.");
+            }
+
+            await _userService.RecordLastLoginAsync(user.Id);
 
             var accessToken = await GenerateTokenAsync(user);
             var refreshTokenValue = GenerateRefreshToken();

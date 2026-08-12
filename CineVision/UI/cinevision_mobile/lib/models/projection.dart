@@ -11,7 +11,6 @@ class Projection {
   final DateTime? endTime;
   final num? basePrice;
   final String? language;
-  final bool? isActive;
   final int? totalSeats;
   final int? availableSeats;
 
@@ -26,7 +25,6 @@ class Projection {
     this.endTime,
     this.basePrice,
     this.language,
-    this.isActive,
     this.totalSeats,
     this.availableSeats,
   });
@@ -46,7 +44,6 @@ class Projection {
       endTime: UtcDateTime.tryParse(json['endTime']),
       basePrice: json['basePrice'] as num?,
       language: json['language'] as String?,
-      isActive: json['isActive'] as bool?,
       totalSeats: json['totalSeats'] as int?,
       availableSeats: json['availableSeats'] as int?,
     );

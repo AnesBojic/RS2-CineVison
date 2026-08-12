@@ -18,6 +18,7 @@ namespace CineVision.Model.Responses
         public string MovieTitle { get; set; } = string.Empty;
         public string HallName { get; set; } = string.Empty;
         public DateTime ProjectionStartTime { get; set; }
+        /// <summary>Computed as start + movie duration (not stored on Projection).</summary>
         public DateTime ProjectionEndTime { get; set; }
 
         public string? PaymentTransactionId { get; set; }

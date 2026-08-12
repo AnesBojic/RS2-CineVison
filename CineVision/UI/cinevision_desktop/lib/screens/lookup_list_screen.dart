@@ -118,7 +118,6 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
     final minAgeCtrl = TextEditingController(
       text: existing?.minimumAge?.toString() ?? '',
     );
-    var isActive = existing?.isActive ?? true;
     var allowsProjections = existing?.allowsProjections ?? false;
     var submitting = false;
 
@@ -139,7 +138,6 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
               final payload = LookupItem(
                 name: nameCtrl.text.trim(),
                 description: descCtrl.text.trim(),
-                isActive: isActive,
                 allowsProjections: widget.extraField == LookupExtraField.allowsProjections
                     ? allowsProjections
                     : null,
@@ -225,12 +223,6 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
                     value: allowsProjections,
                     onChanged: (v) => setLocal(() => allowsProjections = v),
                   ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Active'),
-                  value: isActive,
-                  onChanged: (v) => setLocal(() => isActive = v),
-                ),
               ],
             ),
           ),
@@ -259,7 +251,6 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
 
   String _subtitleFor(LookupItem item) {
     final parts = <String>[
-      item.isActive == true ? 'Active' : 'Inactive',
       if (widget.extraField == LookupExtraField.code && (item.code ?? '').isNotEmpty)
         'Code: ${item.code}',
       if (widget.extraField == LookupExtraField.minimumAge && item.minimumAge != null)

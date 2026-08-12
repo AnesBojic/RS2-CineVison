@@ -4,6 +4,7 @@ using CineVision.Services.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CineVision.Services.Migrations
 {
     [DbContext(typeof(CineVisionDbContext))]
-    partial class CineVisionDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260812194824_RemoveNewsIsActiveAndMovieState")]
+    partial class RemoveNewsIsActiveAndMovieState
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

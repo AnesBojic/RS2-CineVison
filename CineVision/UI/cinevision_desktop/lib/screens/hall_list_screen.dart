@@ -42,7 +42,7 @@ class _HallListScreenState extends State<HallListScreen> {
   }
 
   Future<void> _loadLookups() async {
-    const filter = {'pageSize': 100, 'isActive': true};
+    const filter = {'pageSize': 100};
     final results = await Future.wait([
       _screenTypeProvider.get(filter: filter),
       _hallStatusProvider.get(filter: filter),

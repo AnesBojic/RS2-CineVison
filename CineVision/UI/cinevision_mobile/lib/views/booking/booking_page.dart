@@ -89,7 +89,7 @@ class _BookingPageState extends State<BookingPage> {
       final reviews = loaded[2] as List<Review>;
 
       final items = (result.items ?? [])
-          .where((s) => s.isActive != false && s.startTime != null)
+          .where((s) => s.startTime != null)
           .toList()
         ..sort(
           (a, b) => a.startTime!.toLocal().compareTo(b.startTime!.toLocal()),

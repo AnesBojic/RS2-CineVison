@@ -47,11 +47,6 @@ namespace CineVision.Services
                     var name = search.Name;
                     query = query.Where(x => x.Name.Contains(name));
                 }
-
-                if (search.IsActive.HasValue)
-                {
-                    query = query.Where(x => x.IsActive == search.IsActive.Value);
-                }
             }
 
             return query;
@@ -109,7 +104,7 @@ namespace CineVision.Services
             {
                 throw new ClientException(
                     $"'{entity.Name}' is still used by {count} record(s), so it cannot be deleted. " +
-                    $"Reassign those records to a different {EntityLabel} first, or mark this one as inactive.");
+                    $"Reassign those records to a different {EntityLabel} first, then delete.");
             }
 
             _dbContext.Set<TEntity>().Remove(entity);

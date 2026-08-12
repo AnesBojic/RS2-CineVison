@@ -38,22 +38,6 @@ class MovieProvider extends BaseProvider<Movie> {
     validateResponse(response);
   }
 
-  Future<Movie> activate(int id) async {
-    final baseUrl = BaseProvider.baseUrl ?? 'http://localhost:5126/';
-    final uri = Uri.parse('${baseUrl}Movies/$id/Activate');
-    final response = await http.post(uri, headers: createHeaders());
-    validateResponse(response);
-    return fromJson(jsonDecode(response.body));
-  }
-
-  Future<Movie> deactivate(int id) async {
-    final baseUrl = BaseProvider.baseUrl ?? 'http://localhost:5126/';
-    final uri = Uri.parse('${baseUrl}Movies/$id/Deactivate');
-    final response = await http.post(uri, headers: createHeaders());
-    validateResponse(response);
-    return fromJson(jsonDecode(response.body));
-  }
-
   Future<Movie> getWithPoster(int id) => getById(id);
 
   Future<Map<String, dynamic>> getDeleteImpact(int id) async {

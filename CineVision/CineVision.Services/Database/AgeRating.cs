@@ -20,8 +20,6 @@ namespace CineVision.Services.Database
         /// <summary>Minimum viewer age, when the rating defines one.</summary>
         public int? MinimumAge { get; set; }
 
-        public bool IsActive { get; set; } = true;
-
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }

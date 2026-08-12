@@ -31,13 +31,10 @@ class _NewsPageState extends State<NewsPage> {
       final result = await context.read<NewsProvider>().get(filter: {
         'page': 1,
         'pageSize': 30,
-        'isActive': true,
       });
       if (!mounted) return;
       setState(() {
-        _items = (result.items ?? [])
-            .where((n) => n.isActive != false)
-            .toList()
+        _items = (result.items ?? []).toList()
           ..sort((a, b) {
             final ad = a.publishedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
             final bd = b.publishedAt ?? DateTime.fromMillisecondsSinceEpoch(0);

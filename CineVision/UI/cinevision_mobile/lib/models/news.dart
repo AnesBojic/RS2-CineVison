@@ -6,7 +6,6 @@ class NewsItem {
   final String? content;
   final String? imageBase64;
   final DateTime? publishedAt;
-  final bool? isActive;
 
   NewsItem({
     this.id,
@@ -14,7 +13,6 @@ class NewsItem {
     this.content,
     this.imageBase64,
     this.publishedAt,
-    this.isActive,
   });
 
   factory NewsItem.fromJson(Map<String, dynamic> json) {
@@ -24,7 +22,6 @@ class NewsItem {
       content: json['content'] as String?,
       imageBase64: json['imageBase64'] as String?,
       publishedAt: UtcDateTime.tryParse(json['publishedAt']),
-      isActive: json['isActive'] as bool?,
     );
   }
 }

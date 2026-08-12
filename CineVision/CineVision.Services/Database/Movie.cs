@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using CineVision.Model.Enums;
 
 namespace CineVision.Services.Database
 {
@@ -37,17 +36,12 @@ namespace CineVision.Services.Database
         /// <summary>Movie poster image stored as a base64 string (same pattern as user profile images).</summary>
         public string? PosterImageBase64 { get; set; }
 
-        public bool IsActive { get; set; } = true;
-
         // Number of times the movie's details have been opened (popularity signal for recommendations).
         public int ViewCount { get; set; } = 0;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }
-
-        [Required]
-        public MovieLifecycleState MovieState { get; set; } = MovieLifecycleState.Draft;
 
         // Genre relationship
         public int? GenreId { get; set; }

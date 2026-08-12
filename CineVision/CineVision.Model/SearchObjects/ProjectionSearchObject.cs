@@ -41,10 +41,5 @@ namespace CineVision.Model.SearchObjects
         /// Leave false for admin list views to keep queries fast.
         /// </summary>
         public bool? IncludeSeatStats { get; set; }
-
-        /// <summary>
-        /// When true, includes soft-cancelled (IsActive=false) projections. Default false.
-        /// </summary>
-        public bool? IncludeInactive { get; set; }
     }
 }

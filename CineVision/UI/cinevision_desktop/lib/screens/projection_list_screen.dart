@@ -95,7 +95,7 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
     final results = await Future.wait([
       movieProvider.get(filter: {'pageSize': 500}),
       hallProvider.get(filter: {'pageSize': 500}),
-      languageProvider.get(filter: {'pageSize': 100, 'isActive': true}),
+      languageProvider.get(filter: {'pageSize': 100}),
     ]);
 
     if (!mounted) return;
@@ -202,7 +202,7 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
                   _filtered.isEmpty ? 'No projections found' : null,
               child: StyledDataTable(
                 key: ValueKey(
-                  '${_page}_${_items.map((s) => '${s.id}-${s.isActive}').join('|')}',
+                  '${_page}_${_items.map((s) => '${s.id}').join('|')}',
                 ),
                 columns: const [
                   DataColumn(label: Text('Movie')),
@@ -361,7 +361,6 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
               languageId: languageId,
               startTime: startTime,
               basePrice: num.tryParse(priceCtrl.text.replaceAll('\$', '')) ?? 0,
-              isActive: true,
             );
             try {
               if (projection == null) {

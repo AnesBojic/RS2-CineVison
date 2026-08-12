@@ -4,7 +4,6 @@ using CineVision.Model.Responses;
 using CineVision.Model.Access;
 using CineVision.Services;
 using CineVision.Services.Database;
-using CineVision.Services.MovieStateMachine;
 using CineVision.Services.Validators;
 using CineVision.WebAPI.Filters;
 using CineVision.WebAPI.Hubs;
@@ -43,8 +42,7 @@ builder.Services.AddControllers(options =>
 }).AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
-    // Enums travel over the wire as their names, so a value like MovieLifecycleState.Active
-    // stays readable as "Active" instead of turning into a bare 1 the clients have to decode.
+    // Enums travel over the wire as their names (e.g. ReservationStatus.Paid → "Paid").
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
@@ -94,12 +92,7 @@ TypeAdapterConfig<User, UserResponse>.NewConfig().IgnoreNullValues(true);
 TypeAdapterConfig<UserUpdateRequest, User>.NewConfig().IgnoreNullValues(true);
 
 // register application services
-// movie service + state machine
 builder.Services.AddScoped<IMovieService, MovieService>();
-builder.Services.AddScoped<BaseMovieState>();
-builder.Services.AddScoped<InitialMovieState>();
-builder.Services.AddScoped<DraftMovieState>();
-builder.Services.AddScoped<ActiveMovieState>();
 
 // cinema domain services
 builder.Services.AddScoped<IGenreService, GenreService>();

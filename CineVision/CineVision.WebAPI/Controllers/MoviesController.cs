@@ -44,36 +44,6 @@ public class MoviesController : BaseCRUDController<MovieResponse, MovieSearchObj
         return Ok(result);
     }
 
-    [Authorize(Roles = RoleNames.AdminStaff)]
-    [HttpPost("{id}/Activate")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MovieResponse>> Activate(int id)
-    {
-        var result = await _service.ActivateAsync(id);
-        return Ok(result);
-    }
-
-    [Authorize(Roles = RoleNames.AdminStaff)]
-    [HttpPost("{id}/Deactivate")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MovieResponse>> Deactivate(int id)
-    {
-        var result = await _service.DeactivateAsync(id);
-        return Ok(result);
-    }
-
-    [Authorize(Roles = RoleNames.AdminStaff)]
-    [HttpGet("{id}/AllowedActions")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<List<string>>> GetAllowedActions(int id)
-    {
-        var result = await _service.GetAllowedActionsAsync(id);
-        return Ok(result);
-    }
-
     /// <summary>
     /// Preview of related records that will be removed if this movie is cascade-deleted.
     /// </summary>

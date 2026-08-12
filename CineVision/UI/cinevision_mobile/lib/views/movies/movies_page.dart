@@ -266,7 +266,6 @@ class _MoviesPageState extends State<MoviesPage> {
       'page': _popularPage,
       'pageSize': _popularPageSize,
       'includeTotalCount': true,
-      'movieState': MovieState.active,
       'includeGenre': true,
       'sortBy': 'ViewCount desc',
       'title': _searchController.text,

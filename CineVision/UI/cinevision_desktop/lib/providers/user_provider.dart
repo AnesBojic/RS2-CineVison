@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:cinevision_desktop/models/user.dart';
 import 'package:cinevision_desktop/providers/base_provider.dart';
@@ -60,6 +60,17 @@ class UserProvider extends BaseProvider<User> {
       uri,
       headers: createHeaders(),
       body: jsonEncode({'subject': subject, 'body': body, 'isHtml': false}),
+    );
+    validateResponse(response);
+  }
+
+  Future<void> setActive(int userId, bool isActive) async {
+    final baseUrl = BaseProvider.baseUrl ?? 'http://localhost:5126/';
+    final uri = Uri.parse('${baseUrl}Users/$userId/Active');
+    final response = await http.put(
+      uri,
+      headers: createHeaders(),
+      body: jsonEncode({'isActive': isActive}),
     );
     validateResponse(response);
   }

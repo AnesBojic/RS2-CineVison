@@ -250,24 +250,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required VoidCallback onEdit,
     required VoidCallback onDelete,
   }) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ActionIconButton(
-            icon: Icons.edit_outlined,
-            color: AppColors.blue,
-            onPressed: onEdit,
-          ),
-          const SizedBox(width: 8),
-          ActionIconButton(
-            icon: Icons.delete_outline,
-            color: AppColors.primary,
-            onPressed: onDelete,
-          ),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        ActionIconButton(
+          icon: Icons.edit_outlined,
+          color: AppColors.blue,
+          onPressed: onEdit,
+        ),
+        const SizedBox(width: 8),
+        ActionIconButton(
+          icon: Icons.delete_outline,
+          color: AppColors.primary,
+          onPressed: onDelete,
+        ),
+      ],
     );
   }
 
@@ -377,7 +374,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               DataColumn(label: Text('Rating')),
               DataColumn(label: Text('Duration')),
               DataColumn(label: Text('Release Date')),
-              DataColumn(label: Text('Status')),
               actionsDataColumn,
             ],
             rows: _filteredMovies.map((m) {
@@ -391,11 +387,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 DataCell(Text(m.ageRating ?? '—')),
                 DataCell(Text('${m.durationMinutes ?? 0} min')),
                 DataCell(Text(formatDate(m.releaseDate))),
-                DataCell(StatusBadge(
-                  label: m.displayState,
-                  color: m.isActiveState ? AppColors.green : AppColors.orange,
-                  filled: true,
-                )),
                 DataCell(_actionsCell(
                   onEdit: () => widget.onNavigate?.call(1, editId: m.id),
                   onDelete: () => _deleteMovie(m),

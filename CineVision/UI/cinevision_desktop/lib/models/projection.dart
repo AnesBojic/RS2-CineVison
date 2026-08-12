@@ -14,7 +14,6 @@ class Projection {
   /// Reference table id + name for display.
   final int? languageId;
   final String? language;
-  final bool? isActive;
   final int? totalSeats;
   final int? availableSeats;
 
@@ -30,7 +29,6 @@ class Projection {
     this.basePrice,
     this.languageId,
     this.language,
-    this.isActive,
     this.totalSeats,
     this.availableSeats,
   });
@@ -51,7 +49,6 @@ class Projection {
       basePrice: json['basePrice'] as num?,
       languageId: json['languageId'] as int?,
       language: json['language'] as String?,
-      isActive: json['isActive'] as bool?,
       totalSeats: json['totalSeats'] as int?,
       availableSeats: json['availableSeats'] as int?,
     );
@@ -63,6 +60,5 @@ class Projection {
         'startTime': UtcDateTime.toApi(startTime),
         'basePrice': basePrice,
         'languageId': languageId,
-        'isActive': isActive ?? true,
       };
 }

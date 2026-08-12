@@ -26,9 +26,6 @@ namespace CineVision.Services.Database
         public DateTime StartTime { get; set; }
 
         [Required]
-        public DateTime EndTime { get; set; }
-
-        [Required]
         [Column(TypeName = "decimal(18,2)")]
         public decimal BasePrice { get; set; }
 
@@ -37,8 +34,6 @@ namespace CineVision.Services.Database
 
         [ForeignKey("LanguageId")]
         public Language? Language { get; set; }
-
-        public bool IsActive { get; set; } = true;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

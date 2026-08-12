@@ -38,9 +38,17 @@ public class UsersController : BaseCRUDController<UserResponse, UserSearch, User
         _emailSendValidator = emailSendValidator;
     }
 
-    /// <summary>
-    /// Preview of related records that will be removed if this user is deleted.
-    /// </summary>
+    /// <summary>Activate or deactivate a user account (preferred over delete).</summary>
+    [HttpPut("{id}/Active")]
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserResponse>> SetActive(int id, [FromBody] SetUserActiveRequest request)
+    {
+        var result = await _service.SetActiveAsync(id, request.IsActive);
+        return Ok(result);
+    }
+
+    /// User hard-delete is disabled; deactivate with IsActive instead.
     [HttpGet("{id}/DeleteImpact")]
     [ProducesResponseType(typeof(UserDeleteImpactResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

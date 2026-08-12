@@ -26,7 +26,5 @@ namespace CineVision.Model.Requests
 
         /// <summary>Movie poster as a base64-encoded image (e.g. from the "upload poster" field).</summary>
         public string? PosterImageBase64 { get; set; }
-
-        public bool IsActive { get; set; } = true;
     }
 }

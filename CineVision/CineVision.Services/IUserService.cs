@@ -19,5 +19,9 @@ namespace CineVision.Services
         Task ResetPasswordAsync(ResetPasswordRequest request);
         /// <summary>Public self-registration — always assigns the Customer role.</summary>
         Task<UserResponse> RegisterAsync(UserRegisterRequest request);
+        /// <summary>Activate or deactivate an account without deleting it.</summary>
+        Task<UserResponse> SetActiveAsync(int id, bool isActive);
+        /// <summary>Persists LastLoginAt after a successful password login.</summary>
+        Task RecordLastLoginAsync(int userId);
     }
 }

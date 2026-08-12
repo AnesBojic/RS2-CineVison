@@ -101,12 +101,6 @@ namespace CineVision.Services
                 query = query.Where(s => s.StartTime >= now);
             }
 
-            // Soft-deleted projections stay in DB but are hidden from normal lists.
-            if (search.IncludeInactive != true)
-            {
-                query = query.Where(s => s.IsActive);
-            }
-
             int? totalCount = null;
             if (search.IncludeTotalCount ?? false)
             {
@@ -172,10 +166,8 @@ namespace CineVision.Services
                 MovieId = request.MovieId,
                 HallId = request.HallId,
                 StartTime = request.StartTime,
-                EndTime = endTime,
                 BasePrice = request.BasePrice,
                 LanguageId = request.LanguageId,
-                IsActive = request.IsActive,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -210,10 +202,8 @@ namespace CineVision.Services
             entity.MovieId = request.MovieId;
             entity.HallId = request.HallId;
             entity.StartTime = request.StartTime;
-            entity.EndTime = endTime;
             entity.BasePrice = request.BasePrice;
             entity.LanguageId = request.LanguageId;
-            entity.IsActive = request.IsActive;
             entity.UpdatedAt = DateTime.UtcNow;
 
             await _dbContext.SaveChangesAsync();
@@ -342,7 +332,7 @@ namespace CineVision.Services
             }
         }
 
-        /// <summary>No other active projection in the same hall may overlap [start, end).</summary>
+        /// <summary>No other projection in the same hall may overlap [start, end). End is StartTime + movie duration.</summary>
         private async Task EnsureNoHallOverlapAsync(
             int hallId,
             DateTime start,
@@ -357,9 +347,8 @@ namespace CineVision.Services
             var query = _dbContext.Projections.AsNoTracking()
                 .Where(s =>
                     s.HallId == hallId &&
-                    s.IsActive &&
                     s.StartTime < end &&
-                    s.EndTime > start);
+                    s.StartTime.AddMinutes(s.Movie.DurationMinutes) > start);
 
             if (excludeProjectionId.HasValue)
             {
@@ -367,7 +356,12 @@ namespace CineVision.Services
             }
 
             var conflict = await query
-                .Select(s => new { s.Id, s.StartTime, s.EndTime })
+                .Select(s => new
+                {
+                    s.Id,
+                    s.StartTime,
+                    EndTime = s.StartTime.AddMinutes(s.Movie.DurationMinutes)
+                })
                 .FirstOrDefaultAsync();
 
             if (conflict != null)
@@ -506,6 +500,10 @@ namespace CineVision.Services
             response.MovieTitle = s.Movie?.Title ?? string.Empty;
             response.MoviePosterBase64 = includePoster ? s.Movie?.PosterImageBase64 : null;
             response.HallName = s.Hall?.Name ?? string.Empty;
+            if (s.Movie != null)
+            {
+                response.EndTime = s.StartTime.AddMinutes(s.Movie.DurationMinutes);
+            }
 
             if (includeSeatStats)
             {

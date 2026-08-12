@@ -30,6 +30,8 @@ class _UserListState extends State<UserList> {
   List<LookupItem> _roles = [];
   bool _loading = true;
   final _searchController = TextEditingController();
+  String? _roleFilter;
+  String? _statusFilter;
 
   @override
   void initState() {
@@ -49,11 +51,19 @@ class _UserListState extends State<UserList> {
     setState(() => _loading = true);
     try {
       final filter = <String, dynamic>{'pageSize': 50};
-      if (_searchController.text.isNotEmpty) filter['name'] = _searchController.text;
+      if (_searchController.text.trim().isNotEmpty) {
+        filter['name'] = _searchController.text.trim();
+      }
+      if (_roleFilter != null) {
+        filter['role'] = _roleFilter;
+      }
+      if (_statusFilter != null) {
+        filter['isActive'] = _statusFilter == 'true';
+      }
       final data = await _userProvider.get(filter: filter);
       // Roles are reference data too, so the picker offers whatever the database holds.
       final roles = await _roleProvider.get(
-        filter: {'pageSize': 100, 'isActive': true},
+        filter: {'pageSize': 100},
       );
       if (!mounted) return;
       setState(() {
@@ -76,9 +86,42 @@ class _UserListState extends State<UserList> {
       isLoading: _loading,
       toolbar: Row(
         children: [
+          FilterDropdown(
+            hint: 'All Roles',
+            value: _roleFilter,
+            items: [
+              const DropdownMenuItem(value: null, child: Text('All Roles')),
+              ..._roles.map(
+                (r) => DropdownMenuItem(
+                  value: r.name,
+                  child: Text(r.name ?? ''),
+                ),
+              ),
+            ],
+            onChanged: (v) {
+              setState(() => _roleFilter = v);
+              _load();
+            },
+          ),
+          const SizedBox(width: 10),
+          FilterDropdown(
+            hint: 'All Status',
+            value: _statusFilter,
+            items: const [
+              DropdownMenuItem(value: null, child: Text('All Status')),
+              DropdownMenuItem(value: 'true', child: Text('Active')),
+              DropdownMenuItem(value: 'false', child: Text('Inactive')),
+            ],
+            onChanged: (v) {
+              setState(() => _statusFilter = v);
+              _load();
+            },
+          ),
+          const SizedBox(width: 10),
           SearchField(
             controller: _searchController,
-            hint: 'Search users...',
+            hint: 'Search name, email, username...',
+            width: 280,
             onSubmitted: (_) => _load(),
           ),
           const SizedBox(width: 10),
@@ -96,6 +139,7 @@ class _UserListState extends State<UserList> {
             DataColumn(label: Text('Name')),
             DataColumn(label: Text('Email')),
             DataColumn(label: Text('Role')),
+            DataColumn(label: Text('Status')),
             DataColumn(label: Text('Date Created')),
             DataColumn(label: Text('Date Modified')),
             actionsDataColumn,
@@ -108,6 +152,7 @@ class _UserListState extends State<UserList> {
 
   DataRow _buildRow(User u) {
     final fullName = '${u.firstName ?? ''} ${u.lastName ?? ''}'.trim();
+    final active = u.isActive ?? true;
     return DataRow(cells: [
       DataCell(Row(children: [
         CircleAvatar(
@@ -115,14 +160,29 @@ class _UserListState extends State<UserList> {
           backgroundColor: AppColors.inputFill,
           child: Text(
             _initials(u.firstName, u.lastName),
-            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         const SizedBox(width: 12),
-        Text(fullName.isEmpty ? '—' : fullName, style: const TextStyle(fontWeight: FontWeight.w500)),
+        Text(
+          fullName.isEmpty ? '—' : fullName,
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            color: active ? null : AppColors.textSecondary,
+          ),
+        ),
       ])),
       DataCell(Text(u.email ?? '—')),
       DataCell(RoleBadge(role: (u.role?.isNotEmpty == true) ? u.role! : 'Customer')),
+      DataCell(StatusBadge(
+        label: active ? 'Active' : 'Inactive',
+        color: active ? AppColors.green : AppColors.orange,
+        filled: true,
+      )),
       DataCell(Text(formatDate(u.createdAt))),
       DataCell(Text(formatDate(u.updatedAt))),
       actionButtonsCell([
@@ -137,64 +197,57 @@ class _UserListState extends State<UserList> {
           onPressed: () => _showEmailDialog(u),
         ),
         ActionIconButton(
-          icon: Icons.delete_outline,
-          color: AppColors.primary,
-          onPressed: () => _delete(u),
+          icon: active ? Icons.person_off_outlined : Icons.person_outline,
+          color: active ? AppColors.orange : AppColors.green,
+          tooltip: active ? 'Deactivate account' : 'Activate account',
+          onPressed: () => _toggleActive(u),
         ),
       ]),
     ]);
   }
 
-  Future<void> _delete(User u) async {
+  Future<void> _toggleActive(User u) async {
     if (u.id == null) return;
 
-    Map<String, dynamic>? impact;
-    try {
-      impact = await _userProvider.getDeleteImpact(u.id!);
-    } on Exception catch (_) {
-      // Still allow delete with a generic warning if preview fails.
-    }
-
-    if (!mounted) return;
-
+    final currentlyActive = u.isActive ?? true;
     final name = '${u.firstName ?? ''} ${u.lastName ?? ''}'.trim();
-    final reservationCount = impact?['reservationCount'] as int? ?? 0;
-    final reviewCount = impact?['reviewCount'] as int? ?? 0;
-
-    final warning = StringBuffer();
-    warning.writeln(
-      'Delete ${name.isEmpty ? 'this user' : name}?',
+    final label = name.isEmpty ? 'this user' : name;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text(currentlyActive ? 'Deactivate user?' : 'Activate user?'),
+        content: Text(
+          currentlyActive
+              ? '$label will stay in the list but cannot sign in until reactivated.'
+              : '$label will be able to sign in again.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(currentlyActive ? 'Deactivate' : 'Activate'),
+          ),
+        ],
+      ),
     );
-    warning.writeln();
-    if (reservationCount > 0 || reviewCount > 0) {
-      warning.writeln(
-        'Warning: this will permanently delete all related data, including:',
-      );
-      if (reservationCount > 0) {
-        warning.writeln(
-          '• $reservationCount reservation(s) and their reserved seats',
-        );
-      }
-      if (reviewCount > 0) {
-        warning.writeln('• $reviewCount review(s)');
-      }
-      warning.writeln('• notifications and login sessions for this account');
-    } else {
-      warning.writeln(
-        'This account has no bookings. The user profile will still be removed permanently.',
-      );
-    }
-
-    final ok = await confirmDelete(context, warning.toString().trim());
     if (ok != true || !mounted) return;
+
     try {
-      await _userProvider.remove(u.id!);
-      showAppSnackBar(context, 'User and related data deleted');
-      _load();
+      await _userProvider.setActive(u.id!, !currentlyActive);
+      if (!mounted) return;
+      await _load();
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        currentlyActive ? 'User deactivated' : 'User activated',
+      );
     } on ApiClientException catch (e) {
-      if (mounted) showAppSnackBar(context, e.message, isError: true);
+      if (!mounted) return;
+      showAppSnackBar(context, e.message, isError: true);
     } on Exception catch (e) {
-      if (mounted) alertBox(context, 'Error', e.toString());
+      if (!mounted) return;
+      alertBox(context, 'Error', e.toString());
     }
   }
 

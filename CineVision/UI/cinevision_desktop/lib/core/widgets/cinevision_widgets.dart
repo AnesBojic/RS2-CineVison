@@ -672,15 +672,13 @@ class SectionChip extends StatelessWidget {
   }
 }
 
-/// Right-aligned actions header for data tables.
+/// Centered actions header for data tables.
 const DataColumn actionsDataColumn = DataColumn(
-  label: Align(
-    alignment: Alignment.centerRight,
-    child: Text('Actions'),
-  ),
+  headingRowAlignment: MainAxisAlignment.center,
+  label: Text('Actions'),
 );
 
-/// Right-aligns edit/delete buttons inside a wide Actions cell.
+/// Centers edit/delete buttons inside the Actions cell.
 DataCell actionButtonsCell(List<Widget> buttons) {
   final children = <Widget>[];
   for (var i = 0; i < buttons.length; i++) {
@@ -688,13 +686,9 @@ DataCell actionButtonsCell(List<Widget> buttons) {
     children.add(buttons[i]);
   }
   return DataCell(
-    Align(
-      alignment: Alignment.centerRight,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: children,
-      ),
+    Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: children,
     ),
   );
 }

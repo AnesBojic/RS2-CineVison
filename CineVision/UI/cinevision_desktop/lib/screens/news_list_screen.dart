@@ -82,7 +82,6 @@ class _NewsListScreenState extends State<NewsListScreen> {
     final formKey = GlobalKey<FormState>();
     final titleCtrl = TextEditingController(text: existing?.title ?? '');
     final contentCtrl = TextEditingController(text: existing?.content ?? '');
-    var isActive = existing?.isActive ?? true;
     String? imageBase64 = existing?.imageBase64;
     var submitting = false;
 
@@ -109,7 +108,6 @@ class _NewsListScreenState extends State<NewsListScreen> {
                     content: contentCtrl.text.trim(),
                     imageBase64: imageBase64,
                     publishedAt: existing?.publishedAt ?? UtcDateTime.now(),
-                    isActive: isActive,
                   );
                   if (existing?.id == null) {
                     await _provider.insert(payload.toInsertJson());
@@ -153,13 +151,6 @@ class _NewsListScreenState extends State<NewsListScreen> {
                       maxLines: 6,
                       decoration: const InputDecoration(labelText: 'Content'),
                       validator: (v) => FieldValidators.required(v, field: 'Content'),
-                    ),
-                    const SizedBox(height: 8),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Active (visible to customers)'),
-                      value: isActive,
-                      onChanged: (v) => setLocal(() => isActive = v),
                     ),
                   ],
                 ),
@@ -222,7 +213,6 @@ class _NewsListScreenState extends State<NewsListScreen> {
                     subtitle: Text(
                       [
                         if (published != null) 'Published ${published.toString().split('.').first}',
-                        item.isActive == true ? 'Active' : 'Hidden',
                         item.content ?? '',
                       ].join(' · '),
                       maxLines: 2,

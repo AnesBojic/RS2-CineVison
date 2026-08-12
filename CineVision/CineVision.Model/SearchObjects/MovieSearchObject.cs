@@ -1,6 +1,4 @@
-﻿using CineVision.Model.Enums;
-
-namespace CineVision.Model.SearchObjects
+﻿namespace CineVision.Model.SearchObjects
 {
     public class MovieSearchObject : BaseSearchObject
     {
@@ -18,12 +16,6 @@ namespace CineVision.Model.SearchObjects
         /// Filter movies by genre id.
         /// </summary>
         public int? GenreId { get; set; }
-
-        /// <summary>
-        /// Filter movies by their current state machine state. Bound from the query string
-        /// by name ("Active") or by underlying value ("1").
-        /// </summary>
-        public MovieLifecycleState? MovieState { get; set; }
 
         public bool? IncludeGenre { get; set; }
 

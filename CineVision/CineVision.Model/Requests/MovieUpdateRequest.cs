@@ -24,7 +24,5 @@ namespace CineVision.Model.Requests
         public int? AgeRatingId { get; set; }
 
         public string? PosterImageBase64 { get; set; }
-
-        public bool IsActive { get; set; } = true;
     }
 }

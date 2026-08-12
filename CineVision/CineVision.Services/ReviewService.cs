@@ -202,7 +202,7 @@ namespace CineVision.Services
                 .Where(r =>
                     r.UserId == userId
                     && (r.Status == ReservationStatus.Paid || r.Status == ReservationStatus.Confirmed)
-                    && r.Projection.EndTime <= now)
+                    && r.Projection.StartTime.AddMinutes(r.Projection.Movie.DurationMinutes) <= now)
                 .Select(r => new
                 {
                     r.Projection.MovieId,
@@ -242,7 +242,7 @@ namespace CineVision.Services
                     r.UserId == userId
                     && (r.Status == ReservationStatus.Paid || r.Status == ReservationStatus.Confirmed)
                     && r.Projection.MovieId == movieId
-                    && r.Projection.EndTime <= now);
+                    && r.Projection.StartTime.AddMinutes(r.Projection.Movie.DurationMinutes) <= now);
         }
 
         private static ReviewResponse MapToResponse(Review r)
