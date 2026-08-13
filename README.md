@@ -8,6 +8,7 @@ Cinema booking platform:
 | Desktop | Flutter Windows — **Admin / Staff** |
 | Mobile | Flutter Android — **Customer** (bookings, Stripe, recommendations) |
 
+
 Database name (seed / `.env`): **`200017`**
 
 Recommender documentation: [`recommender-dokumentacija.md`](recommender-dokumentacija.md)
@@ -114,6 +115,8 @@ Put test keys in `.env`. Test card e.g. `4242 4242 4242 4242`.
 
 API must be running. Default URL: **`http://localhost:5126/`**
 
+Prebuilt Windows app will be uploaded on GitHub Releases (or build locally below).
+
 ### Dev
 
 ```powershell
@@ -122,29 +125,13 @@ flutter pub get
 flutter run -d windows --dart-define=API_BASE_URL=http://localhost:5126/
 ```
 
-### Release build (submission 9.2.2)
-
-```powershell
-cd CineVision\UI\cinevision_desktop
-flutter clean
-flutter pub get
-flutter build windows --release --dart-define=API_BASE_URL=http://localhost:5126/
-```
-
-Output:
-
-```text
-CineVision\UI\cinevision_desktop\build\windows\x64\runner\Release\
-```
-
-Run `cinevision_desktop.exe` from that folder. Login: `admin1` / `Test123`.
-
----
 
 ## 6. Mobile (Android emulator / AVD)
 
 API must be running. On the emulator the URL is **`http://10.0.2.2:5126/`** (host machine localhost).  
 **Do not use `localhost` on the Android emulator.**
+
+Prebuilt Android APK will be uploaded on GitHub Releases (or build locally below). 
 
 ### Dev
 
@@ -158,31 +145,6 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5126/
 ```
 
 Login: `customer1` / `Test123`.
-
-### Release APK (submission 9.2.1)
-
-```powershell
-cd CineVision\UI\cinevision_mobile
-flutter clean
-flutter pub get
-flutter build apk --release --dart-define=API_BASE_URL=http://10.0.2.2:5126/
-```
-
-Output (install the **`.apk`**, not the `.sha1`):
-
-```text
-CineVision\UI\cinevision_mobile\build\app\outputs\flutter-apk\app-release.apk
-```
-
-### Test the APK in AVD
-
-1. Uninstall the old CineVision app (App info → Uninstall), or:  
-   `adb uninstall com.example.cinevision_mobile`
-2. Drag `app-release.apk` onto the emulator window, or:  
-   `adb install -r "....\app-release.apk"`
-3. Open the app and sign in
-
-> The first `assembleRelease` can take 5–15+ minutes — that is normal.
 
 ---
 
