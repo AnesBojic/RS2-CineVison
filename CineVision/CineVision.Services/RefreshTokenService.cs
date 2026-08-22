@@ -1,11 +1,8 @@
-﻿using CineVision.Model.Exceptions;
+﻿using System.Security.Cryptography;
+using System.Text;
+using CineVision.Model.Exceptions;
 using CineVision.Services.Database;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CineVision.Services
 {
@@ -22,7 +19,8 @@ namespace CineVision.Services
 
         public async Task<RefreshToken> GetStoredTokenAsync(string refreshToken)
         {
-            var token = await _refreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+            var tokenHash = HashToken(refreshToken);
+            var token = await _refreshTokens.FirstOrDefaultAsync(rt => rt.Token == tokenHash);
 
             if (token == null)
             {
@@ -34,6 +32,7 @@ namespace CineVision.Services
 
         public async Task InsertAsync(RefreshToken refreshToken)
         {
+            refreshToken.Token = HashToken(refreshToken.Token);
             await _context.RefreshTokens.AddAsync(refreshToken);
             await _context.SaveChangesAsync();
         }
@@ -47,8 +46,16 @@ namespace CineVision.Services
         public async Task ReplaceUserTokensAsync(int userId, RefreshToken newToken)
         {
             _refreshTokens.RemoveRange(_refreshTokens.Where(rt => rt.UserId == userId));
+            newToken.Token = HashToken(newToken.Token);
             await _refreshTokens.AddAsync(newToken);
             await _context.SaveChangesAsync();
+        }
+
+        /// <summary>SHA-256 hash of the raw refresh token (what clients send); only the hash is stored.</summary>
+        private static string HashToken(string token)
+        {
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+            return Convert.ToBase64String(bytes);
         }
     }
 }

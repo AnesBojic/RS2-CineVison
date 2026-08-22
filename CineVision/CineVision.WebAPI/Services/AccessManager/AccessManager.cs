@@ -145,7 +145,7 @@ namespace CineVision.WebAPI.Services.AccessManager
             var audience = _configuration["JwtToken:Audience"];
             var durationInMinutes = int.Parse(_configuration["JwtToken:DurationInMinutes"] ?? "1");
 
-            var secretKey = Encoding.ASCII.GetBytes(secretKeyString);
+            var secretKey = Encoding.UTF8.GetBytes(secretKeyString);
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {

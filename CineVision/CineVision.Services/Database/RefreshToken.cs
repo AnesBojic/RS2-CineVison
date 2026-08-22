@@ -13,6 +13,7 @@ namespace CineVision.Services.Database
         [Key]
         public int Id { get; set; }
 
+        /// <summary>SHA-256 hash of the refresh token issued to the client (never store the raw value).</summary>
         [Required]
         [MaxLength(500)]
         public string Token { get; set; } = string.Empty;
