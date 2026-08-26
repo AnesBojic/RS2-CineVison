@@ -4,7 +4,7 @@ Cinema booking platform:
 
 | Part | Description |
 |------|-------------|
-| Backend | ASP.NET Core Web API + SQL Server + RabbitMQ email worker (**Docker**) |
+| Backend | ASP.NET Core Web API + Microsoft SSQL Server + RabbitMQ email worker (**Docker**) |
 | Desktop | Flutter Windows — **Admin / Staff** |
 | Mobile | Flutter Android — **Customer** (bookings, Stripe, recommendations) |
 
@@ -26,7 +26,7 @@ Recommender documentation: [`recommender-dokumentacija.md`](recommender-dokument
 
 ## 1. Configuration (`.env`)
  
- Unzip folder with name "env-tajne", there is .env file in it allready setted up for use.
+ Unzip folder (Using WinRar) with the name "env-tajne", there is .env file in it allready ready  for use.
 
 ---
 
@@ -107,15 +107,28 @@ Login uses **username** (not email), lowercase.
 
 ### Stripe (mobile)
 
-Put test keys in `.env`. Test card e.g. `4242 4242 4242 4242`.
+ Test card e.g. 
+ 
+| Brand | Number | CCV | Date |
+|-------|--------|-----|------|
+| Visa | 4242 4242 4242 4242 | Any 3 digits | Any future date |
+| Visa (debit) | 4000 0566 5566 5556 | Any 3 digits | Any future date |
+| Mastercard | 5555 5555 5555 4444 | Any 3 digits | Any future date |
+
+
+More details at: [Stripe](https://docs.stripe.com/testing)
+
+
 
 ---
 
 ## 5. Desktop (Windows)
 
+**Prebuilt Windows app will be uploaded on GitHub Releases (or build locally below).**
+
 API must be running. Default URL: **`http://localhost:5126/`**
 
-Prebuilt Windows app will be uploaded on GitHub Releases (or build locally below).
+
 
 ### Dev
 
@@ -124,14 +137,16 @@ cd CineVision\UI\cinevision_desktop
 flutter pub get
 flutter run -d windows --dart-define=API_BASE_URL=http://localhost:5126/
 ```
-
+Login: `admin1` / `Test123`.
 
 ## 6. Mobile (Android emulator / AVD)
+
+**Prebuilt Android APK will be uploaded on GitHub Releases (or build locally below).**
 
 API must be running. On the emulator the URL is **`http://10.0.2.2:5126/`** (host machine localhost).  
 **Do not use `localhost` on the Android emulator.**
 
-Prebuilt Android APK will be uploaded on GitHub Releases (or build locally below). 
+
 
 ### Dev
 
