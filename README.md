@@ -4,7 +4,7 @@ Cinema booking platform:
 
 | Part | Description |
 |------|-------------|
-| Backend | ASP.NET Core Web API + Microsoft SSQL Server + RabbitMQ email worker (**Docker**) |
+| Backend | ASP.NET Core Web API + Microsoft SQL Server + RabbitMQ email worker (**Docker**) |
 | Desktop | Flutter Windows — **Admin / Staff** |
 | Mobile | Flutter Android — **Customer** (bookings, Stripe, recommendations) |
 
