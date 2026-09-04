@@ -46,8 +46,11 @@ namespace CineVision.Services.Database
 
         public string? ProfileImageBase64 { get; set; }
 
-        /// <summary>One-time code emailed for password recovery (cleared after use).</summary>
-        [MaxLength(10)]
+        /// <summary>
+        /// PBKDF2/Base64 hash of the emailed 6-digit reset code (never plaintext).
+        /// Length 128 fits CryptoService.GenerateHash (20-byte SHA-256 Base64 ≈ 28 chars) with headroom.
+        /// </summary>
+        [MaxLength(128)]
         public string? PasswordResetCode { get; set; }
 
         public DateTime? PasswordResetExpiresAt { get; set; }
