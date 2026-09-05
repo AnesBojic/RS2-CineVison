@@ -1,6 +1,7 @@
 import 'package:cinevision_mobile/core/widgets/cine_app_bar.dart';
 import 'package:cinevision_mobile/core/constants/app_colors.dart';
 import 'package:cinevision_mobile/core/constants/app_defaults.dart';
+import 'package:cinevision_mobile/core/enums/api_enums.dart';
 import 'package:cinevision_mobile/core/routes/app_routes.dart';
 import 'package:cinevision_mobile/models/reservation.dart';
 import 'package:cinevision_mobile/models/review_eligibility.dart';
@@ -313,6 +314,18 @@ class _BookingCard extends StatelessWidget {
               ),
             ],
           ),
+          if (reservation.refundNotice != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              reservation.refundNotice!,
+              style: TextStyle(
+                fontSize: 12,
+                color: reservation.refundStatus == RefundStatus.failed
+                    ? AppColors.primary
+                    : AppColors.textSecondary,
+              ),
+            ),
+          ],
           if (reservation.canRefund || _showReviewButton) ...[
             const SizedBox(height: 12),
             Row(

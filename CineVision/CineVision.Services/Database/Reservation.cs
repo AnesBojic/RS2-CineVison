@@ -44,10 +44,31 @@ namespace CineVision.Services.Database
         [Required]
         public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Online;
 
+        /// <summary>
+        /// Whether money was actually collected. Independent of <see cref="Status"/>, so a
+        /// cancelled or completed booking still shows that it was paid.
+        /// </summary>
+        [Required]
+        public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.None;
+
         [MaxLength(100)]
         public string? PaymentTransactionId { get; set; }
 
         public DateTime? PaymentDate { get; set; }
+
+        /// <summary>Refund progress for a paid booking; set to Pending before Stripe is called.</summary>
+        [Required]
+        public RefundStatus RefundStatus { get; set; } = RefundStatus.None;
+
+        /// <summary>Stripe refund id (re_...) once the refund is confirmed.</summary>
+        [MaxLength(100)]
+        public string? RefundId { get; set; }
+
+        public DateTime? RefundedAt { get; set; }
+
+        /// <summary>Why the last refund attempt failed, so a stuck refund stays traceable.</summary>
+        [MaxLength(500)]
+        public string? RefundError { get; set; }
 
         /// <summary>
         /// While set, this row is a seat hold created before the customer is charged: the seats are

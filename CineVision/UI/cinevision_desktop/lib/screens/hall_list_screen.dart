@@ -191,6 +191,12 @@ class _HallListScreenState extends State<HallListScreen> {
     } on Exception catch (_) {}
 
     if (!mounted) return;
+    final blocked = cascadeDeleteBlockReason(impact);
+    if (blocked != null) {
+      alertBox(context, 'Cannot delete', blocked);
+      return;
+    }
+
     final ok = await confirmDelete(
       context,
       buildCascadeDeleteWarning(

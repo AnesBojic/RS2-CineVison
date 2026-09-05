@@ -10,8 +10,6 @@ using CineVision.Model.SearchObjects;
 using CineVision.Services.Database;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using CineVision.Model.Enums;
 
 namespace CineVision.Services
@@ -19,8 +17,6 @@ namespace CineVision.Services
     public class HallService : BaseCRUDService<Hall, HallResponse, HallSearchObject, HallInsertRequest, HallUpdateRequest>, IHallService
     {
         private readonly IAnalyticsNotifier _analyticsNotifier;
-        private readonly string? _stripeSecretKey;
-        private readonly ILogger<HallService> _logger;
         private readonly IValidator<HallSeatLayoutUpdateRequest> _seatLayoutValidator;
 
         public HallService(
@@ -29,15 +25,11 @@ namespace CineVision.Services
             IValidator<HallInsertRequest> insertValidator,
             IValidator<HallUpdateRequest> updateValidator,
             IValidator<HallSeatLayoutUpdateRequest> seatLayoutValidator,
-            IAnalyticsNotifier analyticsNotifier,
-            IConfiguration configuration,
-            ILogger<HallService> logger)
+            IAnalyticsNotifier analyticsNotifier)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
             _seatLayoutValidator = seatLayoutValidator;
             _analyticsNotifier = analyticsNotifier;
-            _stripeSecretKey = configuration["Stripe:SecretKey"];
-            _logger = logger;
         }
 
         protected override async Task<IQueryable<Hall>> IncludeRelatedEntitiesAsync(HallSearchObject? search, IQueryable<Hall> query = null!)
@@ -205,11 +197,13 @@ namespace CineVision.Services
                 .ToListAsync();
 
             var graph = await BookingGraphCascade.CountForProjectionIdsAsync(_dbContext, projectionIds);
+            var history = await BookingGraphCascade.CountBookingHistoryAsync(_dbContext, projectionIds);
             var seatCount = await _dbContext.Seats.CountAsync(s => s.HallId == id);
 
             return BookingGraphCascade.BuildImpact(
                 hall.Id,
                 hall.Name,
+                history,
                 ("Projections", graph.ProjectionCount),
                 ("Reservations", graph.ReservationCount),
                 ("Reserved seats", graph.ReservationSeatCount),
@@ -234,7 +228,7 @@ namespace CineVision.Services
                 await BookingGraphCascade.RemoveProjectionsAsync(
                     _dbContext,
                     projectionIds,
-                    paymentIntentId => StripeRefundHelper.TryRefundAsync(_stripeSecretKey, paymentIntentId, _logger));
+                    $"Hall '{hall.Name}'");
 
                 // PartnerSeat is Restrict — clear links before seats cascade with the hall.
                 foreach (var seat in hall.Seats)

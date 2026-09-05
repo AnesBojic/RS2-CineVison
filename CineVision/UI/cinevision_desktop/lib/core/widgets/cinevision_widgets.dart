@@ -1059,6 +1059,16 @@ Future<bool?> confirmDelete(BuildContext context, String message) {
   );
 }
 
+/// Reason the API refuses to delete, or null when the delete is allowed.
+/// Bookings that took money are permanent records, so they block the delete.
+String? cascadeDeleteBlockReason(Map<String, dynamic>? impact) {
+  if (impact == null || impact['canDelete'] != false) return null;
+  final reason = impact['blockReason']?.toString();
+  return reason?.isNotEmpty == true
+      ? reason
+      : 'Cannot delete: booking or payment history must be preserved.';
+}
+
 /// Builds a cascade-delete warning from a `DeleteImpact` API response.
 String buildCascadeDeleteWarning({
   required String subjectLabel,

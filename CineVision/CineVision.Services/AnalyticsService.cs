@@ -290,8 +290,10 @@ namespace CineVision.Services
 
         private async Task<List<SeatSale>> GetSeatSalesAsync()
         {
+            // Released seats stay in the table as booking history but are not sold tickets.
             return await _dbContext.ReservationSeats
                 .AsNoTracking()
+                .Where(rs => rs.ReleasedAt == null)
                 .Select(rs => new SeatSale
                 {
                     ReservationId = rs.ReservationId,

@@ -197,7 +197,8 @@ namespace CineVision.Services
                 .Select(g => new { Status = g.Key, Count = g.Count() })
                 .ToListAsync();
 
-            var ticketsSold = await _dbContext.ReservationSeats.CountAsync();
+            // Released seats remain as booking history but are no longer sold tickets.
+            var ticketsSold = await _dbContext.ReservationSeats.CountAsync(rs => rs.ReleasedAt == null);
 
             var userCounts = await _dbContext.UserRoles
                 .AsNoTracking()
@@ -208,6 +209,7 @@ namespace CineVision.Services
 
             var topMoviesByTickets = await _dbContext.ReservationSeats
                 .AsNoTracking()
+                .Where(rs => rs.ReleasedAt == null)
                 .Include(rs => rs.Projection)
                 .GroupBy(rs => rs.Projection!.MovieId)
                 .Select(g => new { MovieId = g.Key, Tickets = g.Count() })

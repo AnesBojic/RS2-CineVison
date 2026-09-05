@@ -80,6 +80,7 @@ namespace CineVision.Services
                     // Money cleared while the hold was expiring; honour the booking instead of
                     // freeing seats the customer has already paid for.
                     ReservationStatusTransitions.Apply(hold, ReservationStatus.Paid);
+                    hold.PaymentStatus = PaymentStatus.Paid;
                     hold.HoldExpiresAt = null;
                     changed = true;
 
@@ -103,9 +104,14 @@ namespace CineVision.Services
                     ReservationStatus.Cancelled,
                     cancellationReason: reason);
 
-                // An unpaid hold never carried money, so its seat rows are freed outright and the
-                // cancelled reservation stays as the audit trail.
-                _dbContext.ReservationSeats.RemoveRange(hold.ReservationSeats);
+                // Seats are released rather than deleted, so the abandoned checkout stays on
+                // record while the seats go back on sale.
+                var releasedAt = DateTime.UtcNow;
+                foreach (var seat in hold.ReservationSeats.Where(rs => rs.ReleasedAt == null))
+                {
+                    seat.ReleasedAt = releasedAt;
+                }
+
                 hold.HoldExpiresAt = null;
                 changed = true;
             }

@@ -129,10 +129,12 @@ namespace CineVision.Services.Database
                 .HasForeignKey(rs => rs.ProjectionId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Double-booking prevention: a seat can only be taken once per projection.
+            // Double-booking prevention: a seat can only be taken once per projection. Filtered on
+            // ReleasedAt so cancelled bookings keep their seat history without blocking a resale.
             modelBuilder.Entity<ReservationSeat>()
                 .HasIndex(rs => new { rs.ProjectionId, rs.SeatId })
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[ReleasedAt] IS NULL");
 
             // Review relationships. Deleting a movie removes its reviews; the author FK is
             // restricted to avoid a second cascade path into Review (SQL Server rejects those).

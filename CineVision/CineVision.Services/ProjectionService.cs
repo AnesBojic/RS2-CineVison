@@ -9,10 +9,6 @@ using CineVision.Model.SearchObjects;
 using CineVision.Services.Database;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using CineVision.Model.Messages;
-using CineVision.Services;
 using CineVision.Model.Enums;
 
 namespace CineVision.Services
@@ -20,10 +16,6 @@ namespace CineVision.Services
     public class ProjectionService : BaseCRUDService<Projection, ProjectionResponse, ProjectionSearchObject, ProjectionInsertRequest, ProjectionUpdateRequest>, IProjectionService
     {
         private readonly IAnalyticsNotifier _analyticsNotifier;
-        private readonly IEmailService _emailService;
-        private readonly string? _stripeSecretKey;
-        private readonly ILogger<ProjectionService> _logger;
-        private readonly INotificationService _notificationService;
         private readonly ISeatHoldService _seatHoldService;
 
         public ProjectionService(
@@ -32,19 +24,11 @@ namespace CineVision.Services
             IValidator<ProjectionInsertRequest> insertValidator,
             IValidator<ProjectionUpdateRequest> updateValidator,
             IAnalyticsNotifier analyticsNotifier,
-            IEmailService emailService,
-            IConfiguration configuration,
-            ILogger<ProjectionService> logger,
-            INotificationService notificationService,
             ISeatHoldService seatHoldService)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
             _seatHoldService = seatHoldService;
             _analyticsNotifier = analyticsNotifier;
-            _emailService = emailService;
-            _stripeSecretKey = configuration["Stripe:SecretKey"];
-            _logger = logger;
-            _notificationService = notificationService;
         }
 
         protected override IQueryable<Projection> ApplyFilters(IQueryable<Projection> query, ProjectionSearchObject? search)
@@ -225,55 +209,36 @@ namespace CineVision.Services
                 ?? throw new KeyNotFoundException($"Projection with id {id} not found.");
 
             var graph = await BookingGraphCascade.CountForProjectionIdsAsync(_dbContext, new[] { id });
+            var history = await BookingGraphCascade.CountBookingHistoryAsync(_dbContext, new[] { id });
             var display = projection.Movie?.Title ?? $"Projection #{id}";
 
             return BookingGraphCascade.BuildImpact(
                 projection.Id,
                 display,
+                history,
                 ("Reservations", graph.ReservationCount),
                 ("Reserved seats", graph.ReservationSeatCount));
         }
 
+        /// <summary>
+        /// Removes a projection only while it carries no booking or payment history. Once tickets
+        /// were sold the record is permanent, so the delete is refused instead of erasing it.
+        /// </summary>
         public override async Task DeleteAsync(int id)
         {
-            // Hard cascade: refund paid bookings, notify customers, then delete children then projection.
             await using var tx = await _dbContext.Database.BeginTransactionAsync();
-            List<Reservation> toNotify;
-            string movieTitle;
-            string hallName;
-            DateTime startTime;
             try
             {
                 var projection = await _dbContext.Projections
+                    .Include(s => s.Movie)
                     .FirstOrDefaultAsync(s => s.Id == id)
                     ?? throw new KeyNotFoundException($"Projection with id {id} not found.");
 
-                var reservations = await _dbContext.Reservations
-                    .Where(r => r.ProjectionId == id)
-                    .Include(r => r.User)
-                    .Include(r => r.ReservationSeats)
-                    .ThenInclude(rs => rs.Seat)
-                    .ToListAsync();
+                var display = projection.Movie?.Title is { Length: > 0 } title
+                    ? $"Projection of '{title}'"
+                    : $"Projection #{id}";
 
-                movieTitle = await _dbContext.Movies
-                    .Where(m => m.Id == projection.MovieId)
-                    .Select(m => m.Title)
-                    .FirstOrDefaultAsync() ?? string.Empty;
-
-                hallName = await _dbContext.Halls
-                    .Where(h => h.Id == projection.HallId)
-                    .Select(h => h.Name)
-                    .FirstOrDefaultAsync() ?? string.Empty;
-
-                startTime = projection.StartTime;
-                toNotify = reservations
-                    .Where(r => r.Status != ReservationStatus.Cancelled)
-                    .ToList();
-
-                await BookingGraphCascade.RemoveProjectionsAsync(
-                    _dbContext,
-                    new[] { id },
-                    paymentIntentId => StripeRefundHelper.TryRefundAsync(_stripeSecretKey, paymentIntentId, _logger));
+                await BookingGraphCascade.RemoveProjectionsAsync(_dbContext, new[] { id }, display);
 
                 await _dbContext.SaveChangesAsync();
                 await tx.CommitAsync();
@@ -282,24 +247,6 @@ namespace CineVision.Services
             {
                 await tx.RollbackAsync();
                 throw;
-            }
-
-            await QueueCancellationEmailsAsync(toNotify, movieTitle, hallName, startTime);
-
-            foreach (var reservation in toNotify)
-            {
-                try
-                {
-                    await _notificationService.CreateAsync(
-                        reservation.UserId,
-                        "Projection cancelled",
-                        $"Your booking {reservation.ReservationNumber} was cancelled because the projection was removed by staff.",
-                        NotificationType.Cancellation);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to notify user {UserId} about projection cancellation.", reservation.UserId);
-                }
             }
 
             await _analyticsNotifier.NotifyAnalyticsChangedAsync();
@@ -374,68 +321,6 @@ namespace CineVision.Services
             }
         }
 
-        private async Task QueueCancellationEmailsAsync(
-            List<Reservation> reservations,
-            string movieTitle,
-            string hallName,
-            DateTime startTime)
-        {
-            // One email per customer (unique email address).
-            var byEmail = reservations
-                .Select(r =>
-                {
-                    var email = string.IsNullOrWhiteSpace(r.CustomerEmail) ? r.User?.Email : r.CustomerEmail;
-                    return new { Reservation = r, Email = email };
-                })
-                .Where(x => !string.IsNullOrWhiteSpace(x.Email))
-                .GroupBy(x => x.Email!);
-
-            foreach (var group in byEmail)
-            {
-                var reservationsForUser = group.Select(x => x.Reservation).ToList();
-                var first = reservationsForUser.FirstOrDefault();
-                var userFirstName = first?.User?.FirstName ?? string.Empty;
-
-                var seatLines = new List<string>();
-                foreach (var r in reservationsForUser)
-                {
-                    var seats = r.ReservationSeats
-                        .Select(rs => rs.Seat != null ? $"{rs.Seat.RowLabel}{rs.Seat.SeatNumber}" : null)
-                        .Where(s => !string.IsNullOrWhiteSpace(s))
-                        .ToList();
-
-                    seatLines.Add(
-                        $"- {r.ReservationNumber}: {string.Join(", ", seats)}");
-                }
-
-                var subject = $"CineVision: projection cancelled ({movieTitle})";
-                var body =
-                    $"Hi {userFirstName},\n\n" +
-                    $"Your booking(s) for the following projection were cancelled because the projection was deleted by admin/staff.\n\n" +
-                    $"Movie: {movieTitle}\n" +
-                    $"Hall: {hallName}\n" +
-                    $"Start: {CinemaDateTime.FormatLocal(startTime)}\n\n" +
-                    $"Reservations:\n{string.Join("\n", seatLines)}\n\n" +
-                    $"If you have already paid, a refund will be attempted automatically.\n\n" +
-                    $"Thank you,\nCineVision";
-
-                try
-                {
-                    await _emailService.QueueEmailAsync(new EmailMessage
-                    {
-                        To = group.Key,
-                        Subject = subject,
-                        Body = body,
-                        IsHtml = false
-                    });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to queue cancellation email to {Email}.", group.Key);
-                }
-            }
-        }
-
         public async Task<List<ProjectionSeatResponse>> GetSeatsAsync(int projectionId)
         {
             // Seats held for checkouts that were never paid must not look taken on the seat map.
@@ -448,7 +333,7 @@ namespace CineVision.Services
                 ?? throw new KeyNotFoundException($"Projection with id {projectionId} not found.");
 
             var takenSeatIds = await _dbContext.ReservationSeats
-                .Where(rs => rs.ProjectionId == projectionId)
+                .Where(rs => rs.ProjectionId == projectionId && rs.ReleasedAt == null)
                 .Select(rs => rs.SeatId)
                 .ToListAsync();
 
@@ -514,8 +399,9 @@ namespace CineVision.Services
             if (includeSeatStats)
             {
                 var totalSeats = s.Hall?.Seats.Count(x => x.IsActive) ?? 0;
+                var occupied = s.ReservationSeats?.Count(rs => rs.ReleasedAt == null) ?? 0;
                 response.TotalSeats = totalSeats;
-                response.AvailableSeats = Math.Max(0, totalSeats - (s.ReservationSeats?.Count ?? 0));
+                response.AvailableSeats = Math.Max(0, totalSeats - occupied);
             }
 
             if (includeMovie && s.Movie != null)

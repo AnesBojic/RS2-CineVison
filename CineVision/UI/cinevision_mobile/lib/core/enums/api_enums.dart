@@ -9,6 +9,13 @@ class ReservationStatus {
   static const completed = 4;
 }
 
+class RefundStatus {
+  static const none = 0;
+  static const pending = 1;
+  static const refunded = 2;
+  static const failed = 3;
+}
+
 class SeatTypes {
   static const regular = 0;
   static const vip = 1;

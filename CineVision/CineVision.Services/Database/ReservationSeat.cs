@@ -4,9 +4,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace CineVision.Services.Database
 {
     /// <summary>
-    /// A single seat reserved within a reservation. A unique index on
-    /// (ProjectionId, SeatId) guarantees the same physical seat cannot be booked
-    /// twice for the same projection (double-booking prevention).
+    /// A single seat reserved within a reservation. A filtered unique index on
+    /// (ProjectionId, SeatId) WHERE ReleasedAt IS NULL guarantees the same physical seat cannot be
+    /// booked twice for the same projection, while released rows stay as booking history.
     /// </summary>
     public class ReservationSeat
     {
@@ -33,5 +33,11 @@ namespace CineVision.Services.Database
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal Price { get; set; }
+
+        /// <summary>
+        /// When the seat stopped being occupied (cancellation or expired hold). The row is kept so
+        /// the exact seats and prices of a booking remain on record; availability ignores it.
+        /// </summary>
+        public DateTime? ReleasedAt { get; set; }
     }
 }

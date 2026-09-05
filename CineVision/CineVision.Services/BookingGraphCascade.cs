@@ -1,17 +1,17 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using CineVision.Model;
+using CineVision.Model.Exceptions;
 using CineVision.Model.Responses;
 using CineVision.Services.Database;
 using Microsoft.EntityFrameworkCore;
-using CineVision.Model.Enums;
 
 namespace CineVision.Services;
 
 /// <summary>
-/// Shared cascade helpers for deleting projections and their booking graph (children first).
+/// Guards deletes that would reach into the booking graph. A projection that was ever used in a
+/// reservation is never removed: deleting it would erase the financial and seat record. Hard
+/// delete stays only for projections that never had a booking at all.
 /// </summary>
 internal static class BookingGraphCascade
 {
@@ -32,58 +32,48 @@ internal static class BookingGraphCascade
         var reservationCount = await db.Reservations
             .CountAsync(r => projectionIds.Contains(r.ProjectionId));
         var seatCount = await db.ReservationSeats
-            .CountAsync(rs => projectionIds.Contains(rs.ProjectionId));
+            .CountAsync(rs => projectionIds.Contains(rs.ProjectionId) && rs.ReleasedAt == null);
 
         return new ProjectionGraphCounts(projectionIds.Count, reservationCount, seatCount);
     }
 
     /// <summary>
-    /// Refunds paid bookings when possible, then hard-deletes reservation seats, reservations, and projections.
-    /// Caller owns the transaction / SaveChanges.
+    /// Number of bookings attached to these projections. Any of them makes the projection undeletable.
+    /// </summary>
+    public static async Task<int> CountBookingHistoryAsync(
+        CineVisionDbContext db,
+        IReadOnlyCollection<int> projectionIds)
+    {
+        if (projectionIds.Count == 0)
+        {
+            return 0;
+        }
+
+        return await db.Reservations
+            .CountAsync(r => projectionIds.Contains(r.ProjectionId));
+    }
+
+    /// <summary>
+    /// Deletes projections that have never been used in a booking. Throws when any reservation
+    /// exists — cancelled, paid, counter, or abandoned hold — so the record stays permanent.
     /// </summary>
     public static async Task RemoveProjectionsAsync(
         CineVisionDbContext db,
         IReadOnlyCollection<int> projectionIds,
-        Func<string, Task>? tryRefundPaidAsync = null)
+        string subject)
     {
         if (projectionIds.Count == 0)
         {
             return;
         }
 
-        var reservations = await db.Reservations
-            .Where(r => projectionIds.Contains(r.ProjectionId))
-            .Include(r => r.ReservationSeats)
-            .ToListAsync();
-
-        if (tryRefundPaidAsync != null)
+        var reservationCount = await db.Reservations
+            .CountAsync(r => projectionIds.Contains(r.ProjectionId));
+        if (reservationCount > 0)
         {
-            foreach (var reservation in reservations)
-            {
-                if (reservation.Status == ReservationStatus.Paid &&
-                    !string.IsNullOrWhiteSpace(reservation.PaymentTransactionId))
-                {
-                    await tryRefundPaidAsync(reservation.PaymentTransactionId);
-                }
-            }
-        }
-
-        var seatRows = reservations.SelectMany(r => r.ReservationSeats).ToList();
-        if (seatRows.Count == 0)
-        {
-            seatRows = await db.ReservationSeats
-                .Where(rs => projectionIds.Contains(rs.ProjectionId))
-                .ToListAsync();
-        }
-
-        if (seatRows.Count > 0)
-        {
-            db.ReservationSeats.RemoveRange(seatRows);
-        }
-
-        if (reservations.Count > 0)
-        {
-            db.Reservations.RemoveRange(reservations);
+            throw new ClientException(
+                $"{subject} has {reservationCount} booking(s) and cannot be deleted. " +
+                "Cancel individual bookings to refund customers; the booking record is kept permanently.");
         }
 
         var projections = await db.Projections
@@ -98,6 +88,7 @@ internal static class BookingGraphCascade
     public static CascadeDeleteImpactResponse BuildImpact(
         int id,
         string displayName,
+        int bookingHistoryCount,
         params (string name, int count)[] parts)
     {
         var items = parts
@@ -110,6 +101,11 @@ internal static class BookingGraphCascade
             Id = id,
             DisplayName = displayName,
             TotalAffectedRows = items.Sum(i => i.Count),
+            CanDelete = bookingHistoryCount == 0,
+            BlockReason = bookingHistoryCount == 0
+                ? null
+                : $"{bookingHistoryCount} booking(s) exist for this record and cannot be erased. " +
+                  "Cancel those bookings to refund customers; the history stays permanently.",
             Items = items
         };
     }

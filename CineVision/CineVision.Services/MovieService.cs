@@ -8,8 +8,6 @@ using CineVision.Model.SearchObjects;
 using CineVision.Services.Database;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 
 namespace CineVision.Services;
 
@@ -17,8 +15,6 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 {
     private readonly IAuthenticatedUserAccessor _userAccessor;
     private readonly IAnalyticsNotifier _analyticsNotifier;
-    private readonly string? _stripeSecretKey;
-    private readonly ILogger<MovieService> _logger;
     private readonly IValidator<MoviePosterUpdateRequest> _posterValidator;
 
     public MovieService(
@@ -26,15 +22,11 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         MapsterMapper.IMapper mapper,
         IAuthenticatedUserAccessor userAccessor,
         IAnalyticsNotifier analyticsNotifier,
-        IConfiguration configuration,
-        ILogger<MovieService> logger,
         IValidator<MoviePosterUpdateRequest> posterValidator)
         : base(mapper, dbContext)
     {
         _userAccessor = userAccessor;
         _analyticsNotifier = analyticsNotifier;
-        _stripeSecretKey = configuration["Stripe:SecretKey"];
-        _logger = logger;
         _posterValidator = posterValidator;
     }
 
@@ -216,11 +208,13 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
             .ToListAsync();
 
         var graph = await BookingGraphCascade.CountForProjectionIdsAsync(_dbContext, projectionIds);
+        var history = await BookingGraphCascade.CountBookingHistoryAsync(_dbContext, projectionIds);
         var reviewCount = await _dbContext.Reviews.CountAsync(r => r.MovieId == id);
 
         return BookingGraphCascade.BuildImpact(
             movie.Id,
             movie.Title,
+            history,
             ("Projections", graph.ProjectionCount),
             ("Reservations", graph.ReservationCount),
             ("Reserved seats", graph.ReservationSeatCount),
@@ -243,7 +237,7 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
             await BookingGraphCascade.RemoveProjectionsAsync(
                 _dbContext,
                 projectionIds,
-                paymentIntentId => StripeRefundHelper.TryRefundAsync(_stripeSecretKey, paymentIntentId, _logger));
+                $"Movie '{entity.Title}'");
 
             // Reviews cascade via FK; remove root after children that Restrict.
             _dbContext.Movies.Remove(entity);

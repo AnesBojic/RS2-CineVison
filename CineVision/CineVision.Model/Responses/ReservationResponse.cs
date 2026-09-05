@@ -23,8 +23,21 @@ namespace CineVision.Model.Responses
 
         public int PaymentMethod { get; set; }
         public string PaymentMethodName { get; set; } = string.Empty;
+
+        /// <summary>Whether money was collected; stays true after cancel or complete.</summary>
+        public int PaymentStatus { get; set; }
+        public string PaymentStatusName { get; set; } = string.Empty;
+
         public string? PaymentTransactionId { get; set; }
         public DateTime? PaymentDate { get; set; }
+
+        public int RefundStatus { get; set; }
+        public string RefundStatusName { get; set; } = string.Empty;
+        public string? RefundId { get; set; }
+        public DateTime? RefundedAt { get; set; }
+
+        /// <summary>Error from the last failed refund attempt, if any.</summary>
+        public string? RefundError { get; set; }
 
         /// <summary>Set only while the booking is an unpaid seat hold.</summary>
         public DateTime? HoldExpiresAt { get; set; }

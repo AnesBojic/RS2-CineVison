@@ -276,6 +276,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       impact = await provider.getDeleteImpact(m.id!);
     } on Exception catch (_) {}
     if (!mounted) return;
+    final blocked = cascadeDeleteBlockReason(impact);
+    if (blocked != null) {
+      alertBox(context, 'Cannot delete', blocked);
+      return;
+    }
+
     final ok = await confirmDelete(
       context,
       buildCascadeDeleteWarning(subjectLabel: '"${m.title}"', impact: impact),
@@ -300,6 +306,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       impact = await provider.getDeleteImpact(h.id!);
     } on Exception catch (_) {}
     if (!mounted) return;
+    final blocked = cascadeDeleteBlockReason(impact);
+    if (blocked != null) {
+      alertBox(context, 'Cannot delete', blocked);
+      return;
+    }
+
     final ok = await confirmDelete(
       context,
       buildCascadeDeleteWarning(subjectLabel: '"${h.name}"', impact: impact),
@@ -324,6 +336,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       impact = await provider.getDeleteImpact(s.id!);
     } on Exception catch (_) {}
     if (!mounted) return;
+    final blocked = cascadeDeleteBlockReason(impact);
+    if (blocked != null) {
+      alertBox(context, 'Cannot delete', blocked);
+      return;
+    }
+
     final label = s.movieTitle?.isNotEmpty == true
         ? 'projection "${s.movieTitle}"'
         : 'this projection';
@@ -334,7 +352,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (ok != true || !mounted) return;
     try {
       await provider.remove(s.id!);
-      showAppSnackBar(context, 'Projection and related bookings deleted');
+      showAppSnackBar(context, 'Projection deleted');
       _load();
     } on Exception catch (e) {
       if (mounted) alertBox(context, 'Error', e.toString());

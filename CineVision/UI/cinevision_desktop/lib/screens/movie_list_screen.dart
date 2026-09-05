@@ -193,6 +193,12 @@ class _MovieListScreenState extends State<MovieListScreen> {
     } on Exception catch (_) {}
 
     if (!mounted) return;
+    final blocked = cascadeDeleteBlockReason(impact);
+    if (blocked != null) {
+      alertBox(context, 'Cannot delete', blocked);
+      return;
+    }
+
     final ok = await confirmDelete(
       context,
       buildCascadeDeleteWarning(

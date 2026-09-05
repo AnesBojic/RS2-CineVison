@@ -48,6 +48,8 @@ class Reservation {
   final DateTime projectionEndTime;
   final String? paymentTransactionId;
   final DateTime? paymentDate;
+  final int refundStatus;
+  final String refundStatusName;
   final List<ReservationSeat> seats;
 
   Reservation({
@@ -68,6 +70,8 @@ class Reservation {
     required this.projectionEndTime,
     this.paymentTransactionId,
     this.paymentDate,
+    this.refundStatus = RefundStatus.none,
+    this.refundStatusName = '',
     this.seats = const [],
   });
 
@@ -95,6 +99,8 @@ class Reservation {
           fallback,
       paymentTransactionId: json['paymentTransactionId'] as String?,
       paymentDate: UtcDateTime.tryParse(json['paymentDate']),
+      refundStatus: json['refundStatus'] as int? ?? RefundStatus.none,
+      refundStatusName: json['refundStatusName'] as String? ?? '',
       seats: (json['seats'] as List<dynamic>?)
               ?.map((e) => ReservationSeat.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -111,6 +117,20 @@ class Reservation {
 
   bool get isProjectionPast =>
       projectionEndTime.toUtc().isBefore(UtcDateTime.now());
+
+  /// What the customer should be told about their money after a cancellation.
+  String? get refundNotice {
+    switch (refundStatus) {
+      case RefundStatus.pending:
+        return 'Refund in progress.';
+      case RefundStatus.refunded:
+        return 'Refunded to your card.';
+      case RefundStatus.failed:
+        return 'Refund could not be completed. Our staff will contact you.';
+      default:
+        return null;
+    }
+  }
 
   /// Refund/cancel only until 4 hours before the projection starts.
   bool get canRefund {

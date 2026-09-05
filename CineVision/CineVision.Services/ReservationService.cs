@@ -222,6 +222,8 @@ namespace CineVision.Services
             await VerifyStripePaymentSucceededAsync(paymentIntentId, reservation);
 
             ReservationStatusTransitions.Apply(reservation, ReservationStatus.Paid);
+            // Permanent record that money cleared; later lifecycle changes must not erase it.
+            reservation.PaymentStatus = PaymentStatus.Paid;
             reservation.HoldExpiresAt = null;
 
             if (!string.IsNullOrWhiteSpace(request.CustomerName))
@@ -376,7 +378,9 @@ namespace CineVision.Services
             var expandedList = expandedSeatIds.ToList();
 
             var alreadyTaken = await _dbContext.ReservationSeats
-                .AnyAsync(rs => rs.ProjectionId == projection.Id && expandedList.Contains(rs.SeatId));
+                .AnyAsync(rs => rs.ProjectionId == projection.Id
+                                && rs.ReleasedAt == null
+                                && expandedList.Contains(rs.SeatId));
 
             if (alreadyTaken)
             {
@@ -527,6 +531,19 @@ namespace CineVision.Services
 
             if (reservation.Status == ReservationStatus.Cancelled)
             {
+                // The cancellation stands, but the money may still be owed: either the outcome was
+                // never saved (Pending) or Stripe rejected the refund (Failed). Cancelling again
+                // retries the refund and records the real result instead of erroring out.
+                var refundUnresolved =
+                    reservation.RefundStatus is RefundStatus.Pending or RefundStatus.Failed;
+
+                if (refundUnresolved && !string.IsNullOrWhiteSpace(reservation.PaymentTransactionId))
+                {
+                    await RefundAndRecordAsync(reservation);
+                    await _dbContext.SaveChangesAsync();
+                    return await GetByIdAsync(reservation.Id);
+                }
+
                 throw new ClientException("This reservation is already cancelled.");
             }
 
@@ -539,13 +556,6 @@ namespace CineVision.Services
                     "Tickets can only be refunded at least 4 hours before the projection starts.");
             }
 
-            // Paid Stripe bookings: refund money before freeing seats.
-            if (reservation.Status == ReservationStatus.Paid &&
-                !string.IsNullOrWhiteSpace(reservation.PaymentTransactionId))
-            {
-                await RefundStripePaymentAsync(reservation.PaymentTransactionId);
-            }
-
             var reason = string.IsNullOrWhiteSpace(request?.Reason)
                 ? (isStaff ? "Cancelled by staff" : "Cancelled by customer")
                 : request!.Reason!.Trim();
@@ -556,10 +566,29 @@ namespace CineVision.Services
                 cancelledByUserId: userId,
                 cancellationReason: reason);
 
-            // Free the seats so they become available again for the projection.
-            // Analytics read from ReservationSeats, so occupancy/revenue update automatically.
-            _dbContext.ReservationSeats.RemoveRange(reservation.ReservationSeats);
+            // Seats are released, not deleted: availability frees up while the exact seats and
+            // prices that were bought stay on record.
+            ReleaseSeats(reservation);
+
+            // The refund owed is committed before Stripe is called, so a refund that fails or
+            // never returns cannot leave the database claiming nothing was owed.
+            var refundOwed =
+                reservation.PaymentStatus == PaymentStatus.Paid &&
+                reservation.RefundStatus == RefundStatus.None &&
+                !string.IsNullOrWhiteSpace(reservation.PaymentTransactionId);
+
+            if (refundOwed)
+            {
+                reservation.RefundStatus = RefundStatus.Pending;
+            }
+
             await _dbContext.SaveChangesAsync();
+
+            if (refundOwed)
+            {
+                await RefundAndRecordAsync(reservation);
+                await _dbContext.SaveChangesAsync();
+            }
 
             await NotifySafeAsync(
                 reservation.UserId,
@@ -597,25 +626,91 @@ namespace CineVision.Services
             return await GetByIdAsync(reservation.Id);
         }
 
-        private async Task RefundStripePaymentAsync(string paymentIntentId)
+        /// <summary>Marks every still-occupied seat of a booking as released.</summary>
+        private static void ReleaseSeats(Reservation reservation)
+        {
+            var now = DateTime.UtcNow;
+            foreach (var seat in reservation.ReservationSeats.Where(rs => rs.ReleasedAt == null))
+            {
+                seat.ReleasedAt = now;
+            }
+        }
+
+        /// <summary>
+        /// Refunds the booking and writes the outcome onto it. A failed refund keeps the
+        /// cancellation and records the error instead of being swallowed.
+        /// </summary>
+        private async Task RefundAndRecordAsync(Reservation reservation)
         {
             ConfigureStripe();
 
             try
             {
-                var refundService = new RefundService();
-                await refundService.CreateAsync(new RefundCreateOptions
+                var refund = await new RefundService().CreateAsync(new RefundCreateOptions
                 {
-                    PaymentIntent = paymentIntentId,
+                    PaymentIntent = reservation.PaymentTransactionId,
                 });
+
+                reservation.RefundStatus = RefundStatus.Refunded;
+                reservation.RefundId = refund.Id;
+                reservation.RefundedAt = DateTime.UtcNow;
+                reservation.RefundError = null;
             }
             catch (StripeException ex)
             {
-                _logger.LogError(ex, "Stripe refund failed for PaymentIntent {PaymentIntentId}.", paymentIntentId);
-                throw new ClientException(
-                    ex.StripeError?.Message ?? "Payment refund failed. Please try again or contact support.");
+                if (await TryRecordExistingRefundAsync(reservation, ex))
+                {
+                    return;
+                }
+
+                reservation.RefundStatus = RefundStatus.Failed;
+                reservation.RefundError = Truncate(
+                    ex.StripeError?.Message ?? ex.Message ?? "Stripe refund failed.",
+                    500);
+
+                _logger.LogError(
+                    ex,
+                    "Stripe refund failed for reservation {ReservationId} (PaymentIntent {PaymentIntentId}); recorded as {RefundStatus}.",
+                    reservation.Id,
+                    reservation.PaymentTransactionId,
+                    RefundStatus.Failed);
             }
         }
+
+        /// <summary>
+        /// When Stripe already refunded the charge (retry after a save failure), copy that refund
+        /// onto the booking instead of recording a false failure.
+        /// </summary>
+        private async Task<bool> TryRecordExistingRefundAsync(Reservation reservation, StripeException ex)
+        {
+            var code = ex.StripeError?.Code;
+            if (!string.Equals(code, "charge_already_refunded", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var existing = await new RefundService().ListAsync(new RefundListOptions
+            {
+                PaymentIntent = reservation.PaymentTransactionId,
+                Limit = 1
+            });
+            var refund = existing.Data.FirstOrDefault();
+            if (refund == null)
+            {
+                return false;
+            }
+
+            reservation.RefundStatus = RefundStatus.Refunded;
+            reservation.RefundId = refund.Id;
+            reservation.RefundedAt = refund.Created != default
+                ? refund.Created
+                : DateTime.UtcNow;
+            reservation.RefundError = null;
+            return true;
+        }
+
+        private static string Truncate(string value, int maxLength) =>
+            value.Length <= maxLength ? value : value[..maxLength];
 
         /// <summary>
         /// Prepares a payment: the seats are validated, priced and held as a Pending reservation
@@ -683,7 +778,8 @@ namespace CineVision.Services
             }
             catch (StripeException ex)
             {
-                // No intent means nothing can ever be charged, so the hold must not keep the seats.
+                // No intent means nothing can ever be charged. Cancel and release the seats so the
+                // row stays as an unpaid checkout that never reached Stripe, not a silent delete.
                 await DiscardHoldAsync(hold);
                 _logger.LogWarning(ex, "Stripe PaymentIntent creation failed for projection {ProjectionId}.", quote.Projection.Id);
                 throw new ClientException(
@@ -704,10 +800,18 @@ namespace CineVision.Services
             };
         }
 
+        /// <summary>
+        /// Frees seats of a hold that never reached Stripe. The reservation row is cancelled, not
+        /// deleted, so even a failed checkout stays on record.
+        /// </summary>
         private async Task DiscardHoldAsync(Reservation hold)
         {
-            _dbContext.ReservationSeats.RemoveRange(hold.ReservationSeats);
-            _dbContext.Reservations.Remove(hold);
+            ReservationStatusTransitions.Apply(
+                hold,
+                ReservationStatus.Cancelled,
+                cancellationReason: "Payment could not be started.");
+            ReleaseSeats(hold);
+            hold.HoldExpiresAt = null;
             await _dbContext.SaveChangesAsync();
         }
 
@@ -778,8 +882,15 @@ namespace CineVision.Services
                     : default,
                 PaymentMethod = (int)r.PaymentMethod,
                 PaymentMethodName = r.PaymentMethod.ToString(),
+                PaymentStatus = (int)r.PaymentStatus,
+                PaymentStatusName = r.PaymentStatus.ToString(),
                 PaymentTransactionId = r.PaymentTransactionId,
                 PaymentDate = r.PaymentDate,
+                RefundStatus = (int)r.RefundStatus,
+                RefundStatusName = r.RefundStatus.ToString(),
+                RefundId = r.RefundId,
+                RefundedAt = r.RefundedAt,
+                RefundError = r.RefundError,
                 HoldExpiresAt = r.HoldExpiresAt,
                 CancelledByUserId = r.CancelledByUserId,
                 CancelledAt = r.CancelledAt,

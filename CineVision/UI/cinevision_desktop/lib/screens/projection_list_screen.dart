@@ -289,6 +289,12 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
     } on Exception catch (_) {}
 
     if (!mounted) return;
+    final blocked = cascadeDeleteBlockReason(impact);
+    if (blocked != null) {
+      alertBox(context, 'Cannot delete', blocked);
+      return;
+    }
+
     final label = s.movieTitle?.isNotEmpty == true
         ? 'projection "${s.movieTitle}"'
         : 'this projection';
@@ -300,7 +306,7 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
     try {
       await _provider.remove(s.id!);
       if (!mounted) return;
-      showAppSnackBar(context, 'Projection and related bookings deleted');
+      showAppSnackBar(context, 'Projection deleted');
       // Optimistically remove so UI updates even before reload finishes.
       setState(() {
         _items = _items.where((x) => x.id != s.id).toList();
