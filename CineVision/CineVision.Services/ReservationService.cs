@@ -345,12 +345,25 @@ namespace CineVision.Services
         {
             var projection = await _dbContext.Projections
                 .Include(s => s.Hall).ThenInclude(h => h.Seats)
+                .Include(s => s.Hall).ThenInclude(h => h.Status)
                 .FirstOrDefaultAsync(s => s.Id == projectionId)
                 ?? throw new ClientException($"Projection {projectionId} was not found.");
 
             if (projection.StartTime <= DateTime.UtcNow)
             {
                 throw new ClientException("This projection has already started.");
+            }
+
+            if (projection.CancelledAt != null)
+            {
+                throw new ClientException("This projection was cancelled and is no longer on sale.");
+            }
+
+            // A hall can only be closed while it has no upcoming shows, but rows saved before that
+            // rule existed can still be out of sync; refuse to sell into a closed hall either way.
+            if (projection.Hall.Status?.AllowsProjections == false)
+            {
+                throw new ClientException("This hall is currently closed and its projections are not on sale.");
             }
 
             var hallSeats = projection.Hall.Seats.ToDictionary(s => s.Id);
@@ -599,6 +612,86 @@ namespace CineVision.Services
             await NotifyAnalyticsSafeAsync();
 
             return await GetByIdAsync(reservation.Id);
+        }
+
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<ReservationResponse>> CancelActiveForProjectionAsync(
+            int projectionId,
+            string reason,
+            int cancelledByUserId)
+        {
+            var reservations = await _dbContext.Reservations
+                .Include(r => r.ReservationSeats).ThenInclude(rs => rs.Seat)
+                .Include(r => r.Projection).ThenInclude(p => p.Movie)
+                .Include(r => r.Projection).ThenInclude(p => p.Hall)
+                .Include(r => r.User)
+                .Where(r => r.ProjectionId == projectionId
+                            && r.Status != ReservationStatus.Completed)
+                .ToListAsync();
+
+            var active = reservations
+                .Where(r => r.Status != ReservationStatus.Cancelled)
+                .ToList();
+            var refundRetry = reservations
+                .Where(r => r.Status == ReservationStatus.Cancelled
+                            && r.RefundStatus is RefundStatus.Pending or RefundStatus.Failed
+                            && !string.IsNullOrWhiteSpace(r.PaymentTransactionId))
+                .ToList();
+
+            if (active.Count == 0 && refundRetry.Count == 0)
+            {
+                return Array.Empty<ReservationResponse>();
+            }
+
+            foreach (var reservation in active)
+            {
+                ReservationStatusTransitions.EnsureCanTransition(reservation.Status, ReservationStatus.Cancelled);
+                ReservationStatusTransitions.Apply(
+                    reservation,
+                    ReservationStatus.Cancelled,
+                    cancelledByUserId: cancelledByUserId,
+                    cancellationReason: reason);
+                ReleaseSeats(reservation);
+
+                var refundOwed =
+                    reservation.PaymentStatus == PaymentStatus.Paid &&
+                    reservation.RefundStatus == RefundStatus.None &&
+                    !string.IsNullOrWhiteSpace(reservation.PaymentTransactionId);
+
+                if (refundOwed)
+                {
+                    reservation.RefundStatus = RefundStatus.Pending;
+                    refundRetry.Add(reservation);
+                }
+            }
+
+            await _dbContext.SaveChangesAsync();
+
+            foreach (var reservation in refundRetry.Distinct())
+            {
+                await RefundAndRecordAsync(reservation);
+            }
+
+            await _dbContext.SaveChangesAsync();
+
+            var notify = active;
+            var responses = new List<ReservationResponse>(active.Count + refundRetry.Count);
+            foreach (var reservation in active.Concat(refundRetry).Distinct())
+            {
+                responses.Add(MapToResponse(reservation));
+            }
+
+            foreach (var reservation in notify)
+            {
+                await NotifySafeAsync(
+                    reservation.UserId,
+                    "Projection cancelled",
+                    $"Reservation {reservation.ReservationNumber} was cancelled because the projection was cancelled. {reason}",
+                    NotificationType.Cancellation);
+            }
+
+            await NotifyAnalyticsSafeAsync();
+            return responses;
         }
 
         public async Task<ReservationResponse> CompleteAsync(int id)

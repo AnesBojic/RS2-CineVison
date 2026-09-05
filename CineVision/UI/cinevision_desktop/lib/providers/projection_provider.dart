@@ -17,4 +17,16 @@ class ProjectionProvider extends BaseProvider<Projection> {
     validateResponse(response);
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
+
+  Future<Projection> cancel(int id, {String? reason}) async {
+    final baseUrl = BaseProvider.baseUrl ?? 'http://localhost:5126/';
+    final uri = Uri.parse('${baseUrl}Projections/$id/Cancel');
+    final response = await http.post(
+      uri,
+      headers: createHeaders(),
+      body: jsonEncode({'reason': reason}),
+    );
+    validateResponse(response);
+    return fromJson(jsonDecode(response.body));
+  }
 }

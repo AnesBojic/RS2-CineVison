@@ -39,6 +39,15 @@ namespace CineVision.Services.Database
 
         public DateTime? UpdatedAt { get; set; }
 
+        /// <summary>
+        /// When set, the show is off the schedule: it no longer occupies the hall, cannot be booked,
+        /// and must not be edited. The row stays so sold tickets keep the original movie/hall/time.
+        /// </summary>
+        public DateTime? CancelledAt { get; set; }
+
+        [MaxLength(500)]
+        public string? CancellationReason { get; set; }
+
         // Navigation property for reservations of this projection
         public ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
 

@@ -2,13 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using CineVision.Model;
 using CineVision.Model.Exceptions;
+using CineVision.Model.Messages;
 using CineVision.Model.Requests;
 using CineVision.Model.Responses;
 using CineVision.Model.SearchObjects;
 using CineVision.Services.Database;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using CineVision.Model.Enums;
 
 namespace CineVision.Services
@@ -17,18 +20,33 @@ namespace CineVision.Services
     {
         private readonly IAnalyticsNotifier _analyticsNotifier;
         private readonly ISeatHoldService _seatHoldService;
+        private readonly IReservationService _reservationService;
+        private readonly IEmailService _emailService;
+        private readonly IAuthenticatedUserAccessor _userAccessor;
+        private readonly ILogger<ProjectionService> _logger;
+        private readonly IValidator<ProjectionCancelRequest> _cancelValidator;
 
         public ProjectionService(
             CineVisionDbContext dbContext,
             MapsterMapper.IMapper mapper,
             IValidator<ProjectionInsertRequest> insertValidator,
             IValidator<ProjectionUpdateRequest> updateValidator,
+            IValidator<ProjectionCancelRequest> cancelValidator,
             IAnalyticsNotifier analyticsNotifier,
-            ISeatHoldService seatHoldService)
+            ISeatHoldService seatHoldService,
+            IReservationService reservationService,
+            IEmailService emailService,
+            IAuthenticatedUserAccessor userAccessor,
+            ILogger<ProjectionService> logger)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
             _seatHoldService = seatHoldService;
             _analyticsNotifier = analyticsNotifier;
+            _reservationService = reservationService;
+            _emailService = emailService;
+            _userAccessor = userAccessor;
+            _logger = logger;
+            _cancelValidator = cancelValidator;
         }
 
         protected override IQueryable<Projection> ApplyFilters(IQueryable<Projection> query, ProjectionSearchObject? search)
@@ -85,7 +103,10 @@ namespace CineVision.Services
             if (search.OnlyUpcoming == true)
             {
                 var now = DateTime.UtcNow;
-                query = query.Where(s => s.StartTime >= now);
+                query = query.Where(s =>
+                    s.CancelledAt == null &&
+                    s.StartTime >= now &&
+                    s.Hall.Status!.AllowsProjections);
             }
 
             int? totalCount = null;
@@ -99,12 +120,14 @@ namespace CineVision.Services
                 .Take(search.PageSize.Value);
 
             var entities = await query.ToListAsync();
+            var bookedIds = await ProjectionIdsWithBookingsAsync(entities.Select(s => s.Id).ToList());
             var items = entities.Select(s => MapToResponse(
                 s,
                 search.IncludeMovie == true,
                 search.IncludeHall == true,
                 includeSeatStats,
-                includePoster)).ToList();
+                includePoster,
+                hasBookings: bookedIds.Contains(s.Id))).ToList();
 
             return new PageResult<ProjectionResponse>
             {
@@ -128,7 +151,13 @@ namespace CineVision.Services
                 .FirstOrDefaultAsync(s => s.Id == id)
                 ?? throw new KeyNotFoundException($"Projection with id {id} not found.");
 
-            return MapToResponse(entity, includeMovie: true, includeHall: true, includeSeatStats: true, includePoster: true);
+            return MapToResponse(
+                entity,
+                includeMovie: true,
+                includeHall: true,
+                includeSeatStats: true,
+                includePoster: true,
+                hasBookings: await _dbContext.Reservations.AnyAsync(r => r.ProjectionId == id));
         }
 
         public override async Task<ProjectionResponse> InsertAsync(ProjectionInsertRequest request)
@@ -146,7 +175,7 @@ namespace CineVision.Services
             await EnsureLanguageExistsAsync(request.LanguageId);
 
             var endTime = request.StartTime.AddMinutes(movie.DurationMinutes);
-            await EnsureNoHallOverlapAsync(request.HallId, request.StartTime, endTime);
+            await ScheduleConflictGuard.EnsureNoHallOverlapAsync(_dbContext, request.HallId, request.StartTime, endTime);
 
             var entity = new Projection
             {
@@ -177,14 +206,50 @@ namespace CineVision.Services
             var entity = await _dbContext.Projections.FindAsync(id)
                 ?? throw new KeyNotFoundException($"Projection with id {id} not found.");
 
+            if (entity.CancelledAt != null)
+            {
+                throw new ClientException("This projection was cancelled and cannot be edited.");
+            }
+
+            var hasBookings = await _dbContext.Reservations.AnyAsync(r => r.ProjectionId == id);
+            if (hasBookings)
+            {
+                if (entity.MovieId != request.MovieId ||
+                    entity.HallId != request.HallId ||
+                    entity.BasePrice != request.BasePrice)
+                {
+                    throw new ClientException(
+                        "This projection already has bookings. Movie, hall, start time and price cannot be changed " +
+                        "because they describe tickets that were already sold. Cancel the projection to refund customers, " +
+                        "or leave the sold details as they are.");
+                }
+
+                // StartTime is ignored: clients often resend a local round-trip that is not byte-equal
+                // to the stored UTC instant, and changing the time would rewrite sold tickets anyway.
+                await EnsureLanguageExistsAsync(request.LanguageId);
+                entity.LanguageId = request.LanguageId;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync();
+                return await GetByIdAsync(entity.Id);
+            }
+
             var movie = await _dbContext.Movies.FindAsync(request.MovieId)
                 ?? throw new ClientException($"Movie {request.MovieId} was not found.");
 
-            await EnsureHallCanBeScheduledAsync(request.HallId);
+            if (entity.HallId != request.HallId)
+            {
+                await EnsureHallCanBeScheduledAsync(request.HallId);
+            }
+
             await EnsureLanguageExistsAsync(request.LanguageId);
 
             var endTime = request.StartTime.AddMinutes(movie.DurationMinutes);
-            await EnsureNoHallOverlapAsync(request.HallId, request.StartTime, endTime, excludeProjectionId: id);
+            await ScheduleConflictGuard.EnsureNoHallOverlapAsync(
+                _dbContext,
+                request.HallId,
+                request.StartTime,
+                endTime,
+                excludeProjectionId: id);
 
             entity.MovieId = request.MovieId;
             entity.HallId = request.HallId;
@@ -198,6 +263,71 @@ namespace CineVision.Services
             await _analyticsNotifier.NotifyAnalyticsChangedAsync();
 
             return await GetByIdAsync(entity.Id);
+        }
+
+        public async Task<ProjectionResponse> CancelAsync(int id, ProjectionCancelRequest? request = null)
+        {
+            if (request != null)
+            {
+                await _cancelValidator.ValidateAndThrowAsync(request);
+            }
+
+            if (!_userAccessor.IsInRole(RoleNames.Admin) && !_userAccessor.IsInRole(RoleNames.Staff))
+            {
+                throw new ClientException("Only Admin or Staff can cancel a projection.");
+            }
+
+            var staffUserId = _userAccessor.GetUserId()
+                ?? throw new InvalidOperationException("User id claim is missing.");
+
+            var projection = await _dbContext.Projections
+                .Include(s => s.Movie)
+                .Include(s => s.Hall)
+                .FirstOrDefaultAsync(s => s.Id == id)
+                ?? throw new KeyNotFoundException($"Projection with id {id} not found.");
+
+            if (projection.CancelledAt != null)
+            {
+                // A previous cancel may have marked the show cancelled, then failed while refunding.
+                // Finish leftover bookings instead of refusing the retry.
+                var leftover = await _reservationService.CancelActiveForProjectionAsync(
+                    projection.Id,
+                    projection.CancellationReason ?? "Projection cancelled by staff",
+                    staffUserId);
+
+                if (leftover.Count == 0)
+                {
+                    throw new ClientException("This projection is already cancelled.");
+                }
+
+                await QueueProjectionCancelledEmailsAsync(leftover, projection, projection.CancellationReason ?? "Projection cancelled by staff");
+                await _analyticsNotifier.NotifyAnalyticsChangedAsync();
+                return await GetByIdAsync(projection.Id);
+            }
+
+            if (projection.StartTime <= DateTime.UtcNow)
+            {
+                throw new ClientException("A projection that has already started cannot be cancelled.");
+            }
+
+            var reason = string.IsNullOrWhiteSpace(request?.Reason)
+                ? "Projection cancelled by staff"
+                : request!.Reason!.Trim();
+
+            projection.CancelledAt = DateTime.UtcNow;
+            projection.CancellationReason = reason;
+            projection.UpdatedAt = DateTime.UtcNow;
+            await _dbContext.SaveChangesAsync();
+
+            var cancelledBookings = await _reservationService.CancelActiveForProjectionAsync(
+                projection.Id,
+                reason,
+                staffUserId);
+
+            await QueueProjectionCancelledEmailsAsync(cancelledBookings, projection, reason);
+
+            await _analyticsNotifier.NotifyAnalyticsChangedAsync();
+            return await GetByIdAsync(projection.Id);
         }
 
         public async Task<CascadeDeleteImpactResponse> GetDeleteImpactAsync(int id)
@@ -282,45 +412,6 @@ namespace CineVision.Services
             }
         }
 
-        /// <summary>No other projection in the same hall may overlap [start, end). End is StartTime + movie duration.</summary>
-        private async Task EnsureNoHallOverlapAsync(
-            int hallId,
-            DateTime start,
-            DateTime end,
-            int? excludeProjectionId = null)
-        {
-            if (end <= start)
-            {
-                throw new ClientException("Projection end time must be after start time.");
-            }
-
-            var query = _dbContext.Projections.AsNoTracking()
-                .Where(s =>
-                    s.HallId == hallId &&
-                    s.StartTime < end &&
-                    s.StartTime.AddMinutes(s.Movie.DurationMinutes) > start);
-
-            if (excludeProjectionId.HasValue)
-            {
-                query = query.Where(s => s.Id != excludeProjectionId.Value);
-            }
-
-            var conflict = await query
-                .Select(s => new
-                {
-                    s.Id,
-                    s.StartTime,
-                    EndTime = s.StartTime.AddMinutes(s.Movie.DurationMinutes)
-                })
-                .FirstOrDefaultAsync();
-
-            if (conflict != null)
-            {
-                throw new ClientException(
-                    $"Hall already has projection #{conflict.Id} from {conflict.StartTime:u} to {conflict.EndTime:u} (UTC). Choose another time or hall.");
-            }
-        }
-
         public async Task<List<ProjectionSeatResponse>> GetSeatsAsync(int projectionId)
         {
             // Seats held for checkouts that were never paid must not look taken on the seat map.
@@ -329,8 +420,19 @@ namespace CineVision.Services
             var projection = await _dbContext.Projections
                 .AsNoTracking()
                 .Include(s => s.Hall).ThenInclude(h => h.Seats)
+                .Include(s => s.Hall).ThenInclude(h => h.Status)
                 .FirstOrDefaultAsync(s => s.Id == projectionId)
                 ?? throw new KeyNotFoundException($"Projection with id {projectionId} not found.");
+
+            if (projection.CancelledAt != null)
+            {
+                throw new ClientException("This projection was cancelled and is no longer on sale.");
+            }
+
+            if (projection.Hall.Status?.AllowsProjections == false)
+            {
+                throw new ClientException("This hall is currently closed and its projections are not on sale.");
+            }
 
             var takenSeatIds = await _dbContext.ReservationSeats
                 .Where(rs => rs.ProjectionId == projectionId && rs.ReleasedAt == null)
@@ -380,17 +482,84 @@ namespace CineVision.Services
                 .ToList();
         }
 
+        private async Task<HashSet<int>> ProjectionIdsWithBookingsAsync(IReadOnlyCollection<int> projectionIds)
+        {
+            if (projectionIds.Count == 0)
+            {
+                return new HashSet<int>();
+            }
+
+            var ids = await _dbContext.Reservations
+                .AsNoTracking()
+                .Where(r => projectionIds.Contains(r.ProjectionId))
+                .Select(r => r.ProjectionId)
+                .Distinct()
+                .ToListAsync();
+            return ids.ToHashSet();
+        }
+
+        private async Task QueueProjectionCancelledEmailsAsync(
+            IReadOnlyList<ReservationResponse> bookings,
+            Projection projection,
+            string reason)
+        {
+            var movieTitle = projection.Movie?.Title ?? "the movie";
+            var hallName = projection.Hall?.Name ?? "the hall";
+            var start = CinemaDateTime.FormatLocal(projection.StartTime);
+
+            var byEmail = bookings
+                .Select(r => new
+                {
+                    Booking = r,
+                    Email = string.IsNullOrWhiteSpace(r.CustomerEmail) ? null : r.CustomerEmail
+                })
+                .Where(x => !string.IsNullOrWhiteSpace(x.Email))
+                .GroupBy(x => x.Email!);
+
+            foreach (var group in byEmail)
+            {
+                var numbers = string.Join("\n", group.Select(x => $"- {x.Booking.ReservationNumber}"));
+                try
+                {
+                    await _emailService.QueueEmailAsync(new EmailMessage
+                    {
+                        To = group.Key,
+                        Subject = $"CineVision: projection cancelled ({movieTitle})",
+                        Body =
+                            $"Your booking(s) were cancelled because the projection was cancelled by staff.\n\n" +
+                            $"Movie: {movieTitle}\n" +
+                            $"Hall: {hallName}\n" +
+                            $"Start: {start}\n\n" +
+                            $"Reservations:\n{numbers}\n\n" +
+                            $"{reason}\n\n" +
+                            "If you paid online, a refund has been requested.\n\n" +
+                            "Thank you,\nCineVision",
+                        IsHtml = false
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to queue cancellation email to {Email}.", group.Key);
+                }
+            }
+        }
+
         private ProjectionResponse MapToResponse(
             Projection s,
             bool includeMovie,
             bool includeHall,
             bool includeSeatStats,
-            bool includePoster = false)
+            bool includePoster = false,
+            bool hasBookings = false)
         {
             var response = _mapper.Map<ProjectionResponse>(s);
             response.MovieTitle = s.Movie?.Title ?? string.Empty;
             response.MoviePosterBase64 = includePoster ? s.Movie?.PosterImageBase64 : null;
             response.HallName = s.Hall?.Name ?? string.Empty;
+            response.IsCancelled = s.CancelledAt != null;
+            response.CancelledAt = s.CancelledAt;
+            response.CancellationReason = s.CancellationReason;
+            response.HasBookings = hasBookings;
             if (s.Movie != null)
             {
                 response.EndTime = s.StartTime.AddMinutes(s.Movie.DurationMinutes);

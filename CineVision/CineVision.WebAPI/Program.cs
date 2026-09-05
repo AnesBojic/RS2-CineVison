@@ -168,6 +168,7 @@ builder.Services.AddScoped<IValidator<SeatInsertRequest>, SeatInsertValidator>()
 builder.Services.AddScoped<IValidator<SeatUpdateRequest>, SeatUpdateValidator>();
 builder.Services.AddScoped<IValidator<ProjectionInsertRequest>, ProjectionInsertValidator>();
 builder.Services.AddScoped<IValidator<ProjectionUpdateRequest>, ProjectionUpdateValidator>();
+builder.Services.AddScoped<IValidator<ProjectionCancelRequest>, ProjectionCancelValidator>();
 builder.Services.AddScoped<IValidator<UserInsertRequest>, UserInsertValidator>();
 builder.Services.AddScoped<IValidator<UserRegisterRequest>, UserRegisterValidator>();
 builder.Services.AddScoped<IValidator<UserUpdateRequest>, UserUpdateValidator>();

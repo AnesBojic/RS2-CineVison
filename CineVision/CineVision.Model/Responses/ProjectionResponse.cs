@@ -20,6 +20,13 @@ namespace CineVision.Model.Responses
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
+        public DateTime? CancelledAt { get; set; }
+        public string? CancellationReason { get; set; }
+        public bool IsCancelled { get; set; }
+
+        /// <summary>True when any booking row exists, including cancelled ones. Key fields then stay frozen.</summary>
+        public bool HasBookings { get; set; }
+
         public int TotalSeats { get; set; }
         public int AvailableSeats { get; set; }
 

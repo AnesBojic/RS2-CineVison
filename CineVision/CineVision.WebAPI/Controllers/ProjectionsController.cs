@@ -36,4 +36,15 @@ public class ProjectionsController : BaseCRUDController<ProjectionResponse, Proj
         var result = await _service.GetDeleteImpactAsync(id);
         return Ok(result);
     }
+
+    [Authorize(Roles = RoleNames.AdminStaff)]
+    [HttpPost("{id}/Cancel")]
+    [ProducesResponseType(typeof(ProjectionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ProjectionResponse>> Cancel(int id, [FromBody] ProjectionCancelRequest? request)
+    {
+        var result = await _service.CancelAsync(id, request);
+        return Ok(result);
+    }
 }

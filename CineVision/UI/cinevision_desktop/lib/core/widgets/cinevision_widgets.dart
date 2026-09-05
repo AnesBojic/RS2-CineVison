@@ -1037,6 +1037,28 @@ String formatCurrency(num? value) {
   return '\$${value.toStringAsFixed(value == value.roundToDouble() ? 0 : 2)}';
 }
 
+Future<bool?> confirmCancel(BuildContext context, String message) {
+  return showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: AppColors.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Row(
+        children: [
+          Icon(Icons.event_busy, color: AppColors.orange, size: 22),
+          SizedBox(width: 10),
+          Text('Cancel projection', style: TextStyle(color: AppColors.textPrimary)),
+        ],
+      ),
+      content: Text(message, style: const TextStyle(color: AppColors.textSecondary)),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Keep')),
+        ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Cancel show')),
+      ],
+    ),
+  );
+}
+
 Future<bool?> confirmDelete(BuildContext context, String message) {
   return showDialog<bool>(
     context: context,

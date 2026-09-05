@@ -173,6 +173,28 @@ namespace CineVision.Services
             var screenType = await RequireScreenTypeAsync(request.ScreenTypeId);
             var status = await RequireStatusAsync(request.StatusId);
 
+            if (!status.AllowsProjections)
+            {
+                var upcoming = await _dbContext.Projections.CountAsync(s =>
+                    s.HallId == id &&
+                    s.CancelledAt == null &&
+                    s.StartTime >= DateTime.UtcNow);
+
+                if (upcoming > 0)
+                {
+                    throw new ClientException(
+                        $"Hall '{hall.Name}' still has {upcoming} upcoming projection(s). " +
+                        "Cancel those projections before setting the hall to a status that does not allow shows.");
+                }
+            }
+
+            if (hall.ScreenTypeId != screenType.Id && await HasSoldUpcomingSeatsAsync(id))
+            {
+                throw new ClientException(
+                    $"Hall '{hall.Name}' has upcoming projections with sold seats. The screen type cannot change " +
+                    "because those tickets were bought for the current format. Cancel those projections first.");
+            }
+
             hall.Name = request.Name;
             hall.ScreenType = screenType;
             hall.ScreenTypeId = screenType.Id;
@@ -262,6 +284,13 @@ namespace CineVision.Services
             var byId = seats.ToDictionary(s => s.Id);
             var rows = seats.GroupBy(s => s.RowLabel).ToDictionary(g => g.Key, g => g.OrderBy(s => s.SeatNumber).ToList());
 
+            if (SeatLayoutWouldChange(seats, rows, request) && await HasSoldUpcomingSeatsAsync(hallId))
+            {
+                throw new ClientException(
+                    "This hall has upcoming projections with sold seats. Regular/couple layout cannot change " +
+                    "because those tickets still point at the current seats. Cancel those projections first.");
+            }
+
             // Clear existing couple links and reactivate partner seats.
             foreach (var seat in seats)
             {
@@ -334,6 +363,81 @@ namespace CineVision.Services
             await _dbContext.SaveChangesAsync();
 
             return BuildResponse(hall, includeSeats: true);
+        }
+
+        /// <summary>
+        /// True while a still-scheduled projection in this hall holds seats that were not released,
+        /// i.e. there are live tickets whose meaning a hall change would rewrite.
+        /// </summary>
+        private async Task<bool> HasSoldUpcomingSeatsAsync(int hallId)
+        {
+            var now = DateTime.UtcNow;
+            return await _dbContext.ReservationSeats.AnyAsync(rs =>
+                rs.ReleasedAt == null &&
+                rs.Projection.HallId == hallId &&
+                rs.Projection.CancelledAt == null &&
+                rs.Projection.StartTime >= now);
+        }
+
+        private static bool SeatLayoutWouldChange(
+            List<Seat> seats,
+            Dictionary<string, List<Seat>> rows,
+            HallSeatLayoutUpdateRequest request)
+        {
+            var byId = seats.ToDictionary(s => s.Id);
+            var requested = request.Seats.ToDictionary(x => x.SeatId, x =>
+            {
+                var type = x.SeatType == (int)SeatType.VIP ? (int)SeatType.Regular : x.SeatType;
+                return type;
+            });
+
+            var desiredPartner = new Dictionary<int, int?>();
+            foreach (var seat in seats)
+            {
+                desiredPartner[seat.Id] = null;
+            }
+
+            foreach (var item in request.Seats.Where(x =>
+                         (x.SeatType == (int)SeatType.VIP ? (int)SeatType.Regular : x.SeatType) == (int)SeatType.Couple))
+            {
+                if (!byId.TryGetValue(item.SeatId, out var seat))
+                {
+                    continue;
+                }
+
+                if (!rows.TryGetValue(seat.RowLabel, out var rowSeats))
+                {
+                    continue;
+                }
+
+                var index = rowSeats.FindIndex(s => s.Id == seat.Id);
+                if (index >= 0 && index < rowSeats.Count - 1)
+                {
+                    desiredPartner[seat.Id] = rowSeats[index + 1].Id;
+                }
+            }
+
+            foreach (var seat in seats)
+            {
+                var desiredType = requested.TryGetValue(seat.Id, out var type)
+                    ? type
+                    : (int)seat.SeatType;
+                if (desiredPartner.TryGetValue(seat.Id, out var partner) && partner.HasValue)
+                {
+                    desiredType = (int)SeatType.Couple;
+                }
+                else if (desiredPartner.ContainsValue(seat.Id))
+                {
+                    desiredType = (int)SeatType.Regular;
+                }
+
+                if ((int)seat.SeatType != desiredType || seat.PartnerSeatId != desiredPartner[seat.Id])
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private async Task<ScreenType> RequireScreenTypeAsync(int screenTypeId)

@@ -16,6 +16,10 @@ class Projection {
   final String? language;
   final int? totalSeats;
   final int? availableSeats;
+  final DateTime? cancelledAt;
+  final String? cancellationReason;
+  final bool isCancelled;
+  final bool hasBookings;
 
   Projection({
     this.id,
@@ -31,6 +35,10 @@ class Projection {
     this.language,
     this.totalSeats,
     this.availableSeats,
+    this.cancelledAt,
+    this.cancellationReason,
+    this.isCancelled = false,
+    this.hasBookings = false,
   });
 
   factory Projection.fromJson(Map<String, dynamic> json) {
@@ -51,6 +59,10 @@ class Projection {
       language: json['language'] as String?,
       totalSeats: json['totalSeats'] as int?,
       availableSeats: json['availableSeats'] as int?,
+      cancelledAt: UtcDateTime.tryParse(json['cancelledAt']),
+      cancellationReason: json['cancellationReason'] as String?,
+      isCancelled: json['isCancelled'] as bool? ?? json['cancelledAt'] != null,
+      hasBookings: json['hasBookings'] as bool? ?? false,
     );
   }
 
@@ -61,4 +73,10 @@ class Projection {
         'basePrice': basePrice,
         'languageId': languageId,
       };
+
+  bool get isUpcoming {
+    final start = startTime?.toUtc();
+    if (start == null) return false;
+    return start.isAfter(DateTime.now().toUtc());
+  }
 }

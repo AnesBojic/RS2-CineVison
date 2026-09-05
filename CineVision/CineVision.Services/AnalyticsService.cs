@@ -49,9 +49,12 @@ namespace CineVision.Services
                 TotalCustomers = snapshot.TotalCustomers,
                 TotalMovies = snapshot.TotalMovies,
                 ActiveMovies = snapshot.ActiveMovies,
-                TotalProjections = snapshot.Projections.Count,
-                UpcomingProjections = snapshot.Projections.Count(s => s.StartTime > now),
-                AverageOccupancyPercent = ComputeAverageOccupancy(snapshot.Projections, snapshot.SeatSales, snapshot.CapByHall),
+                TotalProjections = snapshot.Projections.Count(s => !s.IsCancelled),
+                UpcomingProjections = snapshot.Projections.Count(s => !s.IsCancelled && s.StartTime > now),
+                AverageOccupancyPercent = ComputeAverageOccupancy(
+                    snapshot.Projections.Where(s => !s.IsCancelled).ToList(),
+                    snapshot.SeatSales,
+                    snapshot.CapByHall),
                 TopMovies = topMovies
             };
         }
@@ -283,7 +286,8 @@ namespace CineVision.Services
                     MovieId = s.MovieId,
                     MovieTitle = s.Movie.Title,
                     HallId = s.HallId,
-                    StartTime = s.StartTime
+                    StartTime = s.StartTime,
+                    IsCancelled = s.CancelledAt != null
                 })
                 .ToListAsync();
         }
@@ -310,6 +314,7 @@ namespace CineVision.Services
         private static List<ProjectionRow> FilterProjections(List<ProjectionRow> projections, ReportSearchObject? search)
         {
             return projections
+                .Where(s => !s.IsCancelled)
                 .Where(s => InRange(s.StartTime, search?.DateFrom, search?.DateTo))
                 .ToList();
         }
@@ -408,6 +413,7 @@ namespace CineVision.Services
             public string MovieTitle { get; set; } = string.Empty;
             public int HallId { get; set; }
             public DateTime StartTime { get; set; }
+            public bool IsCancelled { get; set; }
         }
 
         private sealed class SeatSale

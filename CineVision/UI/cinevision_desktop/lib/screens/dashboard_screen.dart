@@ -338,6 +338,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!mounted) return;
     final blocked = cascadeDeleteBlockReason(impact);
     if (blocked != null) {
+      if (s.isUpcoming && !s.isCancelled) {
+        alertBox(
+          context,
+          'Cannot delete',
+          '$blocked Open Manage Projections and use Cancel projection to refund customers.',
+        );
+        return;
+      }
       alertBox(context, 'Cannot delete', blocked);
       return;
     }

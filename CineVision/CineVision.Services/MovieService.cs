@@ -163,6 +163,14 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 
         await EnsureReferencesExistAsync(request.LanguageId, request.AgeRatingId);
 
+        if (request.DurationMinutes != entity.DurationMinutes)
+        {
+            await ScheduleConflictGuard.EnsureMovieDurationFitsAsync(
+                _dbContext,
+                entity.Id,
+                request.DurationMinutes);
+        }
+
         _mapper.Map(request, entity);
         entity.UpdatedAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync();

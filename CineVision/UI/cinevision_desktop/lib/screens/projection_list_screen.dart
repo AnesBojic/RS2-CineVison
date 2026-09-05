@@ -261,15 +261,25 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
       ])),
       DataCell(Text(s.hallName ?? '—')),
       DataCell(Text(formatDate(s.startTime))),
-      DataCell(StatusBadge(label: formatTime(s.startTime), color: AppColors.green, filled: true)),
+      DataCell(s.isCancelled
+          ? const StatusBadge(label: 'Cancelled', color: AppColors.orange, filled: true)
+          : StatusBadge(label: formatTime(s.startTime), color: AppColors.green, filled: true)),
       DataCell(Text(formatCurrency(s.basePrice))),
       actionButtonsCell([
-        ActionIconButton(
-          icon: Icons.edit_outlined,
-          color: AppColors.blue,
-          tooltip: 'Edit',
-          onPressed: () => _showDialog(projection: s),
-        ),
+        if (!s.isCancelled)
+          ActionIconButton(
+            icon: Icons.edit_outlined,
+            color: AppColors.blue,
+            tooltip: s.hasBookings ? 'Edit language only' : 'Edit',
+            onPressed: () => _showDialog(projection: s),
+          ),
+        if (!s.isCancelled && s.isUpcoming)
+          ActionIconButton(
+            icon: Icons.event_busy,
+            color: AppColors.orange,
+            tooltip: 'Cancel projection',
+            onPressed: () => _cancel(s),
+          ),
         ActionIconButton(
           icon: Icons.delete_outline,
           color: AppColors.primary,
@@ -291,7 +301,23 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
     if (!mounted) return;
     final blocked = cascadeDeleteBlockReason(impact);
     if (blocked != null) {
-      alertBox(context, 'Cannot delete', blocked);
+      if (s.isCancelled) {
+        alertBox(context, 'Cannot delete', blocked);
+        return;
+      }
+      if (s.isUpcoming) {
+        await _cancel(
+          s,
+          extraMessage:
+              'This projection has bookings, so it cannot be deleted. Cancel it instead: customers are refunded and the sold tickets stay on record.',
+        );
+        return;
+      }
+      alertBox(
+        context,
+        'Cannot delete',
+        '$blocked A projection that has already started cannot be cancelled either.',
+      );
       return;
     }
 
@@ -321,6 +347,27 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
     }
   }
 
+  Future<void> _cancel(Projection s, {String? extraMessage}) async {
+    if (s.id == null) return;
+    final title = s.movieTitle?.isNotEmpty == true ? '"${s.movieTitle}"' : 'this projection';
+    final ok = await confirmCancel(
+      context,
+      extraMessage ??
+          'Cancel $title?\n\nActive bookings will be cancelled and paid tickets refunded. The projection stays on record with its original movie, hall and time.',
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await _provider.cancel(s.id!);
+      if (!mounted) return;
+      showAppSnackBar(context, 'Projection cancelled');
+      await _load();
+    } on ApiClientException catch (e) {
+      if (mounted) alertBox(context, 'Cannot cancel', e.message);
+    } on Exception catch (e) {
+      if (mounted) alertBox(context, 'Error', e.toString());
+    }
+  }
+
   Future<void> _showDialog({Projection? projection}) async {
     await _ensurePickerData();
     if (!mounted) return;
@@ -330,6 +377,14 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
       showAppSnackBar(context, blockedReason, isError: true);
       return;
     }
+
+    if (projection?.isCancelled == true) {
+      showAppSnackBar(context, 'Cancelled projections cannot be edited.', isError: true);
+      return;
+    }
+
+    final scheduleLocked = projection?.hasBookings == true;
+    const soldLockHint = 'Sold tickets freeze movie, hall, time and price.';
 
     int? movieId = projection?.movieId;
     int? hallId = projection?.hallId;
@@ -396,11 +451,14 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
               DropdownButtonFormField<int>(
                 initialValue: movieId,
                 dropdownColor: AppColors.card,
-                decoration: const InputDecoration(labelText: 'Movie'),
+                decoration: InputDecoration(
+                  labelText: 'Movie',
+                  helperText: scheduleLocked ? soldLockHint : null,
+                ),
                 items: _movies
                     .map((m) => DropdownMenuItem(value: m.id, child: Text(m.title ?? '')))
                     .toList(),
-                onChanged: (v) => setDialogState(() => movieId = v),
+                onChanged: scheduleLocked ? null : (v) => setDialogState(() => movieId = v),
                 validator: (v) => v == null ? 'Movie is required' : null,
               ),
               const SizedBox(height: 12),
@@ -409,9 +467,11 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
                 dropdownColor: AppColors.card,
                 decoration: InputDecoration(
                   labelText: 'Hall',
-                  helperText: _halls.any((h) => !hallIsActive(h))
-                      ? 'Halls whose status blocks projections cannot be selected.'
-                      : null,
+                  helperText: scheduleLocked
+                      ? soldLockHint
+                      : (_halls.any((h) => !hallIsActive(h))
+                          ? 'Halls whose status blocks projections cannot be selected.'
+                          : null),
                 ),
                 // Unavailable halls stay visible but greyed out, with the status
                 // spelled out, rather than being selectable and rejected afterwards.
@@ -430,7 +490,7 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
                     ),
                   );
                 }).toList(),
-                onChanged: (v) => setDialogState(() => hallId = v),
+                onChanged: scheduleLocked ? null : (v) => setDialogState(() => hallId = v),
                 // Still validated: an existing projection may point at a hall that
                 // was taken out of service after it was scheduled.
                 autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -451,7 +511,9 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
                   child: FormField<DateTime>(
                     validator: (_) => date == null ? 'Date is required' : null,
                     builder: (fieldState) => InkWell(
-                      onTap: () async {
+                      onTap: scheduleLocked
+                          ? null
+                          : () async {
                         final picked = await showDatePicker(
                           context: context,
                           initialDate: date ?? DateTime.now(),
@@ -477,7 +539,9 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
                   child: FormField<TimeOfDay>(
                     validator: (_) => time == null ? 'Time is required' : null,
                     builder: (fieldState) => InkWell(
-                      onTap: () async {
+                      onTap: scheduleLocked
+                          ? null
+                          : () async {
                         final picked = await showTimePicker(
                           context: context,
                           initialTime: time ?? TimeOfDay.now(),
@@ -511,8 +575,13 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: priceCtrl,
+                readOnly: scheduleLocked,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Price', hintText: 'e.g. \$15'),
+                decoration: InputDecoration(
+                  labelText: 'Price',
+                  hintText: 'e.g. \$15',
+                  helperText: scheduleLocked ? soldLockHint : null,
+                ),
                 validator: FieldValidators.price,
               ),
             ],
