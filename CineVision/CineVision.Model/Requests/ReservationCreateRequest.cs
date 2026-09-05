@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CineVision.Model.Enums;
 
 namespace CineVision.Model.Requests
 {
@@ -12,7 +13,13 @@ namespace CineVision.Model.Requests
         public List<int> SeatIds { get; set; } = new();
 
         /// <summary>
-        /// Optional Stripe payment intent id. When provided the reservation is marked as paid.
+        /// How the booking is paid. Defaults to <see cref="PaymentMethod.Online"/>, which requires a
+        /// succeeded Stripe payment; <see cref="PaymentMethod.Counter"/> is an Admin/Staff box-office sale.
+        /// </summary>
+        public PaymentMethod? PaymentMethod { get; set; }
+
+        /// <summary>
+        /// Stripe payment intent of the seat hold being finalised. Required for online bookings.
         /// </summary>
         public string? PaymentIntentId { get; set; }
 

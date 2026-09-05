@@ -40,10 +40,21 @@ namespace CineVision.Services.Database
         [MaxLength(200)]
         public string? CustomerEmail { get; set; }
 
+        /// <summary>Online (Stripe) or Counter; a customer booking is only ever Online.</summary>
+        [Required]
+        public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Online;
+
         [MaxLength(100)]
         public string? PaymentTransactionId { get; set; }
 
         public DateTime? PaymentDate { get; set; }
+
+        /// <summary>
+        /// While set, this row is a seat hold created before the customer is charged: the seats are
+        /// blocked for other customers and the hold is released if payment does not arrive in time.
+        /// Cleared once the booking is finalised.
+        /// </summary>
+        public DateTime? HoldExpiresAt { get; set; }
 
         /// <summary>User who cancelled (customer or admin).</summary>
         public int? CancelledByUserId { get; set; }

@@ -17,6 +17,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Stripe;
 using CineVision.Model.Enums;
+// Stripe ships its own PaymentMethod type; bookings always mean the domain enum.
+using PaymentMethod = CineVision.Model.Enums.PaymentMethod;
 
 namespace CineVision.Services
 {
@@ -28,7 +30,12 @@ namespace CineVision.Services
         /// <summary>The only currency booking payments are created and accepted in.</summary>
         private const string StripeCurrency = "usd";
 
+        /// <summary>Fallback checkout window when Booking:SeatHoldMinutes is not configured.</summary>
+        private const int DefaultSeatHoldMinutes = 15;
+
         private readonly IAuthenticatedUserAccessor _userAccessor;
+        private readonly ISeatHoldService _seatHoldService;
+        private readonly int _seatHoldMinutes;
         private readonly string _stripeSecretKey;
         private readonly string _stripePublishableKey;
         private readonly IEmailService _emailService;
@@ -48,12 +55,17 @@ namespace CineVision.Services
             ILogger<ReservationService> logger,
             IAnalyticsNotifier analyticsNotifier,
             INotificationService notificationService,
+            ISeatHoldService seatHoldService,
             IValidator<ReservationCreateRequest> createValidator,
             IValidator<CreatePaymentIntentRequest> paymentIntentValidator,
             IValidator<ReservationCancelRequest> cancelValidator)
             : base(mapper, dbContext)
         {
             _userAccessor = userAccessor;
+            _seatHoldService = seatHoldService;
+            _seatHoldMinutes = int.TryParse(configuration["Booking:SeatHoldMinutes"], out var holdMinutes) && holdMinutes > 0
+                ? holdMinutes
+                : DefaultSeatHoldMinutes;
             _stripeSecretKey = configuration["Stripe:SecretKey"]
                 ?? throw new InvalidOperationException("Stripe secret key is not configured.");
             _stripePublishableKey = configuration["Stripe:PublishableKey"]
@@ -154,6 +166,10 @@ namespace CineVision.Services
             return await query.FirstOrDefaultAsync();
         }
 
+        /// <summary>
+        /// Finalises a booking. Online bookings may only confirm a seat hold whose Stripe payment
+        /// succeeded; a booking without an online payment must be an explicit counter sale.
+        /// </summary>
         public async Task<ReservationResponse> CreateReservationAsync(ReservationCreateRequest request)
         {
             await _createValidator.ValidateAndThrowAsync(request);
@@ -161,171 +177,223 @@ namespace CineVision.Services
             var userId = _userAccessor.GetUserId()
                 ?? throw new InvalidOperationException("User id claim is missing.");
 
-            var seatIds = request.SeatIds.Distinct().ToList();
+            var paymentMethod = request.PaymentMethod ?? PaymentMethod.Online;
 
-            var paymentIntentId = string.IsNullOrWhiteSpace(request.PaymentIntentId)
-                ? null
-                : request.PaymentIntentId.Trim();
-
-            // Idempotent confirm: same PaymentIntent already booked → return existing reservation.
-            if (paymentIntentId != null)
-            {
-                var existing = await FindByPaymentIntentAsync(paymentIntentId);
-                if (existing != null)
-                {
-                    if (existing.UserId != userId && !IsAdminOrStaff())
-                    {
-                        throw new ClientException("This payment was already used for another booking.");
-                    }
-
-                    return await GetByIdAsync(existing.Id);
-                }
-            }
-
-            await using var tx = await _dbContext.Database.BeginTransactionAsync();
-            try
-            {
-                var projection = await _dbContext.Projections
-                    .Include(s => s.Hall).ThenInclude(h => h.Seats)
-                    .FirstOrDefaultAsync(s => s.Id == request.ProjectionId)
-                    ?? throw new ClientException($"Projection {request.ProjectionId} was not found.");
-
-                if (projection.StartTime <= DateTime.UtcNow)
-                {
-                    throw new ClientException("This projection has already started.");
-                }
-
-                var hallSeats = projection.Hall.Seats.ToDictionary(s => s.Id);
-                var expandedSeatIds = new HashSet<int>();
-                foreach (var seatId in seatIds)
-                {
-                    if (!hallSeats.TryGetValue(seatId, out var seat) || !seat.IsActive)
-                    {
-                        throw new ClientException($"Seat {seatId} does not belong to this projection's hall or is not available.");
-                    }
-
-                    expandedSeatIds.Add(seatId);
-                    if (seat.SeatType == SeatType.Couple)
-                    {
-                        if (!seat.PartnerSeatId.HasValue)
-                        {
-                            throw new ClientException($"Couple seat {seat.RowLabel}{seat.SeatNumber} is not configured correctly.");
-                        }
-
-                        expandedSeatIds.Add(seat.PartnerSeatId.Value);
-                    }
-                }
-
-                var expandedList = expandedSeatIds.ToList();
-
-                var alreadyTaken = await _dbContext.ReservationSeats
-                    .Where(rs => rs.ProjectionId == projection.Id && expandedList.Contains(rs.SeatId))
-                    .AnyAsync();
-
-                if (alreadyTaken)
-                {
-                    throw new ClientException("One or more of the selected seats are already reserved.");
-                }
-
-                var total = projection.BasePrice * expandedList.Count;
-                var initialStatus = ReservationStatus.Confirmed;
-
-                if (paymentIntentId != null)
-                {
-                    await VerifyStripePaymentSucceededAsync(
-                        paymentIntentId,
-                        expectedAmountCents: (long)(total * 100),
-                        expectedProjectionId: projection.Id,
-                        expectedUserId: userId);
-                    initialStatus = ReservationStatus.Paid;
-                }
-
-                if (!ReservationStatusTransitions.IsValidInitialStatus(initialStatus))
-                {
-                    throw new ClientException($"Invalid initial reservation status: {initialStatus}.");
-                }
-
-                var reservation = new Reservation
-                {
-                    UserId = userId,
-                    ProjectionId = projection.Id,
-                    ReservationDate = DateTime.UtcNow,
-                    ReservationNumber = $"R-{DateTime.UtcNow:yyyyMMddHHmmss}-{userId}",
-                    Status = initialStatus,
-                    TotalAmount = total,
-                    CustomerName = string.IsNullOrWhiteSpace(request.CustomerName) ? null : request.CustomerName.Trim(),
-                    CustomerEmail = string.IsNullOrWhiteSpace(request.CustomerEmail) ? null : request.CustomerEmail.Trim(),
-                    PaymentTransactionId = paymentIntentId,
-                    PaymentDate = initialStatus == ReservationStatus.Paid ? DateTime.UtcNow : null
-                };
-
-                foreach (var seatId in expandedList)
-                {
-                    reservation.ReservationSeats.Add(new ReservationSeat
-                    {
-                        SeatId = seatId,
-                        ProjectionId = projection.Id,
-                        Price = projection.BasePrice
-                    });
-                }
-
-                _dbContext.Reservations.Add(reservation);
-
-                try
-                {
-                    await _dbContext.SaveChangesAsync();
-                    await tx.CommitAsync();
-                }
-                catch (DbUpdateException) when (paymentIntentId != null)
-                {
-                    // Race: another request won the unique PaymentTransactionId index.
-                    await tx.RollbackAsync();
-                    var raced = await FindByPaymentIntentAsync(paymentIntentId);
-                    if (raced != null && (raced.UserId == userId || IsAdminOrStaff()))
-                    {
-                        return await GetByIdAsync(raced.Id);
-                    }
-
-                    throw new ClientException("This payment was already used for another booking.");
-                }
-
-                var response = await GetByIdAsync(reservation.Id);
-
-                // Queue a confirmation email; a queue/broker outage must never fail the reservation.
-                await SendConfirmationEmailAsync(reservation, response);
-                await NotifyBookingCreatedSafeAsync(response);
-                await NotifyAnalyticsSafeAsync();
-
-                return response;
-            }
-            catch (ClientException)
-            {
-                try { await tx.RollbackAsync(); } catch { /* already committed/rolled back */ }
-                throw;
-            }
-            catch
-            {
-                try { await tx.RollbackAsync(); } catch { /* already committed/rolled back */ }
-                throw;
-            }
-        }
-
-        private async Task<Reservation?> FindByPaymentIntentAsync(string paymentIntentId)
-        {
-            return await _dbContext.Reservations
-                .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.PaymentTransactionId == paymentIntentId);
+            return paymentMethod == PaymentMethod.Counter
+                ? await CreateCounterReservationAsync(request, userId)
+                : await FinalizeOnlineReservationAsync(request, userId);
         }
 
         /// <summary>
-        /// Confirms with Stripe that the PaymentIntent succeeded and matches the server-calculated amount.
+        /// Turns the pre-paid seat hold into a Paid booking. The hold — not the request — is the
+        /// source of truth for projection, seats and amount, so a client cannot re-price itself.
         /// </summary>
-        private async Task VerifyStripePaymentSucceededAsync(
-            string paymentIntentId,
-            long expectedAmountCents,
-            int expectedProjectionId,
-            int expectedUserId)
+        private async Task<ReservationResponse> FinalizeOnlineReservationAsync(ReservationCreateRequest request, int userId)
         {
+            var paymentIntentId = request.PaymentIntentId?.Trim();
+            if (string.IsNullOrWhiteSpace(paymentIntentId))
+            {
+                throw new ClientException("Online bookings must be paid before they can be confirmed.");
+            }
+
+            var reservation = await _dbContext.Reservations
+                .Include(r => r.ReservationSeats)
+                .FirstOrDefaultAsync(r => r.PaymentTransactionId == paymentIntentId)
+                ?? throw new ClientException("No booking is waiting for this payment. Please start the checkout again.");
+
+            if (reservation.UserId != userId && !IsAdminOrStaff())
+            {
+                throw new ClientException("This payment belongs to another customer.");
+            }
+
+            // Retried confirm (flaky network, app restart): the booking is already finalised.
+            if (reservation.Status == ReservationStatus.Paid)
+            {
+                return await GetByIdAsync(reservation.Id);
+            }
+
+            if (reservation.Status != ReservationStatus.Pending)
+            {
+                throw new ClientException($"This booking can no longer be paid (status: {reservation.Status}).");
+            }
+
+            EnsureRequestMatchesHold(request, reservation);
+
+            await VerifyStripePaymentSucceededAsync(paymentIntentId, reservation);
+
+            ReservationStatusTransitions.Apply(reservation, ReservationStatus.Paid);
+            reservation.HoldExpiresAt = null;
+
+            if (!string.IsNullOrWhiteSpace(request.CustomerName))
+            {
+                reservation.CustomerName = request.CustomerName.Trim();
+            }
+            if (!string.IsNullOrWhiteSpace(request.CustomerEmail))
+            {
+                reservation.CustomerEmail = request.CustomerEmail.Trim();
+            }
+
+            await _dbContext.SaveChangesAsync();
+
+            var response = await GetByIdAsync(reservation.Id);
+
+            // Queue a confirmation email; a queue/broker outage must never fail the reservation.
+            await SendConfirmationEmailAsync(reservation, response);
+            await NotifyBookingCreatedSafeAsync(response);
+            await NotifyAnalyticsSafeAsync();
+
+            return response;
+        }
+
+        /// <summary>
+        /// Box-office sale: the only booking that is valid without a Stripe payment, and only
+        /// Admin or Staff may register one.
+        /// </summary>
+        private async Task<ReservationResponse> CreateCounterReservationAsync(ReservationCreateRequest request, int userId)
+        {
+            if (!IsAdminOrStaff())
+            {
+                throw new ClientException("Only Admin or Staff can register a booking paid at the counter.");
+            }
+
+            await _seatHoldService.ReleaseExpiredHoldsAsync(request.ProjectionId);
+
+            var quote = await BuildQuoteAsync(request.ProjectionId, request.SeatIds);
+
+            var reservation = new Reservation
+            {
+                UserId = userId,
+                ProjectionId = quote.Projection.Id,
+                ReservationDate = DateTime.UtcNow,
+                ReservationNumber = BuildReservationNumber(userId),
+                Status = ReservationStatus.Confirmed,
+                PaymentMethod = PaymentMethod.Counter,
+                TotalAmount = quote.Total,
+                CustomerName = string.IsNullOrWhiteSpace(request.CustomerName) ? null : request.CustomerName.Trim(),
+                CustomerEmail = string.IsNullOrWhiteSpace(request.CustomerEmail) ? null : request.CustomerEmail.Trim()
+            };
+
+            AddSeats(reservation, quote);
+            _dbContext.Reservations.Add(reservation);
+
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Lost the race against the unique (ProjectionId, SeatId) index.
+                throw new ClientException("One or more of the selected seats are already reserved.");
+            }
+
+            var response = await GetByIdAsync(reservation.Id);
+            await SendConfirmationEmailAsync(reservation, response);
+            await NotifyBookingCreatedSafeAsync(response);
+            await NotifyAnalyticsSafeAsync();
+
+            return response;
+        }
+
+        /// <summary>
+        /// A finalise call must be for the hold it was quoted, otherwise the client is confirming
+        /// a payment against seats it was never priced for.
+        /// </summary>
+        private static void EnsureRequestMatchesHold(ReservationCreateRequest request, Reservation hold)
+        {
+            if (request.ProjectionId != hold.ProjectionId)
+            {
+                throw new ClientException("This payment was created for a different projection.");
+            }
+
+            var heldSeatIds = hold.ReservationSeats.Select(rs => rs.SeatId).ToHashSet();
+            if (request.SeatIds.Distinct().Any(seatId => !heldSeatIds.Contains(seatId)))
+            {
+                throw new ClientException("This payment was created for a different set of seats.");
+            }
+        }
+
+        private static string BuildReservationNumber(int userId) =>
+            $"R-{DateTime.UtcNow:yyyyMMddHHmmss}-{userId}";
+
+        private static void AddSeats(Reservation reservation, BookingQuote quote)
+        {
+            foreach (var seatId in quote.SeatIds)
+            {
+                reservation.ReservationSeats.Add(new ReservationSeat
+                {
+                    SeatId = seatId,
+                    ProjectionId = quote.Projection.Id,
+                    Price = quote.Projection.BasePrice
+                });
+            }
+        }
+
+        /// <summary>Server-side result of validating and pricing a seat selection.</summary>
+        private sealed record BookingQuote(Projection Projection, List<int> SeatIds, decimal Total)
+        {
+            public long AmountCents => (long)Math.Round(Total * 100m, MidpointRounding.AwayFromZero);
+        }
+
+        /// <summary>
+        /// The single gate both charging and finalising go through: the projection must still be
+        /// open, every seat must exist and be free, couple seats expand to their partner, and the
+        /// price is always recomputed from BasePrice instead of trusting the client.
+        /// </summary>
+        private async Task<BookingQuote> BuildQuoteAsync(int projectionId, IEnumerable<int> requestedSeatIds)
+        {
+            var projection = await _dbContext.Projections
+                .Include(s => s.Hall).ThenInclude(h => h.Seats)
+                .FirstOrDefaultAsync(s => s.Id == projectionId)
+                ?? throw new ClientException($"Projection {projectionId} was not found.");
+
+            if (projection.StartTime <= DateTime.UtcNow)
+            {
+                throw new ClientException("This projection has already started.");
+            }
+
+            var hallSeats = projection.Hall.Seats.ToDictionary(s => s.Id);
+            var expandedSeatIds = new HashSet<int>();
+
+            foreach (var seatId in requestedSeatIds.Distinct())
+            {
+                if (!hallSeats.TryGetValue(seatId, out var seat) || !seat.IsActive)
+                {
+                    throw new ClientException($"Seat {seatId} does not belong to this projection's hall or is not available.");
+                }
+
+                expandedSeatIds.Add(seatId);
+                if (seat.SeatType == SeatType.Couple)
+                {
+                    if (!seat.PartnerSeatId.HasValue)
+                    {
+                        throw new ClientException($"Couple seat {seat.RowLabel}{seat.SeatNumber} is not configured correctly.");
+                    }
+
+                    expandedSeatIds.Add(seat.PartnerSeatId.Value);
+                }
+            }
+
+            var expandedList = expandedSeatIds.ToList();
+
+            var alreadyTaken = await _dbContext.ReservationSeats
+                .AnyAsync(rs => rs.ProjectionId == projection.Id && expandedList.Contains(rs.SeatId));
+
+            if (alreadyTaken)
+            {
+                throw new ClientException("One or more of the selected seats are already reserved.");
+            }
+
+            return new BookingQuote(projection, expandedList, projection.BasePrice * expandedList.Count);
+        }
+
+        /// <summary>
+        /// Confirms with Stripe that the PaymentIntent succeeded and belongs to exactly this hold.
+        /// Every check is fail-closed: anything missing, unparsable or mismatched rejects the booking.
+        /// </summary>
+        private async Task VerifyStripePaymentSucceededAsync(string paymentIntentId, Reservation hold)
+        {
+            var expectedAmountCents = (long)Math.Round(hold.TotalAmount * 100m, MidpointRounding.AwayFromZero);
+
             ConfigureStripe();
 
             PaymentIntent intent;
@@ -358,22 +426,29 @@ namespace CineVision.Services
                 throw new ClientException("Unexpected payment currency.");
             }
 
-            // Metadata is set when the intent is created; reject mismatched intents.
-            if (intent.Metadata != null)
+            // Metadata is written when the intent is created. Missing or unreadable metadata is
+            // treated as a mismatch, so an intent from anywhere else can never confirm a booking.
+            if (intent.Metadata == null)
             {
-                if (intent.Metadata.TryGetValue("projectionId", out var metaProjection) &&
-                    int.TryParse(metaProjection, out var projectionId) &&
-                    projectionId != expectedProjectionId)
-                {
-                    throw new ClientException("Payment was created for a different projection.");
-                }
+                throw new ClientException("Payment cannot be matched to this booking.");
+            }
 
-                if (intent.Metadata.TryGetValue("userId", out var metaUser) &&
-                    int.TryParse(metaUser, out var metaUserId) &&
-                    metaUserId != expectedUserId)
-                {
-                    throw new ClientException("Payment belongs to a different user.");
-                }
+            RequireMetadataMatch(intent.Metadata, "reservationId", hold.Id, "booking");
+            RequireMetadataMatch(intent.Metadata, "projectionId", hold.ProjectionId, "projection");
+            RequireMetadataMatch(intent.Metadata, "userId", hold.UserId, "customer");
+        }
+
+        private static void RequireMetadataMatch(
+            IDictionary<string, string> metadata,
+            string key,
+            int expected,
+            string subject)
+        {
+            if (!metadata.TryGetValue(key, out var raw) ||
+                !int.TryParse(raw, out var actual) ||
+                actual != expected)
+            {
+                throw new ClientException($"Payment was not created for this {subject}.");
             }
         }
 
@@ -542,6 +617,11 @@ namespace CineVision.Services
             }
         }
 
+        /// <summary>
+        /// Prepares a payment: the seats are validated, priced and held as a Pending reservation
+        /// before Stripe is asked for money, so a customer can never be charged for a booking the
+        /// server would reject afterwards.
+        /// </summary>
         public async Task<PaymentIntentResponse> CreatePaymentIntentAsync(CreatePaymentIntentRequest request)
         {
             await _paymentIntentValidator.ValidateAndThrowAsync(request);
@@ -549,54 +629,86 @@ namespace CineVision.Services
             var userId = _userAccessor.GetUserId()
                 ?? throw new InvalidOperationException("User id claim is missing.");
 
-            var seatIds = request.SeatIds.Distinct().ToList();
+            // Free seats stuck behind abandoned checkouts before pricing this one.
+            await _seatHoldService.ReleaseExpiredHoldsAsync(request.ProjectionId);
+            await _seatHoldService.ReleaseOwnHoldsAsync(userId, request.ProjectionId);
 
-            var projection = await _dbContext.Projections
-                .Include(s => s.Hall).ThenInclude(h => h.Seats)
-                .FirstOrDefaultAsync(s => s.Id == request.ProjectionId)
-                ?? throw new ClientException($"Projection {request.ProjectionId} was not found.");
+            var quote = await BuildQuoteAsync(request.ProjectionId, request.SeatIds);
 
-            var hallSeats = projection.Hall.Seats.ToDictionary(s => s.Id);
-            var expandedCount = 0;
-            foreach (var seatId in seatIds)
+            var hold = new Reservation
             {
-                if (!hallSeats.TryGetValue(seatId, out var seat) || !seat.IsActive)
-                {
-                    throw new ClientException($"Seat {seatId} does not belong to this projection's hall or is not available.");
-                }
-
-                expandedCount += seat.SeatType == SeatType.Couple ? 2 : 1;
-            }
-
-            var total = projection.BasePrice * expandedCount;
-            var amountCents = (long)(total * 100);
-
-            ConfigureStripe();
-            var options = new PaymentIntentCreateOptions
-            {
-                Amount = amountCents,
-                Currency = StripeCurrency,
-                AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
-                {
-                    Enabled = true,
-                },
-                Metadata = new Dictionary<string, string>
-                {
-                    ["projectionId"] = projection.Id.ToString(),
-                    ["userId"] = userId.ToString(),
-                    ["seatCount"] = expandedCount.ToString()
-                }
+                UserId = userId,
+                ProjectionId = quote.Projection.Id,
+                ReservationDate = DateTime.UtcNow,
+                ReservationNumber = BuildReservationNumber(userId),
+                Status = ReservationStatus.Pending,
+                PaymentMethod = PaymentMethod.Online,
+                TotalAmount = quote.Total,
+                HoldExpiresAt = DateTime.UtcNow.AddMinutes(_seatHoldMinutes)
             };
 
-            var service = new PaymentIntentService();
-            var intent = await service.CreateAsync(options);
+            AddSeats(hold, quote);
+            _dbContext.Reservations.Add(hold);
+
+            try
+            {
+                await _dbContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Lost the race against the unique (ProjectionId, SeatId) index.
+                throw new ClientException("One or more of the selected seats are already reserved.");
+            }
+
+            PaymentIntent intent;
+            try
+            {
+                ConfigureStripe();
+                intent = await new PaymentIntentService().CreateAsync(new PaymentIntentCreateOptions
+                {
+                    Amount = quote.AmountCents,
+                    Currency = StripeCurrency,
+                    AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
+                    {
+                        Enabled = true,
+                    },
+                    Metadata = new Dictionary<string, string>
+                    {
+                        ["reservationId"] = hold.Id.ToString(),
+                        ["projectionId"] = quote.Projection.Id.ToString(),
+                        ["userId"] = userId.ToString(),
+                        ["seatCount"] = quote.SeatIds.Count.ToString()
+                    }
+                });
+            }
+            catch (StripeException ex)
+            {
+                // No intent means nothing can ever be charged, so the hold must not keep the seats.
+                await DiscardHoldAsync(hold);
+                _logger.LogWarning(ex, "Stripe PaymentIntent creation failed for projection {ProjectionId}.", quote.Projection.Id);
+                throw new ClientException(
+                    ex.StripeError?.Message ?? "Could not start the payment. Please try again.");
+            }
+
+            hold.PaymentTransactionId = intent.Id;
+            await _dbContext.SaveChangesAsync();
 
             return new PaymentIntentResponse
             {
+                ReservationId = hold.Id,
                 PaymentIntentId = intent.Id,
                 ClientSecret = intent.ClientSecret ?? string.Empty,
-                PublishableKey = _stripePublishableKey
+                PublishableKey = _stripePublishableKey,
+                TotalAmount = quote.Total,
+                HoldExpiresAt = hold.HoldExpiresAt!.Value
             };
+        }
+
+        private async Task DiscardHoldAsync(Reservation hold)
+        {
+            _dbContext.ReservationSeats.RemoveRange(hold.ReservationSeats);
+            _dbContext.Reservations.Remove(hold);
+            await _dbContext.SaveChangesAsync();
         }
 
         private async Task NotifyAnalyticsSafeAsync()
@@ -664,8 +776,11 @@ namespace CineVision.Services
                 ProjectionEndTime = r.Projection?.Movie != null
                     ? r.Projection.StartTime.AddMinutes(r.Projection.Movie.DurationMinutes)
                     : default,
+                PaymentMethod = (int)r.PaymentMethod,
+                PaymentMethodName = r.PaymentMethod.ToString(),
                 PaymentTransactionId = r.PaymentTransactionId,
                 PaymentDate = r.PaymentDate,
+                HoldExpiresAt = r.HoldExpiresAt,
                 CancelledByUserId = r.CancelledByUserId,
                 CancelledAt = r.CancelledAt,
                 CancellationReason = r.CancellationReason,

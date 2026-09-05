@@ -30,10 +30,6 @@ public static class ReservationStatusTransitions
         [ReservationStatus.Completed] = new()
     };
 
-    /// <summary>Initial statuses assigned when a reservation row is created.</summary>
-    public static bool IsValidInitialStatus(ReservationStatus status) =>
-        status is ReservationStatus.Pending or ReservationStatus.Confirmed or ReservationStatus.Paid;
-
     public static bool CanTransition(ReservationStatus from, ReservationStatus to) =>
         from == to || (Allowed.TryGetValue(from, out var next) && next.Contains(to));
 

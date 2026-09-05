@@ -21,8 +21,13 @@ namespace CineVision.Model.Responses
         /// <summary>Computed as start + movie duration (not stored on Projection).</summary>
         public DateTime ProjectionEndTime { get; set; }
 
+        public int PaymentMethod { get; set; }
+        public string PaymentMethodName { get; set; } = string.Empty;
         public string? PaymentTransactionId { get; set; }
         public DateTime? PaymentDate { get; set; }
+
+        /// <summary>Set only while the booking is an unpaid seat hold.</summary>
+        public DateTime? HoldExpiresAt { get; set; }
 
         public int? CancelledByUserId { get; set; }
         public DateTime? CancelledAt { get; set; }

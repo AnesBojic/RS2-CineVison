@@ -24,6 +24,7 @@ namespace CineVision.Services
         private readonly string? _stripeSecretKey;
         private readonly ILogger<ProjectionService> _logger;
         private readonly INotificationService _notificationService;
+        private readonly ISeatHoldService _seatHoldService;
 
         public ProjectionService(
             CineVisionDbContext dbContext,
@@ -34,9 +35,11 @@ namespace CineVision.Services
             IEmailService emailService,
             IConfiguration configuration,
             ILogger<ProjectionService> logger,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            ISeatHoldService seatHoldService)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
+            _seatHoldService = seatHoldService;
             _analyticsNotifier = analyticsNotifier;
             _emailService = emailService;
             _stripeSecretKey = configuration["Stripe:SecretKey"];
@@ -435,6 +438,9 @@ namespace CineVision.Services
 
         public async Task<List<ProjectionSeatResponse>> GetSeatsAsync(int projectionId)
         {
+            // Seats held for checkouts that were never paid must not look taken on the seat map.
+            await _seatHoldService.ReleaseExpiredHoldsAsync(projectionId);
+
             var projection = await _dbContext.Projections
                 .AsNoTracking()
                 .Include(s => s.Hall).ThenInclude(h => h.Seats)

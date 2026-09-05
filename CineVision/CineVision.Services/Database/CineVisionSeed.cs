@@ -220,7 +220,7 @@ namespace CineVision.Services.Database
         private void SeedReservations(ModelBuilder modelBuilder)
         {
             // customer1 (4) and customer2 (5) purchased tickets across projections for analytics testing.
-            // Paid reservations drive revenue; Confirmed counts toward tickets/occupancy without revenue.
+            // Paid = online Stripe sale; the single Confirmed row is a counter sale paid at the cinema.
             modelBuilder.Entity<Reservation>().HasData(
                 new
                 {
@@ -233,8 +233,10 @@ namespace CineVision.Services.Database
                     ProjectionId = 1,
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
+                    PaymentMethod = PaymentMethod.Online,
                     PaymentTransactionId = (string?)"pi_seed_001",
                     PaymentDate = (DateTime?)new DateTime(2026, 6, 15, 14, 31, 0, DateTimeKind.Utc),
+                    HoldExpiresAt = (DateTime?)null,
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
@@ -251,8 +253,10 @@ namespace CineVision.Services.Database
                     ProjectionId = 1,
                     CustomerName = (string?)"Eve Customer",
                     CustomerEmail = (string?)"customer2@gmail.com",
+                    PaymentMethod = PaymentMethod.Online,
                     PaymentTransactionId = (string?)"pi_seed_002",
                     PaymentDate = (DateTime?)new DateTime(2026, 6, 20, 10, 16, 0, DateTimeKind.Utc),
+                    HoldExpiresAt = (DateTime?)null,
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
@@ -269,8 +273,10 @@ namespace CineVision.Services.Database
                     ProjectionId = 3,
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
+                    PaymentMethod = PaymentMethod.Online,
                     PaymentTransactionId = (string?)"pi_seed_003",
                     PaymentDate = (DateTime?)new DateTime(2026, 6, 22, 18, 46, 0, DateTimeKind.Utc),
+                    HoldExpiresAt = (DateTime?)null,
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
@@ -287,8 +293,10 @@ namespace CineVision.Services.Database
                     ProjectionId = 4,
                     CustomerName = (string?)"Eve Customer",
                     CustomerEmail = (string?)"customer2@gmail.com",
+                    PaymentMethod = PaymentMethod.Online,
                     PaymentTransactionId = (string?)"pi_seed_004",
                     PaymentDate = (DateTime?)new DateTime(2026, 7, 1, 11, 1, 0, DateTimeKind.Utc),
+                    HoldExpiresAt = (DateTime?)null,
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
@@ -305,8 +313,10 @@ namespace CineVision.Services.Database
                     ProjectionId = 5,
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
+                    PaymentMethod = PaymentMethod.Online,
                     PaymentTransactionId = (string?)"pi_seed_005",
                     PaymentDate = (DateTime?)new DateTime(2026, 7, 3, 16, 21, 0, DateTimeKind.Utc),
+                    HoldExpiresAt = (DateTime?)null,
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
@@ -323,8 +333,10 @@ namespace CineVision.Services.Database
                     ProjectionId = 2,
                     CustomerName = (string?)"Eve Customer",
                     CustomerEmail = (string?)"customer2@gmail.com",
+                    PaymentMethod = PaymentMethod.Online,
                     PaymentTransactionId = (string?)"pi_seed_006",
                     PaymentDate = (DateTime?)new DateTime(2026, 6, 28, 20, 6, 0, DateTimeKind.Utc),
+                    HoldExpiresAt = (DateTime?)null,
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
@@ -341,8 +353,11 @@ namespace CineVision.Services.Database
                     ProjectionId = 2,
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
+                    // Box-office sale: valid without Stripe because the payment method says so.
+                    PaymentMethod = PaymentMethod.Counter,
                     PaymentTransactionId = (string?)null,
                     PaymentDate = (DateTime?)null,
+                    HoldExpiresAt = (DateTime?)null,
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,

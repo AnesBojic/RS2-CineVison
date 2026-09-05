@@ -1,3 +1,4 @@
+using CineVision.Model.Enums;
 using CineVision.Model.Requests;
 using FluentValidation;
 
@@ -19,9 +20,18 @@ namespace CineVision.Services.Validators
                 .GreaterThan(0).WithMessage("Each seat id must be greater than 0.")
                 .When(x => x.SeatIds != null && x.SeatIds.Count > 0);
 
+            // Online is the default, and an online booking is only valid once Stripe has been paid.
+            RuleFor(x => x.PaymentIntentId)
+                .NotEmpty().WithMessage("Online bookings must be paid before they can be confirmed.")
+                .When(x => x.PaymentMethod is null or PaymentMethod.Online);
+
             RuleFor(x => x.PaymentIntentId)
                 .MaximumLength(200).WithMessage("Payment intent id cannot exceed 200 characters.")
                 .When(x => !string.IsNullOrWhiteSpace(x.PaymentIntentId));
+
+            RuleFor(x => x.PaymentMethod)
+                .IsInEnum().WithMessage("Unknown payment method.")
+                .When(x => x.PaymentMethod.HasValue);
 
             RuleFor(x => x.CustomerName)
                 .MaximumLength(100).WithMessage("Customer name cannot exceed 100 characters.")

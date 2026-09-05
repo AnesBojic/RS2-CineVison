@@ -107,6 +107,7 @@ builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<IHallService, HallService>();
 builder.Services.AddScoped<ISeatService, SeatService>();
 builder.Services.AddScoped<IProjectionService, ProjectionService>();
+builder.Services.AddScoped<ISeatHoldService, SeatHoldService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IAnalyticsRealtimePublisher, AnalyticsRealtimePublisher>();

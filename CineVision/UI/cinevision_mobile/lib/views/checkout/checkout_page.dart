@@ -28,9 +28,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _cardController = TextEditingController();
-  final _expiryController = TextEditingController();
-  final _cvvController = TextEditingController();
   bool _busy = false;
 
   @override
@@ -60,9 +57,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _cardController.dispose();
-    _expiryController.dispose();
-    _cvvController.dispose();
     super.dispose();
   }
 
@@ -103,7 +97,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     required ReservationProvider reservationProvider,
     required int projectionId,
     required List<int> seatIds,
-    String? paymentIntentId,
+    required String paymentIntentId,
   }) {
     return reservationProvider.reserve(
       projectionId: projectionId,
@@ -127,9 +121,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       builder: (ctx) => AlertDialog(
         title: const Text('Confirm purchase'),
         content: Text(
-          supportsStripePaymentSheet
-              ? 'You will be charged \$${total.toStringAsFixed(2)} via Stripe. Continue?'
-              : 'Confirm demo booking for \$${total.toStringAsFixed(2)}?',
+          'You will be charged \$${total.toStringAsFixed(2)} via Stripe. Continue?',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
@@ -145,48 +137,41 @@ class _CheckoutPageState extends State<CheckoutPage> {
       final seatIds = booking.selectedSeatIds.toList();
       final projectionId = projection!.id!;
 
-      Reservation reservation;
+      final Reservation reservation;
 
-      if (supportsStripePaymentSheet) {
-        try {
-          final intentData = await reservationProvider.createPaymentIntent(
-            projectionId: projectionId,
-            seatIds: seatIds,
-          );
+      try {
+        // The server holds these seats and prices them before the sheet opens.
+        final intentData = await reservationProvider.createPaymentIntent(
+          projectionId: projectionId,
+          seatIds: seatIds,
+        );
 
-          Stripe.publishableKey = intentData['publishableKey']!;
+        Stripe.publishableKey = intentData['publishableKey']!;
 
-          await Stripe.instance.initPaymentSheet(
-            paymentSheetParameters: SetupPaymentSheetParameters(
-              paymentIntentClientSecret: intentData['clientSecret']!,
-              merchantDisplayName: 'CineVision',
-            ),
-          );
+        await Stripe.instance.initPaymentSheet(
+          paymentSheetParameters: SetupPaymentSheetParameters(
+            paymentIntentClientSecret: intentData['clientSecret']!,
+            merchantDisplayName: 'CineVision',
+          ),
+        );
 
-          await Stripe.instance.presentPaymentSheet();
+        await Stripe.instance.presentPaymentSheet();
 
-          final paymentIntentId = intentData['paymentIntentId'] ??
-              intentData['clientSecret']!.split('_secret_').first;
+        final paymentIntentId = intentData['paymentIntentId'] ??
+            intentData['clientSecret']!.split('_secret_').first;
 
-          reservation = await _submitReservation(
-            reservationProvider: reservationProvider,
-            projectionId: projectionId,
-            seatIds: seatIds,
-            paymentIntentId: paymentIntentId,
-          );
-        } on StripeException catch (e) {
-          final msg =
-              e.error.localizedMessage ?? e.error.message ?? 'Payment cancelled.';
-          if (mounted) alertBox(context, 'Payment', msg);
-          return;
-        }
-      } else {
-        // Demo checkout for Windows / desktop / web (matches mockup disclaimer).
+        // Confirms the held booking; the server re-checks the payment with Stripe.
         reservation = await _submitReservation(
           reservationProvider: reservationProvider,
           projectionId: projectionId,
           seatIds: seatIds,
+          paymentIntentId: paymentIntentId,
         );
+      } on StripeException catch (e) {
+        final msg =
+            e.error.localizedMessage ?? e.error.message ?? 'Payment cancelled.';
+        if (mounted) alertBox(context, 'Payment', msg);
+        return;
       }
 
       final genreLine = _genreSubtitle(booking);
@@ -246,7 +231,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ? 'Sign in to complete your purchase'
                 : booking.selectedSeatIds.isEmpty
                     ? 'Select seats before checkout'
-                    : null;
+                    // A booking is only valid once it is paid, so no Payment Sheet means no purchase.
+                    : !supportsStripePaymentSheet
+                        ? 'Online payment is only available in the CineVision mobile app'
+                        : null;
 
         return Scaffold(
           appBar: const CineAppBar(title: 'Checkout', showBack: true),
@@ -275,10 +263,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    blockReason ??
-                        (supportsStripePaymentSheet
-                            ? 'Payment is processed securely via Stripe.'
-                            : 'This is a demo payment form. No actual charges will be made.'),
+                    blockReason ?? 'Payment is processed securely via Stripe.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: blockReason != null
@@ -356,48 +341,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  if (!supportsStripePaymentSheet)
-                    _FormCard(
-                      title: 'Payment Information',
-                      icon: Icons.credit_card_outlined,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TextFormField(
-                            controller: _cardController,
-                            decoration: const InputDecoration(
-                              labelText: 'Card number',
-                              hintText: '1234 5678 9012 3456',
-                            ),
-                            keyboardType: TextInputType.number,
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _expiryController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Expiry Date',
-                                    hintText: 'MM/YY',
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _cvvController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'CVV',
-                                    hintText: '123',
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -532,12 +475,10 @@ class _FormCard extends StatelessWidget {
   const _FormCard({
     required this.title,
     required this.child,
-    this.icon,
   });
 
   final String title;
   final Widget child;
-  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -551,20 +492,12 @@ class _FormCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 20),
-                const SizedBox(width: 8),
-              ],
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ],
+          Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
           ),
           const SizedBox(height: 16),
           child,

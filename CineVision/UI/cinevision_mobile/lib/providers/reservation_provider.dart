@@ -15,6 +15,7 @@ class ReservationProvider extends BaseProvider<Reservation> {
     return result.items ?? [];
   }
 
+  /// Holds the seats server-side and starts the Stripe payment for that hold.
   Future<Map<String, String>> createPaymentIntent({
     required int projectionId,
     required List<int> seatIds,
@@ -32,16 +33,18 @@ class ReservationProvider extends BaseProvider<Reservation> {
     final paymentIntentId = (data['paymentIntentId'] as String?) ??
         clientSecret.split('_secret_').first;
     return {
+      'reservationId': '${data['reservationId'] ?? ''}',
       'paymentIntentId': paymentIntentId,
       'clientSecret': clientSecret,
       'publishableKey': data['publishableKey'] as String,
     };
   }
 
+  /// Finalises the held booking after Stripe confirms the payment.
   Future<Reservation> reserve({
     required int projectionId,
     required List<int> seatIds,
-    String? paymentIntentId,
+    required String paymentIntentId,
     String? customerName,
     String? customerEmail,
   }) async {
@@ -50,7 +53,7 @@ class ReservationProvider extends BaseProvider<Reservation> {
     final body = jsonEncode({
       'projectionId': projectionId,
       'seatIds': seatIds,
-      if (paymentIntentId != null) 'paymentIntentId': paymentIntentId,
+      'paymentIntentId': paymentIntentId,
       if (customerName != null && customerName.isNotEmpty)
         'customerName': customerName,
       if (customerEmail != null && customerEmail.isNotEmpty)
