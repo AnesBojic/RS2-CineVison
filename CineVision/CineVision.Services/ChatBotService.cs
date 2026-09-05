@@ -154,7 +154,7 @@ namespace CineVision.Services
             sb.AppendLine("2. Halls: create with RowsCount × SeatsPerRow to auto-generate seats. Screen types: Standard, IMAX, 3D. Status: Active, Maintenance, Inactive.");
             sb.AppendLine("3. Projections: pick an existing Movie + an Active Hall + date/time + price. Cannot schedule in Maintenance/Inactive halls. After tickets are sold, movie/hall/time/price cannot change — staff must cancel the projection (refunds customers) instead of editing or deleting it.");
             sb.AppendLine("4. Reservations: customers reserve seats on mobile; payment via Stripe. Admin/Staff manage content; only Admin manages user accounts.");
-            sb.AppendLine("5. Analytics: dashboard shows revenue (Paid reservations), tickets sold, occupancy, hall utilization.");
+            sb.AppendLine("5. Analytics: dashboard revenue is money actually collected and not refunded (PaymentStatus), independent of whether the booking is still Paid or already Completed. Tickets sold, occupancy, hall utilization.");
             sb.AppendLine("6. Email: admin can email users; reservation confirmations are queued via RabbitMQ when configured.");
             sb.AppendLine();
             sb.AppendLine("=== LIVE DATA SNAPSHOT (UTC) ===");

@@ -9,6 +9,12 @@ class ReservationStatus {
   static const completed = 4;
 }
 
+/// Permanent "money was collected" fact, independent of [ReservationStatus].
+class PaymentStatus {
+  static const none = 0;
+  static const paid = 1;
+}
+
 class RefundStatus {
   static const none = 0;
   static const pending = 1;

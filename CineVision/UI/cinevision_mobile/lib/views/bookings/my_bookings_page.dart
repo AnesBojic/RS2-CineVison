@@ -69,7 +69,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
   }
 
   Future<void> _refund(Reservation reservation) async {
-    final isPaid = reservation.isPaid;
+    final isPaid = reservation.wasPaid;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -250,7 +250,7 @@ class _BookingCard extends StatelessWidget {
   final bool isRefunding;
 
   bool get _showReviewButton {
-    if (!reservation.isPaidOrConfirmed || !reservation.isProjectionPast) {
+    if (!reservation.isReviewableBooking || !reservation.isProjectionPast) {
       return false;
     }
     if (eligibility == null) return false;
@@ -361,20 +361,20 @@ class _BookingCard extends StatelessWidget {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Icon(
-                              reservation.isPaid
+                              reservation.wasPaid
                                   ? Icons.currency_exchange
                                   : Icons.cancel_outlined,
                               size: 18,
                             ),
                       label: Text(
-                        reservation.isPaid ? 'Refund' : 'Cancel',
+                        reservation.wasPaid ? 'Refund' : 'Cancel',
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
               ],
             ),
-          ] else if (reservation.isPaidOrConfirmed &&
+          ] else if (reservation.isReviewableBooking &&
               !reservation.isProjectionPast) ...[
             const SizedBox(height: 12),
             const Text(

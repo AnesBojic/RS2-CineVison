@@ -48,6 +48,7 @@ class Reservation {
   final DateTime projectionEndTime;
   final String? paymentTransactionId;
   final DateTime? paymentDate;
+  final int paymentStatus;
   final int refundStatus;
   final String refundStatusName;
   final List<ReservationSeat> seats;
@@ -70,6 +71,7 @@ class Reservation {
     required this.projectionEndTime,
     this.paymentTransactionId,
     this.paymentDate,
+    this.paymentStatus = PaymentStatus.none,
     this.refundStatus = RefundStatus.none,
     this.refundStatusName = '',
     this.seats = const [],
@@ -99,6 +101,7 @@ class Reservation {
           fallback,
       paymentTransactionId: json['paymentTransactionId'] as String?,
       paymentDate: UtcDateTime.tryParse(json['paymentDate']),
+      paymentStatus: json['paymentStatus'] as int? ?? PaymentStatus.none,
       refundStatus: json['refundStatus'] as int? ?? RefundStatus.none,
       refundStatusName: json['refundStatusName'] as String? ?? '',
       seats: (json['seats'] as List<dynamic>?)
@@ -111,9 +114,17 @@ class Reservation {
   bool get isPaidOrConfirmed =>
       status == ReservationStatus.confirmed || status == ReservationStatus.paid;
 
+  /// Finished, non-cancelled ticket — including Completed, which is the normal post-show state.
+  bool get isReviewableBooking =>
+      status == ReservationStatus.confirmed ||
+      status == ReservationStatus.paid ||
+      status == ReservationStatus.completed;
+
   bool get isCancelled => status == ReservationStatus.cancelled;
 
-  bool get isPaid => status == ReservationStatus.paid;
+  /// Money was actually collected. Read from the payment fact, not the lifecycle status,
+  /// so it stays true after the booking moves to Completed.
+  bool get wasPaid => paymentStatus == PaymentStatus.paid;
 
   bool get isProjectionPast =>
       projectionEndTime.toUtc().isBefore(UtcDateTime.now());
@@ -124,7 +135,9 @@ class Reservation {
       case RefundStatus.pending:
         return 'Refund in progress.';
       case RefundStatus.refunded:
-        return 'Refunded to your card.';
+        return paymentTransactionId == null
+            ? 'Refunded at the counter.'
+            : 'Refunded to your card.';
       case RefundStatus.failed:
         return 'Refund could not be completed. Our staff will contact you.';
       default:

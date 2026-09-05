@@ -91,6 +91,8 @@ public static class ReservationStatusTransitions
         if (to == ReservationStatus.Paid)
         {
             reservation.PaymentDate ??= DateTime.UtcNow;
+            // Lifecycle Paid always means money was collected; keep the permanent fact in sync.
+            reservation.PaymentStatus = PaymentStatus.Paid;
         }
     }
 }

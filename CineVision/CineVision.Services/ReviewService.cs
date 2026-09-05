@@ -120,7 +120,7 @@ namespace CineVision.Services
             if (!await UserCanReviewMovieAsync(userId, request.MovieId))
             {
                 throw new ClientException(
-                    "You can only review a movie after attending a paid or confirmed projection.");
+                    "You can only review a movie after attending a finished, non-cancelled projection.");
             }
 
             var review = new Review
@@ -197,11 +197,15 @@ namespace CineVision.Services
 
             var now = DateTime.UtcNow;
 
+            // Confirmed, Paid, and Completed all count; Pending holds and Cancelled tickets do not.
+            // Completing a booking must not revoke review rights — that is the normal post-show state.
             var attendedMovies = await _dbContext.Reservations
                 .AsNoTracking()
                 .Where(r =>
                     r.UserId == userId
-                    && (r.Status == ReservationStatus.Paid || r.Status == ReservationStatus.Confirmed)
+                    && r.Status != ReservationStatus.Cancelled
+                    && r.Status != ReservationStatus.Pending
+                    && r.Projection.CancelledAt == null
                     && r.Projection.StartTime.AddMinutes(r.Projection.Movie.DurationMinutes) <= now)
                 .Select(r => new
                 {
@@ -240,7 +244,9 @@ namespace CineVision.Services
             return await _dbContext.Reservations
                 .AnyAsync(r =>
                     r.UserId == userId
-                    && (r.Status == ReservationStatus.Paid || r.Status == ReservationStatus.Confirmed)
+                    && r.Status != ReservationStatus.Cancelled
+                    && r.Status != ReservationStatus.Pending
+                    && r.Projection.CancelledAt == null
                     && r.Projection.MovieId == movieId
                     && r.Projection.StartTime.AddMinutes(r.Projection.Movie.DurationMinutes) <= now);
         }

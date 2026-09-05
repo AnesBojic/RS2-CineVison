@@ -270,6 +270,10 @@ namespace CineVision.Services
                 ReservationNumber = BuildReservationNumber(userId),
                 Status = ReservationStatus.Confirmed,
                 PaymentMethod = PaymentMethod.Counter,
+                // Cash was taken at the desk. Lifecycle stays Confirmed until the show is
+                // completed; PaymentStatus is the permanent "money collected" fact.
+                PaymentStatus = PaymentStatus.Paid,
+                PaymentDate = DateTime.UtcNow,
                 TotalAmount = quote.Total,
                 CustomerName = string.IsNullOrWhiteSpace(request.CustomerName) ? null : request.CustomerName.Trim(),
                 CustomerEmail = string.IsNullOrWhiteSpace(request.CustomerEmail) ? null : request.CustomerEmail.Trim()
@@ -585,19 +589,11 @@ namespace CineVision.Services
 
             // The refund owed is committed before Stripe is called, so a refund that fails or
             // never returns cannot leave the database claiming nothing was owed.
-            var refundOwed =
-                reservation.PaymentStatus == PaymentStatus.Paid &&
-                reservation.RefundStatus == RefundStatus.None &&
-                !string.IsNullOrWhiteSpace(reservation.PaymentTransactionId);
-
-            if (refundOwed)
-            {
-                reservation.RefundStatus = RefundStatus.Pending;
-            }
+            var stripeRefundOwed = MarkRefundIfPaymentCollected(reservation);
 
             await _dbContext.SaveChangesAsync();
 
-            if (refundOwed)
+            if (stripeRefundOwed)
             {
                 await RefundAndRecordAsync(reservation);
                 await _dbContext.SaveChangesAsync();
@@ -653,14 +649,8 @@ namespace CineVision.Services
                     cancellationReason: reason);
                 ReleaseSeats(reservation);
 
-                var refundOwed =
-                    reservation.PaymentStatus == PaymentStatus.Paid &&
-                    reservation.RefundStatus == RefundStatus.None &&
-                    !string.IsNullOrWhiteSpace(reservation.PaymentTransactionId);
-
-                if (refundOwed)
+                if (MarkRefundIfPaymentCollected(reservation))
                 {
-                    reservation.RefundStatus = RefundStatus.Pending;
                     refundRetry.Add(reservation);
                 }
             }
@@ -727,6 +717,34 @@ namespace CineVision.Services
             {
                 seat.ReleasedAt = now;
             }
+        }
+
+        /// <summary>
+        /// Records that collected money is being returned. Stripe refunds go Pending so the
+        /// external call can be retried; counter cash is treated as already returned at the desk.
+        /// Returns true when Stripe still has to be called.
+        /// </summary>
+        private static bool MarkRefundIfPaymentCollected(Reservation reservation)
+        {
+            if (reservation.PaymentStatus != PaymentStatus.Paid ||
+                reservation.RefundStatus != RefundStatus.None)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(reservation.PaymentTransactionId))
+            {
+                reservation.RefundStatus = RefundStatus.Pending;
+                return true;
+            }
+
+            if (reservation.PaymentMethod == PaymentMethod.Counter)
+            {
+                reservation.RefundStatus = RefundStatus.Refunded;
+                reservation.RefundedAt = DateTime.UtcNow;
+            }
+
+            return false;
         }
 
         /// <summary>

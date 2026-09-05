@@ -366,10 +366,11 @@ namespace CineVision.Services.Database
                     CustomerName = (string?)"Dave Customer",
                     CustomerEmail = (string?)"customer1@gmail.com",
                     // Box-office sale: valid without Stripe because the payment method says so.
+                    // Money was still collected, so PaymentStatus is Paid independently of Status.
                     PaymentMethod = PaymentMethod.Counter,
-                    PaymentStatus = PaymentStatus.None,
+                    PaymentStatus = PaymentStatus.Paid,
                     PaymentTransactionId = (string?)null,
-                    PaymentDate = (DateTime?)null,
+                    PaymentDate = (DateTime?)new DateTime(2026, 6, 30, 9, 40, 0, DateTimeKind.Utc),
                     RefundStatus = RefundStatus.None,
                     HoldExpiresAt = (DateTime?)null,
                     CancelledByUserId = (int?)null,

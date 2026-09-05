@@ -14,13 +14,16 @@ namespace CineVision.Services
 {
     /// <summary>
     /// Produces aggregated sales / occupancy analytics for the desktop dashboard and reports.
-    /// Revenue is counted only from reservations that have actually been paid; tickets sold
-    /// count every reserved seat still on record (cancelled reservations release their seats).
+    /// Revenue is counted from money that was actually collected and not refunded
+    /// (<see cref="PaymentStatus.Paid"/> and <see cref="RefundStatus"/> other than Refunded),
+    /// never from the booking lifecycle. Completing a paid reservation therefore cannot
+    /// erase it from TotalRevenue, and a Confirmed booking that was never paid cannot enter it.
+    /// Tickets sold count seats that are still occupied (ReleasedAt is null).
     /// </summary>
     public class AnalyticsService : IAnalyticsService
     {
         private static readonly TimeSpan SnapshotTtl = TimeSpan.FromSeconds(30);
-        private const string SnapshotCacheKey = "analytics:snapshot:v2";
+        private const string SnapshotCacheKey = "analytics:snapshot:v3";
 
         private readonly CineVisionDbContext _dbContext;
         private readonly IMemoryCache _cache;
@@ -43,8 +46,8 @@ namespace CineVision.Services
 
             return new DashboardResponse
             {
-                TotalRevenue = snapshot.SeatSales.Where(s => s.Status == ReservationStatus.Paid).Sum(s => s.Price),
-                TotalTicketsSold = snapshot.SeatSales.Count,
+                TotalRevenue = snapshot.SeatSales.Where(s => s.CountsAsRevenue).Sum(s => s.Price),
+                TotalTicketsSold = snapshot.SeatSales.Count(s => s.IsOccupied),
                 TotalReservations = snapshot.TotalReservations,
                 TotalCustomers = snapshot.TotalCustomers,
                 TotalMovies = snapshot.TotalMovies,
@@ -75,7 +78,8 @@ namespace CineVision.Services
         {
             var snapshot = await GetSnapshotAsync();
             var seatSales = snapshot.SeatSales
-                .Where(s => InRange(s.ReservationDate, search?.DateFrom, search?.DateTo))
+                .Where(s => (s.IsOccupied || s.CountsAsRevenue) &&
+                            InRange(s.ReservationDate, search?.DateFrom, search?.DateTo))
                 .ToList();
 
             var groupBy = (search?.GroupBy ?? "day").Trim().ToLowerInvariant();
@@ -99,9 +103,9 @@ namespace CineVision.Services
                 {
                     PeriodStart = g.Key,
                     Period = label(g.Key),
-                    Revenue = g.Where(x => x.Status == ReservationStatus.Paid).Sum(x => x.Price),
-                    TicketsSold = g.Count(),
-                    ReservationsCount = g.Select(x => x.ReservationId).Distinct().Count()
+                    Revenue = g.Where(x => x.CountsAsRevenue).Sum(x => x.Price),
+                    TicketsSold = g.Count(x => x.IsOccupied),
+                    ReservationsCount = g.Where(x => x.IsOccupied).Select(x => x.ReservationId).Distinct().Count()
                 })
                 .ToList();
         }
@@ -111,7 +115,9 @@ namespace CineVision.Services
             var snapshot = await GetSnapshotAsync();
             var projections = FilterProjections(snapshot.Projections, search);
             var projectionIds = projections.Select(s => s.Id).ToHashSet();
-            var seatSales = snapshot.SeatSales.Where(s => projectionIds.Contains(s.ProjectionId)).ToList();
+            var seatSales = snapshot.SeatSales
+                .Where(s => s.IsOccupied && projectionIds.Contains(s.ProjectionId))
+                .ToList();
 
             var projectionsByHall = projections.GroupBy(s => s.HallId).ToDictionary(g => g.Key, g => g.Count());
             var soldByHall = seatSales.GroupBy(s => s.HallId).ToDictionary(g => g.Key, g => g.Count());
@@ -151,9 +157,14 @@ namespace CineVision.Services
         {
             var snapshot = await GetSnapshotAsync();
             var projections = FilterProjections(snapshot.Projections, search);
-            var soldByProjection = snapshot.SeatSales
+            var occupiedByProjection = snapshot.SeatSales
+                .Where(s => s.IsOccupied)
                 .GroupBy(s => s.ProjectionId)
                 .ToDictionary(g => g.Key, g => g.ToList());
+            var revenueByProjection = snapshot.SeatSales
+                .Where(s => s.CountsAsRevenue)
+                .GroupBy(s => s.ProjectionId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Price));
 
             var slots = new (string Label, Func<DateTime, bool> Match)[]
             {
@@ -169,15 +180,17 @@ namespace CineVision.Services
                 var slotProjections = projections.Where(s => match(s.StartTime)).ToList();
                 int offered = slotProjections.Sum(s => snapshot.CapByHall.TryGetValue(s.HallId, out var c) ? c : 0);
                 var sales = slotProjections
-                    .SelectMany(s => soldByProjection.TryGetValue(s.Id, out var list) ? list : Enumerable.Empty<SeatSale>())
+                    .SelectMany(s => occupiedByProjection.TryGetValue(s.Id, out var list) ? list : Enumerable.Empty<SeatSale>())
                     .ToList();
+                var revenue = slotProjections.Sum(s =>
+                    revenueByProjection.TryGetValue(s.Id, out var amount) ? amount : 0m);
 
                 result.Add(new TimeSlotPerformanceResponse
                 {
                     TimeSlot = label,
                     TicketsSold = sales.Count,
                     OccupancyPercent = offered > 0 ? Math.Round((double)sales.Count / offered * 100, 1) : 0,
-                    Revenue = sales.Where(x => x.Status == ReservationStatus.Paid).Sum(x => x.Price)
+                    Revenue = revenue
                 });
             }
 
@@ -294,10 +307,10 @@ namespace CineVision.Services
 
         private async Task<List<SeatSale>> GetSeatSalesAsync()
         {
-            // Released seats stay in the table as booking history but are not sold tickets.
+            // Occupancy uses ReleasedAt == null. Revenue uses the permanent payment/refund
+            // fields, including released seats of a paid booking whose refund has not cleared.
             return await _dbContext.ReservationSeats
                 .AsNoTracking()
-                .Where(rs => rs.ReleasedAt == null)
                 .Select(rs => new SeatSale
                 {
                     ReservationId = rs.ReservationId,
@@ -305,7 +318,9 @@ namespace CineVision.Services
                     MovieId = rs.Projection.MovieId,
                     HallId = rs.Projection.HallId,
                     Price = rs.Price,
-                    Status = rs.Reservation.Status,
+                    PaymentStatus = rs.Reservation.PaymentStatus,
+                    RefundStatus = rs.Reservation.RefundStatus,
+                    ReleasedAt = rs.ReleasedAt,
                     ReservationDate = rs.Reservation.ReservationDate
                 })
                 .ToListAsync();
@@ -338,9 +353,9 @@ namespace CineVision.Services
                 int reservations = 0;
                 if (salesByMovie.TryGetValue(movieId, out var sales))
                 {
-                    tickets = sales.Count;
-                    revenue = sales.Where(x => x.Status == ReservationStatus.Paid).Sum(x => x.Price);
-                    reservations = sales.Select(x => x.ReservationId).Distinct().Count();
+                    tickets = sales.Count(x => x.IsOccupied);
+                    revenue = sales.Where(x => x.CountsAsRevenue).Sum(x => x.Price);
+                    reservations = sales.Where(x => x.IsOccupied).Select(x => x.ReservationId).Distinct().Count();
                 }
 
                 result.Add(new MoviePerformanceResponse
@@ -367,7 +382,10 @@ namespace CineVision.Services
             IEnumerable<SeatSale> seatSales,
             IReadOnlyDictionary<int, int> capByHall)
         {
-            var soldByProjection = seatSales.GroupBy(s => s.ProjectionId).ToDictionary(g => g.Key, g => g.Count());
+            var soldByProjection = seatSales
+                .Where(s => s.IsOccupied)
+                .GroupBy(s => s.ProjectionId)
+                .ToDictionary(g => g.Key, g => g.Count());
 
             var occupancies = new List<double>();
             foreach (var s in projections)
@@ -423,8 +441,20 @@ namespace CineVision.Services
             public int MovieId { get; set; }
             public int HallId { get; set; }
             public decimal Price { get; set; }
-            public ReservationStatus Status { get; set; }
+            public PaymentStatus PaymentStatus { get; set; }
+            public RefundStatus RefundStatus { get; set; }
+            public DateTime? ReleasedAt { get; set; }
             public DateTime ReservationDate { get; set; }
+
+            public bool IsOccupied => ReleasedAt == null;
+
+            /// <summary>
+            /// Money was collected and has not been returned. Independent of lifecycle status,
+            /// so Paid → Completed still counts and Confirmed → Completed without payment does not.
+            /// </summary>
+            public bool CountsAsRevenue =>
+                PaymentStatus == CineVision.Model.Enums.PaymentStatus.Paid &&
+                RefundStatus != CineVision.Model.Enums.RefundStatus.Refunded;
         }
     }
 }

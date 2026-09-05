@@ -10,7 +10,7 @@ namespace CineVision.Model.Enums
         /// <summary>No payment was ever collected through the system.</summary>
         None = 0,
 
-        /// <summary>Stripe confirmed the payment cleared.</summary>
+        /// <summary>Money was collected: Stripe confirmed the PaymentIntent, or staff took payment at the counter.</summary>
         Paid = 1
     }
 }
