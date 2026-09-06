@@ -15,6 +15,8 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 {
     private readonly IAuthenticatedUserAccessor _userAccessor;
     private readonly IAnalyticsNotifier _analyticsNotifier;
+    private readonly IValidator<MovieInsertRequest> _insertValidator;
+    private readonly IValidator<MovieUpdateRequest> _updateValidator;
     private readonly IValidator<MoviePosterUpdateRequest> _posterValidator;
 
     public MovieService(
@@ -22,11 +24,15 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         MapsterMapper.IMapper mapper,
         IAuthenticatedUserAccessor userAccessor,
         IAnalyticsNotifier analyticsNotifier,
+        IValidator<MovieInsertRequest> insertValidator,
+        IValidator<MovieUpdateRequest> updateValidator,
         IValidator<MoviePosterUpdateRequest> posterValidator)
         : base(mapper, dbContext)
     {
         _userAccessor = userAccessor;
         _analyticsNotifier = analyticsNotifier;
+        _insertValidator = insertValidator;
+        _updateValidator = updateValidator;
         _posterValidator = posterValidator;
     }
 
@@ -145,7 +151,8 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
 
     public async Task<MovieResponse> InsertAsync(MovieInsertRequest request)
     {
-        await EnsureReferencesExistAsync(request.LanguageId, request.AgeRatingId);
+        await _insertValidator.ValidateAndThrowAsync(request);
+        await EnsureReferencesExistAsync(request.GenreId, request.LanguageId, request.AgeRatingId);
 
         var entity = _mapper.Map<Movie>(request);
         entity.CreatedAt = DateTime.UtcNow;
@@ -161,7 +168,8 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
         var entity = await _dbContext.Movies.FindAsync(id)
             ?? throw new KeyNotFoundException($"Movie with id {id} not found.");
 
-        await EnsureReferencesExistAsync(request.LanguageId, request.AgeRatingId);
+        await _updateValidator.ValidateAndThrowAsync(request);
+        await EnsureReferencesExistAsync(request.GenreId, request.LanguageId, request.AgeRatingId);
 
         if (request.DurationMinutes != entity.DurationMinutes)
         {
@@ -191,8 +199,13 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
     /// <summary>
     /// Turns a stale reference-data selection into a readable 400 instead of a foreign key error.
     /// </summary>
-    private async Task EnsureReferencesExistAsync(int? languageId, int? ageRatingId)
+    private async Task EnsureReferencesExistAsync(int? genreId, int? languageId, int? ageRatingId)
     {
+        if (genreId.HasValue && !await _dbContext.Genres.AnyAsync(g => g.Id == genreId.Value))
+        {
+            throw new ClientException("The selected genre no longer exists. Refresh and pick another one.");
+        }
+
         if (languageId.HasValue && !await _dbContext.Languages.AnyAsync(l => l.Id == languageId.Value))
         {
             throw new ClientException("The selected language no longer exists. Refresh and pick another one.");

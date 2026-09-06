@@ -11,7 +11,11 @@ namespace CineVision.Model.Requests
         [MaxLength(2000)]
         public string Description { get; set; } = string.Empty;
 
-        /// <summary>Movie runtime in minutes.</summary>
+        /// <summary>
+        /// Movie runtime in minutes. Bounded because projection end time and hall overlap
+        /// checks are computed from it; mirrors MovieInsertValidator.
+        /// </summary>
+        [Range(1, 600, ErrorMessage = "Duration must be between 1 and 600 minutes.")]
         public int DurationMinutes { get; set; }
 
         public int? GenreId { get; set; }
