@@ -136,6 +136,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       final reservationProvider = context.read<ReservationProvider>();
       final seatIds = booking.selectedSeatIds.toList();
       final projectionId = projection!.id!;
+      int? holdReservationId;
 
       final Reservation reservation;
 
@@ -145,6 +146,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           projectionId: projectionId,
           seatIds: seatIds,
         );
+        holdReservationId = int.tryParse(intentData['reservationId'] ?? '');
 
         Stripe.publishableKey = intentData['publishableKey']!;
 
@@ -168,6 +170,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           paymentIntentId: paymentIntentId,
         );
       } on StripeException catch (e) {
+        await _abandonHold(reservationProvider, holdReservationId);
         final msg =
             e.error.localizedMessage ?? e.error.message ?? 'Payment cancelled.';
         if (mounted) alertBox(context, 'Payment', msg);
@@ -194,6 +197,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _abandonHold(ReservationProvider provider, int? reservationId) async {
+    if (reservationId == null || reservationId <= 0) return;
+    try {
+      await provider.cancel(
+        reservationId,
+        reason: 'Checkout abandoned',
+      );
+    } catch (_) {}
   }
 
   String? _genreSubtitle(BookingProvider booking) {

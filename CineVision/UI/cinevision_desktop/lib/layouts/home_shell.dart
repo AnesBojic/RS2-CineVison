@@ -7,8 +7,10 @@ import 'package:cinevision_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:cinevision_desktop/providers/analytics_provider.dart';
 import 'package:cinevision_desktop/providers/auth_provider.dart';
 import 'package:cinevision_desktop/providers/notification_provider.dart';
+import 'package:cinevision_desktop/providers/reservation_provider.dart';
 import 'package:cinevision_desktop/providers/user_provider.dart';
 import 'package:cinevision_desktop/screens/analytics_screen.dart';
+import 'package:cinevision_desktop/screens/booking_list_screen.dart';
 import 'package:cinevision_desktop/screens/chatbot_screen.dart';
 import 'package:cinevision_desktop/screens/dashboard_screen.dart';
 import 'package:cinevision_desktop/screens/hall_list_screen.dart';
@@ -34,13 +36,14 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   late int _selectedIndex;
 
-  /// 0 Dashboard, 1 Movies, 2 Halls, 3 Projections, 4 News, 5 Reference data,
-  /// 6 Users (admin), 7 Analytics, 8 Chatbot
+  /// 0 Dashboard, 1 Movies, 2 Halls, 3 Projections, 4 Bookings, 5 News,
+  /// 6 Reference data, 7 Users, 8 Analytics, 9 Chatbot
   static const _allNavItems = [
     _NavItem('Dashboard', Icons.home_outlined, Icons.home, permission: RolePermissions.viewAnalytics),
     _NavItem('Movies', Icons.movie_outlined, Icons.movie, permission: RolePermissions.manageMovies),
     _NavItem('Halls', Icons.tv_outlined, Icons.tv, permission: RolePermissions.manageHalls),
     _NavItem('Projections', Icons.calendar_today_outlined, Icons.calendar_today, permission: RolePermissions.manageProjections),
+    _NavItem('Bookings', Icons.confirmation_number_outlined, Icons.confirmation_number, permission: RolePermissions.accessDesktop),
     _NavItem('News', Icons.campaign_outlined, Icons.campaign, permission: RolePermissions.manageNews),
     _NavItem('Reference Data', Icons.list_alt_outlined, Icons.list_alt, permission: RolePermissions.manageReferenceData),
     _NavItem('Users', Icons.people_outline, Icons.people, permission: RolePermissions.manageUsers),
@@ -48,7 +51,7 @@ class _HomeShellState extends State<HomeShell> {
     _NavItem('Chatbot', Icons.chat_bubble_outline, Icons.chat_bubble, permission: RolePermissions.useChatBot),
   ];
 
-  static const _chatbotIndex = 8;
+  static const _chatbotIndex = 9;
 
   List<_NavItem> get _visibleNavItems {
     final auth = context.read<AuthProvider>();
@@ -70,6 +73,7 @@ class _HomeShellState extends State<HomeShell> {
       context.read<NotificationProvider>().refresh();
       context.read<NotificationProvider>().connectRealtime();
       context.read<AnalyticsProvider>().connectRealtime();
+      context.read<ReservationProvider>().connectRealtime();
     });
   }
 
@@ -166,14 +170,16 @@ class _HomeShellState extends State<HomeShell> {
           onEditConsumed: () => _clearEditId(3),
         );
       case 4:
-        return const NewsListScreen(key: ValueKey('news'));
+        return const BookingListScreen(key: ValueKey('bookings'));
       case 5:
-        return const ReferenceDataHubScreen(key: ValueKey('reference-data'));
+        return const NewsListScreen(key: ValueKey('news'));
       case 6:
-        return const UserList(key: ValueKey('users'));
+        return const ReferenceDataHubScreen(key: ValueKey('reference-data'));
       case 7:
-        return const AnalyticsScreen(key: ValueKey('analytics'));
+        return const UserList(key: ValueKey('users'));
       case 8:
+        return const AnalyticsScreen(key: ValueKey('analytics'));
+      case 9:
         return const ChatBotScreen(key: ValueKey('chatbot'));
       default:
         return DashboardScreen(onNavigate: _navigateTo);
@@ -417,6 +423,7 @@ class _HomeShellState extends State<HomeShell> {
             onPressed: () async {
               final navigator = Navigator.of(context);
               context.read<AnalyticsProvider>().disconnectRealtime();
+              context.read<ReservationProvider>().disconnectRealtime();
               await context.read<AuthProvider>().logout();
               navigator.pushAndRemoveUntil(
                 MaterialPageRoute(builder: (_) => const LoginScreen()),

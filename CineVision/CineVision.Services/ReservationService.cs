@@ -41,6 +41,7 @@ namespace CineVision.Services
         private readonly IEmailService _emailService;
         private readonly ILogger<ReservationService> _logger;
         private readonly IAnalyticsNotifier _analyticsNotifier;
+        private readonly IBookingsNotifier _bookingsNotifier;
         private readonly INotificationService _notificationService;
         private readonly IValidator<ReservationCreateRequest> _createValidator;
         private readonly IValidator<CreatePaymentIntentRequest> _paymentIntentValidator;
@@ -54,6 +55,7 @@ namespace CineVision.Services
             IEmailService emailService,
             ILogger<ReservationService> logger,
             IAnalyticsNotifier analyticsNotifier,
+            IBookingsNotifier bookingsNotifier,
             INotificationService notificationService,
             ISeatHoldService seatHoldService,
             IValidator<ReservationCreateRequest> createValidator,
@@ -73,6 +75,7 @@ namespace CineVision.Services
             _emailService = emailService;
             _logger = logger;
             _analyticsNotifier = analyticsNotifier;
+            _bookingsNotifier = bookingsNotifier;
             _notificationService = notificationService;
             _createValidator = createValidator;
             _paymentIntentValidator = paymentIntentValidator;
@@ -98,8 +101,11 @@ namespace CineVision.Services
                 return new PageResult<ReservationResponse> { Items = new List<ReservationResponse>(), TotalCount = 0 };
             }
 
+            await _seatHoldService.ReleaseExpiredHoldsAsync();
+
             IQueryable<Reservation> query = _dbContext.Reservations
                 .AsNoTracking()
+                .Include(r => r.User)
                 .Include(r => r.Projection).ThenInclude(s => s.Movie)
                 .Include(r => r.Projection).ThenInclude(s => s.Hall)
                 .Include(r => r.ReservationSeats).ThenInclude(rs => rs.Seat);
@@ -153,6 +159,7 @@ namespace CineVision.Services
         {
             var query = _dbContext.Reservations
                 .AsNoTracking()
+                .Include(r => r.User)
                 .Include(r => r.Projection).ThenInclude(s => s.Movie)
                 .Include(r => r.Projection).ThenInclude(s => s.Hall)
                 .Include(r => r.ReservationSeats).ThenInclude(rs => rs.Seat)
@@ -563,8 +570,11 @@ namespace CineVision.Services
 
             ReservationStatusTransitions.EnsureCanTransition(reservation.Status, ReservationStatus.Cancelled);
 
-            // Customers must cancel at least 4h before showtime; Admin/Staff may cancel anytime.
-            if (!isStaff && reservation.Projection.StartTime <= DateTime.UtcNow.AddHours(4))
+            var isUnpaidHold = reservation.Status == ReservationStatus.Pending;
+
+            // Customers must cancel paid tickets at least 4h before showtime. An unpaid checkout
+            // hold can always be dropped so seats are not locked after someone leaves Stripe.
+            if (!isStaff && !isUnpaidHold && reservation.Projection.StartTime <= DateTime.UtcNow.AddHours(4))
             {
                 throw new ClientException(
                     "Tickets can only be refunded at least 4 hours before the projection starts.");
@@ -594,11 +604,14 @@ namespace CineVision.Services
                 await _dbContext.SaveChangesAsync();
             }
 
-            await NotifySafeAsync(
-                reservation.UserId,
-                "Booking cancelled",
-                $"Reservation {reservation.ReservationNumber} was cancelled. {reason}",
-                NotificationType.Cancellation);
+            if (!isUnpaidHold)
+            {
+                await NotifySafeAsync(
+                    reservation.UserId,
+                    "Booking cancelled",
+                    $"Reservation {reservation.ReservationNumber} was cancelled. {reason}",
+                    NotificationType.Cancellation);
+            }
 
             await NotifyAnalyticsSafeAsync();
 
@@ -834,6 +847,7 @@ namespace CineVision.Services
             await _seatHoldService.ReleaseExpiredHoldsAsync(request.ProjectionId);
             await _seatHoldService.ReleaseOwnHoldsAsync(userId, request.ProjectionId);
 
+            var user = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == userId);
             var quote = await BuildQuoteAsync(request.ProjectionId, request.SeatIds);
 
             var hold = new Reservation
@@ -845,6 +859,8 @@ namespace CineVision.Services
                 Status = ReservationStatus.Pending,
                 PaymentMethod = PaymentMethod.Online,
                 TotalAmount = quote.Total,
+                CustomerName = $"{user.FirstName} {user.LastName}".Trim(),
+                CustomerEmail = user.Email,
                 HoldExpiresAt = DateTime.UtcNow.AddMinutes(_seatHoldMinutes)
             };
 
@@ -894,6 +910,7 @@ namespace CineVision.Services
 
             hold.PaymentTransactionId = intent.Id;
             await _dbContext.SaveChangesAsync();
+            await NotifyBookingsSafeAsync();
 
             return new PaymentIntentResponse
             {
@@ -919,6 +936,7 @@ namespace CineVision.Services
             ReleaseSeats(hold);
             hold.HoldExpiresAt = null;
             await _dbContext.SaveChangesAsync();
+            await NotifyBookingsSafeAsync();
         }
 
         private async Task NotifyAnalyticsSafeAsync()
@@ -930,6 +948,20 @@ namespace CineVision.Services
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to push live analytics update.");
+            }
+
+            await NotifyBookingsSafeAsync();
+        }
+
+        private async Task NotifyBookingsSafeAsync()
+        {
+            try
+            {
+                await _bookingsNotifier.NotifyBookingsChangedAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to push live bookings update.");
             }
         }
 
@@ -976,8 +1008,10 @@ namespace CineVision.Services
                 StatusName = r.Status.ToString(),
                 TotalAmount = r.TotalAmount,
                 UserId = r.UserId,
-                CustomerName = r.CustomerName,
-                CustomerEmail = r.CustomerEmail,
+                CustomerName = DisplayCustomerName(r),
+                CustomerEmail = !string.IsNullOrWhiteSpace(r.CustomerEmail)
+                    ? r.CustomerEmail
+                    : r.User?.Email,
                 ProjectionId = r.ProjectionId,
                 MovieId = r.Projection?.MovieId ?? 0,
                 MovieTitle = r.Projection?.Movie?.Title ?? string.Empty,
@@ -1016,6 +1050,17 @@ namespace CineVision.Services
                     })
                     .ToList()
             };
+        }
+
+        private static string? DisplayCustomerName(Reservation r)
+        {
+            if (!string.IsNullOrWhiteSpace(r.CustomerName))
+            {
+                return r.CustomerName;
+            }
+
+            var fromAccount = $"{r.User?.FirstName} {r.User?.LastName}".Trim();
+            return string.IsNullOrEmpty(fromAccount) ? null : fromAccount;
         }
     }
 }

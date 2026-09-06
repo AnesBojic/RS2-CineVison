@@ -24,15 +24,29 @@ namespace CineVision.Services
         private readonly CineVisionDbContext _dbContext;
         private readonly string? _stripeSecretKey;
         private readonly ILogger<SeatHoldService> _logger;
+        private readonly IBookingsNotifier _bookingsNotifier;
 
         public SeatHoldService(
             CineVisionDbContext dbContext,
             IConfiguration configuration,
-            ILogger<SeatHoldService> logger)
+            ILogger<SeatHoldService> logger,
+            IBookingsNotifier bookingsNotifier)
         {
             _dbContext = dbContext;
             _stripeSecretKey = configuration["Stripe:SecretKey"];
             _logger = logger;
+            _bookingsNotifier = bookingsNotifier;
+        }
+
+        public Task ReleaseExpiredHoldsAsync()
+        {
+            var now = DateTime.UtcNow;
+            return ReleaseAsync(
+                _dbContext.Reservations
+                    .Where(r => r.Status == ReservationStatus.Pending
+                                && r.HoldExpiresAt != null
+                                && r.HoldExpiresAt < now),
+                "Seat hold expired before the payment was completed.");
         }
 
         public Task ReleaseExpiredHoldsAsync(int projectionId)
@@ -119,6 +133,14 @@ namespace CineVision.Services
             if (changed)
             {
                 await _dbContext.SaveChangesAsync();
+                try
+                {
+                    await _bookingsNotifier.NotifyBookingsChangedAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to push live bookings update after releasing holds.");
+                }
             }
         }
 

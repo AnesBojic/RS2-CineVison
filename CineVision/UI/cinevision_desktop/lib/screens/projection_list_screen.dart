@@ -1,14 +1,17 @@
+import 'package:cinevision_desktop/core/enums/api_enums.dart';
 import 'package:cinevision_desktop/core/theme/app_theme.dart';
 import 'package:cinevision_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:cinevision_desktop/models/hall.dart';
 import 'package:cinevision_desktop/models/lookup_item.dart';
 import 'package:cinevision_desktop/models/movie.dart';
 import 'package:cinevision_desktop/models/projection.dart';
+import 'package:cinevision_desktop/models/reservation.dart';
 import 'package:cinevision_desktop/models/search_result.dart';
 import 'package:cinevision_desktop/providers/hall_provider.dart';
 import 'package:cinevision_desktop/providers/language_provider.dart';
 import 'package:cinevision_desktop/providers/movie_provider.dart';
 import 'package:cinevision_desktop/providers/projection_provider.dart';
+import 'package:cinevision_desktop/providers/reservation_provider.dart';
 import 'package:cinevision_desktop/utils/api_client_exception.dart';
 import 'package:cinevision_desktop/utils/field_validators.dart';
 import 'package:cinevision_desktop/utils/utils_widgets.dart';
@@ -210,6 +213,7 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
                   DataColumn(label: Text('Date')),
                   DataColumn(label: Text('Time')),
                   DataColumn(label: Text('Price')),
+                  DataColumn(label: Text('Cancellation reason')),
                   actionsDataColumn,
                 ],
                 rows: _filtered.map(_buildRow).toList(),
@@ -265,7 +269,28 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
           ? const StatusBadge(label: 'Cancelled', color: AppColors.orange, filled: true)
           : StatusBadge(label: formatTime(s.startTime), color: AppColors.green, filled: true)),
       DataCell(Text(formatCurrency(s.basePrice))),
+      DataCell(
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 260),
+          child: Text(
+            s.isCancelled
+                ? (s.cancellationReason?.trim().isNotEmpty == true
+                    ? s.cancellationReason!
+                    : 'No reason recorded')
+                : '—',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
       actionButtonsCell([
+        if (s.isCancelled)
+          ActionIconButton(
+            icon: Icons.info_outline,
+            color: AppColors.blue,
+            tooltip: 'Cancellation details',
+            onPressed: () => _showCancellationDetails(s),
+          ),
         if (!s.isCancelled)
           ActionIconButton(
             icon: Icons.edit_outlined,
@@ -288,6 +313,107 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
         ),
       ]),
     ]);
+  }
+
+  Future<void> _showCancellationDetails(Projection s) async {
+    List<Reservation> tickets = [];
+    try {
+      final data = await context.read<ReservationProvider>().get(filter: {
+        'page': 1,
+        'pageSize': 100,
+        'includeTotalCount': false,
+        'projectionId': s.id,
+        'status': ReservationStatus.cancelled,
+      });
+      tickets = data.items ?? [];
+    } on Exception catch (_) {}
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Cancelled · ${s.movieTitle ?? 'Projection'}',
+          style: const TextStyle(color: AppColors.textPrimary),
+        ),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Projection reason',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                s.cancellationReason?.trim().isNotEmpty == true
+                    ? s.cancellationReason!
+                    : 'No reason recorded',
+                style: const TextStyle(color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Ticket reasons',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (tickets.isEmpty)
+                const Text(
+                  'No cancelled tickets for this projection.',
+                  style: TextStyle(color: AppColors.textSecondary),
+                )
+              else
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 280),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: tickets.length,
+                    separatorBuilder: (context, index) => const Divider(height: 16),
+                    itemBuilder: (context, index) {
+                      final t = tickets[index];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${t.reservationNumber} · ${t.customerName ?? t.customerEmail ?? 'Customer'}',
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            t.reasonLabel,
+                            style: const TextStyle(color: AppColors.textSecondary),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _delete(Projection s) async {

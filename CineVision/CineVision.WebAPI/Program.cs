@@ -113,6 +113,7 @@ builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IAnalyticsRealtimePublisher, AnalyticsRealtimePublisher>();
 builder.Services.AddScoped<IAnalyticsNotifier, AnalyticsNotifier>();
+builder.Services.AddScoped<IBookingsNotifier, BookingsNotifier>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<IChatBotService, ChatBotService>();
@@ -369,6 +370,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 app.MapControllers();
 app.MapHub<AnalyticsHub>("/hubs/analytics");
 app.MapHub<NotificationsHub>("/hubs/notifications");
+app.MapHub<BookingsHub>("/hubs/bookings");
 
 await EnsureDatabaseReadyAsync(app);
 

@@ -9,6 +9,9 @@ namespace CineVision.Services
         /// <summary>Releases every expired hold on a projection (any customer).</summary>
         Task ReleaseExpiredHoldsAsync(int projectionId);
 
+        /// <summary>Releases expired holds on every projection.</summary>
+        Task ReleaseExpiredHoldsAsync();
+
         /// <summary>
         /// Releases the caller's own unpaid holds on a projection so a restarted checkout is not
         /// blocked by the seats the same customer abandoned a moment ago.

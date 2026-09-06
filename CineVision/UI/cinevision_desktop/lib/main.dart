@@ -13,6 +13,7 @@ import 'package:cinevision_desktop/providers/notification_provider.dart';
 import 'package:cinevision_desktop/providers/role_provider.dart';
 import 'package:cinevision_desktop/providers/screen_type_provider.dart';
 import 'package:cinevision_desktop/providers/projection_provider.dart';
+import 'package:cinevision_desktop/providers/reservation_provider.dart';
 import 'package:cinevision_desktop/providers/user_provider.dart';
 import 'package:cinevision_desktop/screens/login_screen.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => HallProvider()),
         ChangeNotifierProvider(create: (_) => ProjectionProvider()),
+        ChangeNotifierProvider(create: (_) => ReservationProvider()),
         ChangeNotifierProvider(create: (_) => NewsProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => RoleProvider()),

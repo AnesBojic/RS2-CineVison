@@ -101,61 +101,11 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     }
   }
 
-  Future<String?> _askCancelReason({required bool isPaid}) async {
-    final reasonCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    try {
-      return await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(isPaid ? 'Refund ticket?' : 'Cancel booking?'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  isPaid
-                      ? 'Your payment will be refunded and the seats will become available again.'
-                      : 'This booking will be cancelled and the seats will become available again.',
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: reasonCtrl,
-                  maxLines: 3,
-                  maxLength: 500,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Reason',
-                    hintText: 'Why are you cancelling this booking?',
-                  ),
-                  validator: (v) => FieldValidators.minLength(
-                    v,
-                    5,
-                    field: 'Cancellation reason',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Keep ticket'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (!(formKey.currentState?.validate() ?? false)) return;
-                Navigator.pop(ctx, reasonCtrl.text.trim());
-              },
-              child: Text(isPaid ? 'Refund' : 'Cancel booking'),
-            ),
-          ],
-        ),
-      );
-    } finally {
-      reasonCtrl.dispose();
-    }
+  Future<String?> _askCancelReason({required bool isPaid}) {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => _CancelReasonDialog(isPaid: isPaid),
+    );
   }
 
   Future<void> _openReview(Reservation reservation) async {
@@ -320,6 +270,77 @@ class _LoginPrompt extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Owns the reason controller so it is disposed only after the dialog leaves the tree.
+class _CancelReasonDialog extends StatefulWidget {
+  const _CancelReasonDialog({required this.isPaid});
+
+  final bool isPaid;
+
+  @override
+  State<_CancelReasonDialog> createState() => _CancelReasonDialogState();
+}
+
+class _CancelReasonDialogState extends State<_CancelReasonDialog> {
+  final _reasonCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _reasonCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPaid = widget.isPaid;
+    return AlertDialog(
+      title: Text(isPaid ? 'Refund ticket?' : 'Cancel booking?'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              isPaid
+                  ? 'Your payment will be refunded and the seats will become available again.'
+                  : 'This booking will be cancelled and the seats will become available again.',
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _reasonCtrl,
+              maxLines: 3,
+              maxLength: 500,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Reason',
+                hintText: 'Why are you cancelling this booking?',
+              ),
+              validator: (v) => FieldValidators.minLength(
+                v,
+                5,
+                field: 'Cancellation reason',
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Keep ticket'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (!(_formKey.currentState?.validate() ?? false)) return;
+            Navigator.pop(context, _reasonCtrl.text.trim());
+          },
+          child: Text(isPaid ? 'Refund' : 'Cancel booking'),
+        ),
+      ],
     );
   }
 }
