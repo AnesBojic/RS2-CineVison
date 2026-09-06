@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using CineVision.Model;
 using CineVision.Services;
 using CineVision.WebAPI.Services.AccessManager;
 using Microsoft.AspNetCore.Http;
@@ -41,5 +42,18 @@ public class HttpAuthenticatedUserAccessor : IAuthenticatedUserAccessor
 
         var userRole = user.FindFirstValue(ClaimNames.Role) ?? user.FindFirstValue("role");
         return userRole != null && userRole == role;
+    }
+
+    public bool HasPermission(string permission)
+    {
+        var user = _httpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        return RolePermissionNames.ClaimContains(
+            user.FindFirstValue(ClaimNames.Permissions),
+            permission);
     }
 }

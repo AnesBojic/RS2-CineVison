@@ -1,4 +1,5 @@
 import 'package:cinevision_desktop/core/enums/api_enums.dart';
+import 'package:cinevision_desktop/core/enums/role_permissions.dart';
 import 'package:cinevision_desktop/core/theme/app_theme.dart';
 import 'package:cinevision_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:cinevision_desktop/models/lookup_item.dart';
@@ -22,6 +23,9 @@ enum LookupExtraField {
 
   /// Languages: the short ISO-style code.
   code,
+
+  /// Roles: color and permission flags.
+  roleAccess,
 }
 
 /// CRUD screen shared by every reference table. [P] is the provider that talks to
@@ -43,7 +47,7 @@ class LookupListScreen<P extends BaseProvider<LookupItem>> extends StatefulWidge
 
   final LookupExtraField extraField;
 
-  /// When true, Admin/Staff/Customer keep a read-only name in the editor (JWT [Authorize] depends on them).
+  /// When true, seeded Admin/Customer names stay read-only so `RoleNames` / `UserRoles` stay valid.
   final bool lockAuthorizationRoleNames;
 
   @override
@@ -124,10 +128,25 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
       text: existing?.minimumAge?.toString() ?? '',
     );
     var allowsProjections = existing?.allowsProjections ?? false;
+    var color = (existing?.color ?? RolePermissions.defaultColor).toUpperCase();
+    var flags = <String, bool>{
+      RolePermissions.accessDesktop: existing?.canAccessDesktop ?? false,
+      RolePermissions.manageUsers: existing?.canManageUsers ?? false,
+      RolePermissions.manageMovies: existing?.canManageMovies ?? false,
+      RolePermissions.manageHalls: existing?.canManageHalls ?? false,
+      RolePermissions.manageProjections: existing?.canManageProjections ?? false,
+      RolePermissions.manageNews: existing?.canManageNews ?? false,
+      RolePermissions.manageReferenceData: existing?.canManageReferenceData ?? false,
+      RolePermissions.manageRoles: existing?.canManageRoles ?? false,
+      RolePermissions.viewAnalytics: existing?.canViewAnalytics ?? false,
+      RolePermissions.useChatBot: existing?.canUseChatBot ?? false,
+    };
+    final permissionsLocked = existing?.permissionsLocked == true;
     var submitting = false;
     final nameLocked = existing != null &&
         widget.lockAuthorizationRoleNames &&
-        UserRoles.isAuthorizationRole(existing.name);
+        (existing.isSystemRole || UserRoles.isAuthorizationRole(existing.name));
+    final isRoleEditor = widget.extraField == LookupExtraField.roleAccess;
 
     final saved = await showDialog<bool>(
       context: context,
@@ -138,7 +157,7 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
               : 'Edit ${_capitalized(widget.itemNoun)}',
           submitLabel: existing == null ? 'Add' : 'Save',
           isSubmitting: submitting,
-          maxWidth: 480,
+          maxWidth: isRoleEditor ? 560 : 480,
           onSubmit: () async {
             if (!(formKey.currentState?.validate() ?? false)) return;
             setLocal(() => submitting = true);
@@ -156,12 +175,24 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
                         codeCtrl.text.trim().isNotEmpty
                     ? codeCtrl.text.trim()
                     : null,
+                color: isRoleEditor ? color : null,
+                canAccessDesktop: flags[RolePermissions.accessDesktop] ?? false,
+                canManageUsers: flags[RolePermissions.manageUsers] ?? false,
+                canManageMovies: flags[RolePermissions.manageMovies] ?? false,
+                canManageHalls: flags[RolePermissions.manageHalls] ?? false,
+                canManageProjections: flags[RolePermissions.manageProjections] ?? false,
+                canManageNews: flags[RolePermissions.manageNews] ?? false,
+                canManageReferenceData: flags[RolePermissions.manageReferenceData] ?? false,
+                canManageRoles: flags[RolePermissions.manageRoles] ?? false,
+                canViewAnalytics: flags[RolePermissions.viewAnalytics] ?? false,
+                canUseChatBot: flags[RolePermissions.useChatBot] ?? false,
               );
 
+              final body = payload.toJson(includeRoleAccess: isRoleEditor);
               if (existing?.id == null) {
-                await _provider.insert(payload.toJson());
+                await _provider.insert(body);
               } else {
-                await _provider.update(existing!.id!, payload.toJson());
+                await _provider.update(existing!.id!, body);
               }
               if (ctx.mounted) Navigator.pop(ctx, true);
             } on ApiClientException catch (e) {
@@ -182,7 +213,7 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
                   decoration: InputDecoration(
                     labelText: 'Name',
                     helperText: nameLocked
-                        ? 'Admin, Staff, and Customer names are used by authorization and cannot be renamed.'
+                        ? 'Admin and Customer names cannot be renamed.'
                         : null,
                   ),
                   validator: (v) => FieldValidators.required(v, field: 'Name'),
@@ -237,6 +268,75 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
                     value: allowsProjections,
                     onChanged: (v) => setLocal(() => allowsProjections = v),
                   ),
+                if (isRoleEditor) ...[
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Badge color',
+                      style: Theme.of(ctx).textTheme.titleSmall,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final preset in RolePermissions.presets)
+                        GestureDetector(
+                          onTap: () => setLocal(() => color = preset),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: parseRoleColor(preset) ?? AppColors.textSecondary,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: color == preset
+                                    ? AppColors.textPrimary
+                                    : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Permissions',
+                      style: Theme.of(ctx).textTheme.titleSmall,
+                    ),
+                  ),
+                  if (permissionsLocked)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4, bottom: 8),
+                      child: Text(
+                        'Admin always has every permission so the last administrator cannot be locked out.',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      ),
+                    )
+                  else
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4, bottom: 8),
+                      child: Text(
+                        'Choose what users with this role may do. Desktop login requires Access desktop app.',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      ),
+                    ),
+                  for (final permission in RolePermissions.all)
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: Text(RolePermissions.labels[permission] ?? permission),
+                      value: flags[permission] ?? false,
+                      onChanged: permissionsLocked
+                          ? null
+                          : (v) => setLocal(() => flags[permission] = v ?? false),
+                    ),
+                ],
               ],
             ),
           ),
@@ -273,6 +373,8 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
         item.allowsProjections == true
             ? 'Projections allowed'
             : 'Projections not allowed',
+      if (widget.extraField == LookupExtraField.roleAccess && (item.color ?? '').isNotEmpty)
+        'Color ${item.color}',
       if ((item.description ?? '').isNotEmpty) item.description!,
     ];
     return parts.join(' · ');
@@ -309,6 +411,13 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
                 return Card(
                   color: AppColors.card,
                   child: ListTile(
+                    leading: widget.extraField == LookupExtraField.roleAccess
+                        ? CircleAvatar(
+                            radius: 14,
+                            backgroundColor:
+                                parseRoleColor(item.color) ?? AppColors.textSecondary,
+                          )
+                        : null,
                     title: Row(
                       children: [
                         Text(

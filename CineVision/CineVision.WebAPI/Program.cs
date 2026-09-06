@@ -1,4 +1,5 @@
 using CineVision.Common.Services.CryptoService;
+using CineVision.Model;
 using CineVision.Model.Requests;
 using CineVision.Model.Responses;
 using CineVision.Model.Access;
@@ -155,8 +156,8 @@ builder.Services.AddScoped<IValidator<ScreenTypeInsertRequest>, LookupRequestVal
 builder.Services.AddScoped<IValidator<ScreenTypeUpdateRequest>, LookupRequestValidator<ScreenTypeUpdateRequest>>();
 builder.Services.AddScoped<IValidator<HallStatusInsertRequest>, LookupRequestValidator<HallStatusInsertRequest>>();
 builder.Services.AddScoped<IValidator<HallStatusUpdateRequest>, LookupRequestValidator<HallStatusUpdateRequest>>();
-builder.Services.AddScoped<IValidator<RoleInsertRequest>, LookupRequestValidator<RoleInsertRequest>>();
-builder.Services.AddScoped<IValidator<RoleUpdateRequest>, LookupRequestValidator<RoleUpdateRequest>>();
+builder.Services.AddScoped<IValidator<RoleInsertRequest>, RoleInsertValidator>();
+builder.Services.AddScoped<IValidator<RoleUpdateRequest>, RoleUpdateValidator>();
 builder.Services.AddScoped<IValidator<AgeRatingInsertRequest>, AgeRatingInsertValidator>();
 builder.Services.AddScoped<IValidator<AgeRatingUpdateRequest>, AgeRatingUpdateValidator>();
 builder.Services.AddScoped<IValidator<LanguageInsertRequest>, LanguageInsertValidator>();
@@ -214,8 +215,8 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         ClockSkew = TimeSpan.Zero,
-        // Tell ASP.NET which JWT claims carry the user name and role so that
-        // User.IsInRole(...) and [Authorize(Roles = RoleNames.Admin)] work off the token.
+        // JWT still carries the role name. Admin and Customer stay frozen; Staff is optional.
+        // Endpoint access is gated by the Permissions claim, not [Authorize(Roles = ...)].
         NameClaimType = ClaimNames.Id,
         RoleClaimType = ClaimNames.Role
     };
@@ -253,7 +254,17 @@ builder.Services.AddAuthentication(options =>
         }
     };
 });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    foreach (var permission in RolePermissionNames.All)
+    {
+        options.AddPolicy(permission, policy =>
+            policy.RequireAssertion(context =>
+                RolePermissionNames.ClaimContains(
+                    context.User.FindFirst(ClaimNames.Permissions)?.Value,
+                    permission)));
+    }
+});
 
 
 builder.Services.AddEndpointsApiExplorer();

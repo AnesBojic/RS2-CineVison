@@ -108,9 +108,18 @@ namespace CineVision.Services
         private UserResponse MapUserResponse(User user, bool includeProfileImage = true)
         {
             var response = _mapper.Map<UserResponse>(user);
-            response.Role = user.UserRoles.FirstOrDefault()?.Role.Name ?? string.Empty;
+            ApplyRoleFields(response, user.UserRoles.FirstOrDefault()?.Role);
             response.ProfileImageBase64 = includeProfileImage ? user.ProfileImageBase64 : null;
             return response;
+        }
+
+        private static void ApplyRoleFields(UserResponse response, Role? role)
+        {
+            response.Role = role?.Name ?? string.Empty;
+            response.RoleColor = role == null
+                ? RolePermissionNames.DefaultColor
+                : RolePermissionNames.NormalizeColor(role.Color);
+            response.Permissions = role == null ? string.Empty : RolePermissionMapping.ToClaimValue(role);
         }
 
         private static void EnsureProfileImageSize(string? profileImageBase64)
@@ -139,7 +148,7 @@ namespace CineVision.Services
         /// <returns>True when the stored role actually changed.</returns>
         private async Task<bool> AssignRoleAsync(int userId, string roleName)
         {
-            var role = await _dbContext.Roles.FirstOrDefaultAsync(r => r.Name == roleName)
+            var role = await _dbContext.Roles.FirstOrDefaultAsync(r => r.Name == roleName.Trim())
                 ?? throw new ClientException($"Role '{roleName}' was not found.");
 
             var existingRoles = await _dbContext.UserRoles.Where(ur => ur.UserId == userId).ToListAsync();
@@ -537,7 +546,7 @@ namespace CineVision.Services
             if (user != null)
             {
                 response = _mapper.Map<UserSensitveResponse>(user);
-                response.Role = user.UserRoles.FirstOrDefault()?.Role.Name ?? string.Empty;
+                ApplyRoleFields(response, user.UserRoles.FirstOrDefault()?.Role);
             }
 
             return response;

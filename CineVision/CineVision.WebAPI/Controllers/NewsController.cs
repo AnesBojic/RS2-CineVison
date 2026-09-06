@@ -1,4 +1,5 @@
-﻿using CineVision.Model.Requests;
+﻿using CineVision.Model;
+using CineVision.Model.Requests;
 using CineVision.Model.Responses;
 using CineVision.Model.SearchObjects;
 using CineVision.Services;
@@ -13,4 +14,6 @@ public class NewsController : BaseCRUDController<NewsResponse, NewsSearchObject,
     public NewsController(INewsService newsService) : base(newsService)
     {
     }
+
+    protected override string WritePermission => RolePermissionNames.ManageNews;
 }

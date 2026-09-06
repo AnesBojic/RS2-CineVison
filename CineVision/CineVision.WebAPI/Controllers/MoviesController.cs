@@ -15,6 +15,8 @@ public class MoviesController : BaseCRUDController<MovieResponse, MovieSearchObj
     {
     }
 
+    protected override string WritePermission => RolePermissionNames.ManageMovies;
+
     [Authorize]
     [HttpPost("SearchHistory")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -34,7 +36,7 @@ public class MoviesController : BaseCRUDController<MovieResponse, MovieSearchObj
         return NoContent();
     }
 
-    [Authorize(Roles = RoleNames.AdminStaff)]
+    [Authorize(Policy = RolePermissionNames.ManageMovies)]
     [HttpPut("{id}/Poster")]
     [ProducesResponseType(typeof(MovieResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -47,7 +49,7 @@ public class MoviesController : BaseCRUDController<MovieResponse, MovieSearchObj
     /// <summary>
     /// Preview of related records that will be removed if this movie is cascade-deleted.
     /// </summary>
-    [Authorize(Roles = RoleNames.AdminStaff)]
+    [Authorize(Policy = RolePermissionNames.ManageMovies)]
     [HttpGet("{id}/DeleteImpact")]
     [ProducesResponseType(typeof(CascadeDeleteImpactResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

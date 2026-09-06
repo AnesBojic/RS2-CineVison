@@ -16,7 +16,7 @@ namespace CineVision.WebAPI.Controllers;
 /// </summary>
 [ApiController]
 [Route("[controller]")]
-[Authorize(Roles = RoleNames.AdminStaff)]
+[Authorize(Policy = RolePermissionNames.UseChatBot)]
 public class ChatBotController : ControllerBase
 {
     private readonly IChatBotService _chatBotService;

@@ -177,7 +177,10 @@ class _UserListState extends State<UserList> {
         ),
       ])),
       DataCell(Text(u.email ?? '—')),
-      DataCell(RoleBadge(role: (u.role?.isNotEmpty == true) ? u.role! : 'Customer')),
+      DataCell(RoleBadge(
+        role: (u.role?.isNotEmpty == true) ? u.role! : 'Customer',
+        colorHex: _colorForRole(u.role),
+      )),
       DataCell(StatusBadge(
         label: active ? 'Active' : 'Inactive',
         color: active ? AppColors.green : AppColors.orange,
@@ -314,6 +317,14 @@ class _UserListState extends State<UserList> {
       ? null
       : 'No roles are available. A user cannot be saved without one.';
 
+  String? _colorForRole(String? name) {
+    if (name == null || name.isEmpty) return null;
+    for (final role in _roles) {
+      if (role.name == name) return role.color;
+    }
+    return null;
+  }
+
   Future<void> _showUserDialog({User? user}) async {
     final blockedReason = _missingRolesReason;
     if (blockedReason != null) {
@@ -342,9 +353,7 @@ class _UserListState extends State<UserList> {
     final currentRole = fullUser?.role;
     final roleNames = _roles
         .map((r) => r.name ?? '')
-        .where((name) =>
-            UserRoles.isAuthorizationRole(name) ||
-            (currentRole != null && name == currentRole))
+        .where((name) => name.isNotEmpty)
         .toList();
     String selectedRole = roleNames.contains(currentRole)
         ? currentRole!
@@ -498,9 +507,20 @@ class _UserListState extends State<UserList> {
                 dropdownColor: AppColors.card,
                 decoration: const InputDecoration(labelText: 'Role'),
                 items: _roles
+                    .where((r) => (r.name ?? '').isNotEmpty)
                     .map((r) => DropdownMenuItem(
                           value: r.name,
-                          child: Text(r.name ?? ''),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 6,
+                                backgroundColor:
+                                    parseRoleColor(r.color) ?? AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(r.name ?? ''),
+                            ],
+                          ),
                         ))
                     .toList(),
                 onChanged: (v) =>

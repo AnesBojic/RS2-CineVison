@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CineVision.WebAPI.Controllers;
 
-[Authorize(Roles = RoleNames.AdminStaff)]
+[Authorize(Policy = RolePermissionNames.ManageHalls)]
 public class HallsController : BaseCRUDController<HallResponse, HallSearchObject, HallInsertRequest, HallUpdateRequest, IHallService>
 {
     private readonly IHallService _hallService;
@@ -18,7 +18,9 @@ public class HallsController : BaseCRUDController<HallResponse, HallSearchObject
         _hallService = hallService;
     }
 
-    [Authorize(Roles = RoleNames.AdminStaff)]
+    protected override string WritePermission => RolePermissionNames.ManageHalls;
+
+    [Authorize(Policy = RolePermissionNames.ManageHalls)]
     [HttpPut("{id}/SeatLayout")]
     public async Task<HallResponse> UpdateSeatLayout(int id, [FromBody] HallSeatLayoutUpdateRequest request)
     {

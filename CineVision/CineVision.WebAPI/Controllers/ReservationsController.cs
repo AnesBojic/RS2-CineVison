@@ -51,7 +51,7 @@ public class ReservationsController : BaseReadController<ReservationResponse, Re
 
     /// <summary>Marks a Confirmed or Paid booking as Completed (Admin or Staff).</summary>
     [HttpPost("{id}/Complete")]
-    [Authorize(Roles = RoleNames.AdminStaff)]
+    [Authorize(Policy = RolePermissionNames.AccessDesktop)]
     [ProducesResponseType(typeof(ReservationResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<ReservationResponse>> Complete(int id)
     {

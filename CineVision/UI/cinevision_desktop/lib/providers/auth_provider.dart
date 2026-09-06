@@ -2,6 +2,7 @@
 
 import 'package:cinevision_desktop/core/constants/api_config.dart';
 import 'package:cinevision_desktop/core/enums/api_enums.dart';
+import 'package:cinevision_desktop/core/enums/role_permissions.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -14,6 +15,8 @@ class AuthProvider extends ChangeNotifier {
   String? _firstName;
   String? _lastName;
   String? _role;
+  String? _roleColor;
+  final Set<String> _permissions = {};
   int? _userId;
   String? _email;
   String? _profileImageBase64;
@@ -22,6 +25,7 @@ class AuthProvider extends ChangeNotifier {
   String? get firstName => _firstName;
   String? get lastName => _lastName;
   String? get role => _role;
+  String? get roleColor => _roleColor;
   int? get userId => _userId;
   String? get email => _email;
   String? get profileImageBase64 => _profileImageBase64;
@@ -41,6 +45,9 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isAdmin => _hasRole(UserRoles.admin);
   bool get isStaff => _hasRole(UserRoles.staff);
+  bool get canAccessDesktop => hasPermission(RolePermissions.accessDesktop);
+
+  bool hasPermission(String permission) => _permissions.contains(permission);
 
   bool _hasRole(String role) => (_role ?? '').toLowerCase() == role.toLowerCase();
 
@@ -99,7 +106,7 @@ class AuthProvider extends ChangeNotifier {
     _accesstoken = data['accesstoken'] as String?;
     _applyTokenClaims(_accesstoken);
 
-    if (!isAdmin && !isStaff) {
+    if (!canAccessDesktop) {
       _clearSession();
       throw Exception(
         'You do not have authorization to access the desktop application.',
@@ -138,6 +145,8 @@ class AuthProvider extends ChangeNotifier {
     _firstName = null;
     _lastName = null;
     _role = null;
+    _roleColor = null;
+    _permissions.clear();
     _userId = null;
     _email = null;
     if (token == null || token.isEmpty) return;
@@ -151,12 +160,28 @@ class AuthProvider extends ChangeNotifier {
       _firstName = payload['FirstName']?.toString() ?? payload['firstName']?.toString();
       _lastName = payload['LastName']?.toString() ?? payload['lastName']?.toString();
       _role = payload['Role']?.toString() ?? payload['role']?.toString();
+      _roleColor = payload['RoleColor']?.toString() ?? payload['roleColor']?.toString();
+      _permissions
+        ..clear()
+        ..addAll(_parsePermissions(payload['Permissions'] ?? payload['permissions']));
       _email = payload['Email']?.toString() ?? payload['email']?.toString();
       final idRaw = payload['Id'] ?? payload['id'] ?? payload['nameid'];
       if (idRaw != null) {
         _userId = int.tryParse(idRaw.toString());
       }
     } catch (_) {}
+  }
+
+  static Iterable<String> _parsePermissions(dynamic raw) {
+    if (raw is List) {
+      return raw.map((e) => e.toString()).where((e) => e.isNotEmpty);
+    }
+    if (raw == null) return const [];
+    return raw
+        .toString()
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty);
   }
 
   bool isValidResponse(http.Response response) {
@@ -277,6 +302,8 @@ class AuthProvider extends ChangeNotifier {
     _firstName = null;
     _lastName = null;
     _role = null;
+    _roleColor = null;
+    _permissions.clear();
     _userId = null;
     _email = null;
     _profileImageBase64 = null;

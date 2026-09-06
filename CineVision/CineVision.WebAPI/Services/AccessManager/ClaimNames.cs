@@ -7,6 +7,8 @@
         public static readonly string LastName = "LastName";
         public static readonly string Email = "Email";
         public static readonly string Role = "Role";
+        public static readonly string Permissions = "Permissions";
+        public static readonly string RoleColor = "RoleColor";
         public static readonly string IsActive = "IsActive";
 
         /// <summary>Session generation the token was issued for; see ITokenRevocationService.</summary>

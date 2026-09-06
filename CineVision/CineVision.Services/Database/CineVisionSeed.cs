@@ -173,9 +173,63 @@ namespace CineVision.Services.Database
         private void SeedRoles(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Role>().HasData(
-                new { Id = 1, Name = RoleNames.Admin, Description = "Administrator role with full permissions", CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 2, Name = RoleNames.Customer, Description = "Default customer role", CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 3, Name = RoleNames.Staff, Description = "Employee role for content management and analytics", CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+                new
+                {
+                    Id = 1,
+                    Name = RoleNames.Admin,
+                    Description = "Administrator role with full permissions",
+                    Color = RolePermissionNames.AdminColor,
+                    CanAccessDesktop = true,
+                    CanManageUsers = true,
+                    CanManageMovies = true,
+                    CanManageHalls = true,
+                    CanManageProjections = true,
+                    CanManageNews = true,
+                    CanManageReferenceData = true,
+                    CanManageRoles = true,
+                    CanViewAnalytics = true,
+                    CanUseChatBot = true,
+                    CreatedAt = SeedDate,
+                    UpdatedAt = (DateTime?)null
+                },
+                new
+                {
+                    Id = 2,
+                    Name = RoleNames.Customer,
+                    Description = "Default customer role",
+                    Color = RolePermissionNames.CustomerColor,
+                    CanAccessDesktop = false,
+                    CanManageUsers = false,
+                    CanManageMovies = false,
+                    CanManageHalls = false,
+                    CanManageProjections = false,
+                    CanManageNews = false,
+                    CanManageReferenceData = false,
+                    CanManageRoles = false,
+                    CanViewAnalytics = false,
+                    CanUseChatBot = false,
+                    CreatedAt = SeedDate,
+                    UpdatedAt = (DateTime?)null
+                },
+                new
+                {
+                    Id = 3,
+                    Name = RoleNames.Staff,
+                    Description = "Employee role for content management and analytics",
+                    Color = RolePermissionNames.StaffColor,
+                    CanAccessDesktop = true,
+                    CanManageUsers = false,
+                    CanManageMovies = true,
+                    CanManageHalls = true,
+                    CanManageProjections = true,
+                    CanManageNews = true,
+                    CanManageReferenceData = true,
+                    CanManageRoles = false,
+                    CanViewAnalytics = true,
+                    CanUseChatBot = true,
+                    CreatedAt = SeedDate,
+                    UpdatedAt = (DateTime?)null
+                }
             );
         }
 

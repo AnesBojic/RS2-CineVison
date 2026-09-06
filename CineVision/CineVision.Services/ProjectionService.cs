@@ -272,9 +272,9 @@ namespace CineVision.Services
                 await _cancelValidator.ValidateAndThrowAsync(request);
             }
 
-            if (!_userAccessor.IsInRole(RoleNames.Admin) && !_userAccessor.IsInRole(RoleNames.Staff))
+            if (!_userAccessor.HasPermission(RolePermissionNames.ManageProjections))
             {
-                throw new ClientException("Only Admin or Staff can cancel a projection.");
+                throw new ClientException("You do not have permission to cancel a projection.");
             }
 
             var staffUserId = _userAccessor.GetUserId()

@@ -8,6 +8,9 @@
         public string Email { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
+        public string RoleColor { get; set; } = string.Empty;
+        /// <summary>Comma-separated <see cref="RolePermissionNames"/> values from the assigned role.</summary>
+        public string Permissions { get; set; } = string.Empty;
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? LastLoginAt { get; set; }

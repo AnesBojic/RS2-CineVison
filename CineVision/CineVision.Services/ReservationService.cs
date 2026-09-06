@@ -80,7 +80,7 @@ namespace CineVision.Services
         }
 
         private bool IsAdminOrStaff() =>
-            _userAccessor.IsInRole(RoleNames.Admin) || _userAccessor.IsInRole(RoleNames.Staff);
+            _userAccessor.HasPermission(RolePermissionNames.AccessDesktop);
 
         protected override IQueryable<Reservation> ApplyFilters(IQueryable<Reservation> query, ReservationSearchObject? search)
         {

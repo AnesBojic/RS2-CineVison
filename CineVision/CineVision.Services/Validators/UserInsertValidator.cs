@@ -1,12 +1,14 @@
 ﻿using CineVision.Model;
 using CineVision.Model.Requests;
+using CineVision.Services.Database;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 
 namespace CineVision.Services.Validators
 {
     public class UserInsertValidator : AbstractValidator<UserInsertRequest>
     {
-        public UserInsertValidator()
+        public UserInsertValidator(CineVisionDbContext dbContext)
         {
             RuleFor(x => x.FirstName)
                 .NotEmpty().WithMessage("First name is required.")
@@ -33,8 +35,9 @@ namespace CineVision.Services.Validators
 
             RuleFor(x => x.Role)
                 .NotEmpty().WithMessage("Role is required.")
-                .Must(RoleNames.IsKnown)
-                .WithMessage($"Role must be {RoleNames.Admin}, {RoleNames.Staff}, or {RoleNames.Customer}.");
+                .MustAsync(async (role, cancellation) =>
+                    await dbContext.Roles.AnyAsync(r => r.Name == role, cancellation))
+                .WithMessage("Role was not found.");
 
             RuleFor(x => x.PhoneNumber)
                 .MaximumLength(20).WithMessage("Phone number cannot exceed 20 characters.")

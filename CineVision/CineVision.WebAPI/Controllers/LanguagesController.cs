@@ -1,4 +1,5 @@
-﻿using CineVision.Model.Requests;
+﻿using CineVision.Model;
+using CineVision.Model.Requests;
 using CineVision.Model.Responses;
 using CineVision.Model.SearchObjects;
 using CineVision.Services;
@@ -12,4 +13,6 @@ public class LanguagesController : BaseCRUDController<LanguageResponse, LookupSe
     public LanguagesController(ILanguageService service) : base(service)
     {
     }
+
+    protected override string WritePermission => RolePermissionNames.ManageReferenceData;
 }

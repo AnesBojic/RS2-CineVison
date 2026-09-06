@@ -15,13 +15,18 @@ namespace CineVision.Services
     public class RoleService
         : LookupService<Role, RoleResponse, RoleInsertRequest, RoleUpdateRequest>, IRoleService
     {
+        private readonly ITokenRevocationService _tokenRevocationService;
+        private List<int>? _pendingSessionInvalidationUserIds;
+
         public RoleService(
             CineVisionDbContext dbContext,
             MapsterMapper.IMapper mapper,
             IValidator<RoleInsertRequest> insertValidator,
-            IValidator<RoleUpdateRequest> updateValidator)
+            IValidator<RoleUpdateRequest> updateValidator,
+            ITokenRevocationService tokenRevocationService)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
+            _tokenRevocationService = tokenRevocationService;
         }
 
         protected override string EntityLabel => "role";
@@ -42,6 +47,7 @@ namespace CineVision.Services
         {
             request.Name = (request.Name ?? string.Empty).Trim();
             EnsureNameIsNotReserved(request.Name, existingAuthorizationName: null);
+            RolePermissionMapping.NormalizeColor(request);
             return await base.InsertAsync(request);
         }
 
@@ -53,13 +59,59 @@ namespace CineVision.Services
             request.Name = (request.Name ?? string.Empty).Trim();
             EnsureNameIsNotReserved(request.Name, existingAuthorizationName: entity.Name);
 
-            // Keep the exact seeded string so "Admin " cannot slip past the rename guard.
-            if (IsAuthorizationRole(entity.Name))
+            if (IsSystemRole(entity.Name))
             {
                 request.Name = entity.Name;
             }
 
-            return await base.UpdateAsync(id, request);
+            RolePermissionMapping.NormalizeColor(request);
+            if (string.Equals(entity.Name, RoleNames.Admin, StringComparison.Ordinal))
+            {
+                RolePermissionMapping.ApplyFullAccess(request);
+            }
+
+            var accessChanged = RolePermissionMapping.Snapshot(entity) != RolePermissionMapping.Snapshot(request);
+            if (accessChanged)
+            {
+                var userIds = await _dbContext.UserRoles
+                    .Where(ur => ur.RoleId == id)
+                    .Select(ur => ur.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (userIds.Count > 0)
+                {
+                    var users = await _dbContext.Users.Where(u => userIds.Contains(u.Id)).ToListAsync();
+                    foreach (var user in users)
+                    {
+                        user.TokenVersion++;
+                    }
+
+                    var tokens = await _dbContext.RefreshTokens
+                        .Where(t => userIds.Contains(t.UserId))
+                        .ToListAsync();
+                    if (tokens.Count > 0)
+                    {
+                        _dbContext.RefreshTokens.RemoveRange(tokens);
+                    }
+
+                    _pendingSessionInvalidationUserIds = userIds;
+                }
+            }
+
+            var result = await base.UpdateAsync(id, request);
+
+            if (_pendingSessionInvalidationUserIds != null)
+            {
+                foreach (var userId in _pendingSessionInvalidationUserIds)
+                {
+                    _tokenRevocationService.InvalidateUserSessions(userId);
+                }
+
+                _pendingSessionInvalidationUserIds = null;
+            }
+
+            return result;
         }
 
         public override async Task DeleteAsync(int id)
@@ -67,11 +119,10 @@ namespace CineVision.Services
             var entity = await _dbContext.Roles.FindAsync(id)
                 ?? throw new NotFoundException($"Role with id {id} not found.");
 
-            if (IsAuthorizationRole(entity.Name))
+            if (IsSystemRole(entity.Name))
             {
                 throw new ClientException(
-                    $"'{entity.Name}' is used by authorization ([Authorize] and JWT role claims) " +
-                    "and cannot be deleted.");
+                    $"'{entity.Name}' is a system role and cannot be deleted.");
             }
 
             await base.DeleteAsync(id);
@@ -79,49 +130,51 @@ namespace CineVision.Services
 
         protected override void AfterApplyUsage(RoleResponse response)
         {
-            if (!IsAuthorizationRole(response.Name))
+            response.IsSystemRole = IsSystemRole(response.Name);
+            response.PermissionsLocked = string.Equals(response.Name, RoleNames.Admin, StringComparison.Ordinal);
+
+            if (!response.IsSystemRole)
             {
                 return;
             }
 
             response.CanDelete = false;
             response.DeleteBlockedReason =
-                "Authorization depends on the Admin, Staff, and Customer names, so this role cannot be deleted.";
+                "Admin and Customer are system roles and cannot be deleted.";
         }
 
         /// <summary>
-        /// JWT [Authorize(Roles=...)] and RoleNames constants expect these exact strings.
-        /// Descriptions may change; the names may not, and new rows must not impersonate them.
+        /// Admin and Customer names stay unique and frozen. Staff is optional.
+        /// What a role can do is controlled by permission flags, not the name.
         /// </summary>
         private static void EnsureNameIsNotReserved(string? requestedName, string? existingAuthorizationName)
         {
             var trimmed = (requestedName ?? string.Empty).Trim();
 
-            if (IsAuthorizationRole(existingAuthorizationName)
+            if (IsSystemRole(existingAuthorizationName)
                 && !string.Equals(existingAuthorizationName, trimmed, StringComparison.Ordinal))
             {
                 throw new ClientException(
-                    $"The '{existingAuthorizationName}' role name is used by authorization and cannot be renamed. " +
-                    "You can still update the description.");
+                    $"The '{existingAuthorizationName}' role name is reserved and cannot be renamed. " +
+                    "You can still update the description, color, and permissions.");
             }
 
-            if (IsAuthorizationRole(existingAuthorizationName))
+            if (IsSystemRole(existingAuthorizationName))
             {
                 return;
             }
 
-            if (CollidesWithAuthorizationRole(trimmed))
+            if (CollidesWithSystemRole(trimmed))
             {
                 throw new ClientException(
-                    $"'{trimmed}' is reserved for authorization. Use {RoleNames.Admin}, {RoleNames.Staff}, " +
-                    $"or {RoleNames.Customer} only for those seeded roles.");
+                    $"'{trimmed}' is reserved. Use {RoleNames.Admin} or {RoleNames.Customer} " +
+                    "only for those system roles.");
             }
         }
 
-        private static bool IsAuthorizationRole(string? name) =>
-            RoleNames.AllRoles.Any(r => string.Equals(r, name, StringComparison.Ordinal));
+        private static bool IsSystemRole(string? name) => RoleNames.IsSystemRole(name);
 
-        private static bool CollidesWithAuthorizationRole(string? name) =>
-            RoleNames.AllRoles.Any(r => string.Equals(r, name, StringComparison.OrdinalIgnoreCase));
+        private static bool CollidesWithSystemRole(string? name) =>
+            RoleNames.SystemRoles.Any(r => string.Equals(r, name, StringComparison.OrdinalIgnoreCase));
     }
 }

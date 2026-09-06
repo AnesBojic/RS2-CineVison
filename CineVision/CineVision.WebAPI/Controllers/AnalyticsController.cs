@@ -13,7 +13,7 @@ namespace CineVision.WebAPI.Controllers;
 /// </summary>
 [ApiController]
 [Route("[controller]")]
-[Authorize(Roles = RoleNames.AdminStaff)]
+[Authorize(Policy = RolePermissionNames.ViewAnalytics)]
 public class AnalyticsController : ControllerBase
 {
     private readonly IAnalyticsService _analyticsService;

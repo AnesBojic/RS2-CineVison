@@ -7,10 +7,12 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace CineVision.WebAPI.Controllers;
 
-[Authorize(Roles = RoleNames.AdminStaff)]
+[Authorize(Policy = RolePermissionNames.ManageHalls)]
 public class SeatsController : BaseCRUDController<SeatResponse, SeatSearchObject, SeatInsertRequest, SeatUpdateRequest, ISeatService>
 {
     public SeatsController(ISeatService seatService) : base(seatService)
     {
     }
+
+    protected override string WritePermission => RolePermissionNames.ManageHalls;
 }

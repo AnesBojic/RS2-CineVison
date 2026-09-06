@@ -16,7 +16,7 @@ namespace CineVision.WebAPI.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-[Authorize(Roles = RoleNames.Admin)]
+[Authorize(Policy = RolePermissionNames.ManageUsers)]
 public class UsersController : BaseCRUDController<UserResponse, UserSearch, UserInsertRequest, UserUpdateRequest, IUserService>
 {
     private readonly IEmailService _emailService;
@@ -37,6 +37,8 @@ public class UsersController : BaseCRUDController<UserResponse, UserSearch, User
         _userAccessor = userAccessor;
         _emailSendValidator = emailSendValidator;
     }
+
+    protected override string WritePermission => RolePermissionNames.ManageUsers;
 
     /// <summary>Activate or deactivate a user account (preferred over delete).</summary>
     [HttpPut("{id}/Active")]

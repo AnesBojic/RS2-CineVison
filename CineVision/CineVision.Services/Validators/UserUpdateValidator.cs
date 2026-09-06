@@ -1,12 +1,13 @@
-﻿using CineVision.Model;
-using CineVision.Model.Requests;
+﻿using CineVision.Model.Requests;
+using CineVision.Services.Database;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 
 namespace CineVision.Services.Validators
 {
     public class UserUpdateValidator : AbstractValidator<UserUpdateRequest>
     {
-        public UserUpdateValidator()
+        public UserUpdateValidator(CineVisionDbContext dbContext)
         {
             RuleFor(x => x.FirstName)
                 .NotEmpty().WithMessage("First name is required.")
@@ -28,8 +29,9 @@ namespace CineVision.Services.Validators
 
             RuleFor(x => x.Role)
                 .NotEmpty().WithMessage("Role is required.")
-                .Must(RoleNames.IsKnown)
-                .WithMessage($"Role must be {RoleNames.Admin}, {RoleNames.Staff}, or {RoleNames.Customer}.");
+                .MustAsync(async (role, cancellation) =>
+                    await dbContext.Roles.AnyAsync(r => r.Name == role, cancellation))
+                .WithMessage("Role was not found.");
         }
     }
 }

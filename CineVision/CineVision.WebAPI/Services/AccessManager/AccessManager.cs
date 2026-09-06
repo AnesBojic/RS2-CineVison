@@ -156,6 +156,10 @@ namespace CineVision.WebAPI.Services.AccessManager
                     new Claim(ClaimNames.LastName, user.LastName ?? string.Empty),
                     new Claim(ClaimNames.Email, user.Email ?? string.Empty),
                     new Claim(ClaimNames.Role, user.Role ?? RoleNames.Customer),
+                    new Claim(ClaimNames.Permissions, user.Permissions ?? string.Empty),
+                    new Claim(ClaimNames.RoleColor, string.IsNullOrWhiteSpace(user.RoleColor)
+                        ? RolePermissionNames.DefaultColor
+                        : user.RoleColor),
                     new Claim(ClaimNames.IsActive, user.IsActive.ToString()),
                     new Claim(ClaimNames.TokenVersion, tokenVersion.ToString())
                 }),

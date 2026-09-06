@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace CineVision.WebAPI.Hubs
 {
-    [Authorize(Roles = RoleNames.AdminStaff)]
+    [Authorize(Policy = RolePermissionNames.ViewAnalytics)]
     public class AnalyticsHub : Hub
     {
         private readonly IAnalyticsRealtimePublisher _publisher;

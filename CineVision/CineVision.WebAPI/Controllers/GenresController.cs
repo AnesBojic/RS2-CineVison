@@ -1,4 +1,5 @@
-﻿using CineVision.Model.Requests;
+﻿using CineVision.Model;
+using CineVision.Model.Requests;
 using CineVision.Model.Responses;
 using CineVision.Model.SearchObjects;
 using CineVision.Services;
@@ -13,4 +14,6 @@ public class GenresController : BaseCRUDController<GenreResponse, GenreSearchObj
     public GenresController(IGenreService genreService) : base(genreService)
     {
     }
+
+    protected override string WritePermission => RolePermissionNames.ManageReferenceData;
 }

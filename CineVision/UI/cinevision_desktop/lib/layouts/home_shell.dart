@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cinevision_desktop/core/enums/api_enums.dart';
+import 'package:cinevision_desktop/core/enums/role_permissions.dart';
 import 'package:cinevision_desktop/core/theme/app_theme.dart';
 import 'package:cinevision_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:cinevision_desktop/providers/analytics_provider.dart';
@@ -36,22 +37,28 @@ class _HomeShellState extends State<HomeShell> {
   /// 0 Dashboard, 1 Movies, 2 Halls, 3 Projections, 4 News, 5 Reference data,
   /// 6 Users (admin), 7 Analytics, 8 Chatbot
   static const _allNavItems = [
-    _NavItem('Dashboard', Icons.home_outlined, Icons.home, adminOnly: false),
-    _NavItem('Movies', Icons.movie_outlined, Icons.movie, adminOnly: false),
-    _NavItem('Halls', Icons.tv_outlined, Icons.tv, adminOnly: false),
-    _NavItem('Projections', Icons.calendar_today_outlined, Icons.calendar_today, adminOnly: false),
-    _NavItem('News', Icons.campaign_outlined, Icons.campaign, adminOnly: false),
-    _NavItem('Reference Data', Icons.list_alt_outlined, Icons.list_alt, adminOnly: false),
-    _NavItem('Users', Icons.people_outline, Icons.people, adminOnly: true),
-    _NavItem('Analytics', Icons.bar_chart_outlined, Icons.bar_chart, adminOnly: false),
-    _NavItem('Chatbot', Icons.chat_bubble_outline, Icons.chat_bubble, adminOnly: false),
+    _NavItem('Dashboard', Icons.home_outlined, Icons.home, permission: RolePermissions.viewAnalytics),
+    _NavItem('Movies', Icons.movie_outlined, Icons.movie, permission: RolePermissions.manageMovies),
+    _NavItem('Halls', Icons.tv_outlined, Icons.tv, permission: RolePermissions.manageHalls),
+    _NavItem('Projections', Icons.calendar_today_outlined, Icons.calendar_today, permission: RolePermissions.manageProjections),
+    _NavItem('News', Icons.campaign_outlined, Icons.campaign, permission: RolePermissions.manageNews),
+    _NavItem('Reference Data', Icons.list_alt_outlined, Icons.list_alt, permission: RolePermissions.manageReferenceData),
+    _NavItem('Users', Icons.people_outline, Icons.people, permission: RolePermissions.manageUsers),
+    _NavItem('Analytics', Icons.bar_chart_outlined, Icons.bar_chart, permission: RolePermissions.viewAnalytics),
+    _NavItem('Chatbot', Icons.chat_bubble_outline, Icons.chat_bubble, permission: RolePermissions.useChatBot),
   ];
 
   static const _chatbotIndex = 8;
 
   List<_NavItem> get _visibleNavItems {
     final auth = context.read<AuthProvider>();
-    return _allNavItems.where((item) => !item.adminOnly || auth.isAdmin).toList();
+    return _allNavItems.where((item) {
+      if (item.permission == RolePermissions.manageReferenceData) {
+        return auth.hasPermission(RolePermissions.manageReferenceData) ||
+            auth.hasPermission(RolePermissions.manageRoles);
+      }
+      return auth.hasPermission(item.permission);
+    }).toList();
   }
 
   @override
@@ -183,9 +190,19 @@ class _HomeShellState extends State<HomeShell> {
     final auth = context.watch<AuthProvider>();
     final visibleItems = _visibleNavItems;
 
+    if (visibleItems.isEmpty) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: const Center(
+          child: Text('This role has no desktop sections assigned.'),
+        ),
+      );
+    }
     if (!visibleItems.any((item) => _allNavItems.indexOf(item) == _selectedIndex)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _selectedIndex = 0);
+        if (mounted) {
+          setState(() => _selectedIndex = _allNavItems.indexOf(visibleItems.first));
+        }
       });
     }
 
@@ -369,7 +386,10 @@ class _HomeShellState extends State<HomeShell> {
                   ),
                   Text(
                     auth.role ?? 'Staff',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    style: TextStyle(
+                      color: parseRoleColor(auth.roleColor) ?? AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -412,9 +432,9 @@ class _HomeShellState extends State<HomeShell> {
 }
 
 class _NavItem {
-  const _NavItem(this.label, this.icon, this.activeIcon, {required this.adminOnly});
+  const _NavItem(this.label, this.icon, this.activeIcon, {required this.permission});
   final String label;
   final IconData icon;
   final IconData activeIcon;
-  final bool adminOnly;
+  final String permission;
 }

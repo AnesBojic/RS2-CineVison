@@ -448,12 +448,24 @@ class StatusBadge extends StatelessWidget {
   }
 }
 
+Color? parseRoleColor(String? hex) {
+  if (hex == null || hex.isEmpty) return null;
+  final value = hex.replaceFirst('#', '');
+  if (value.length != 6) return null;
+  final parsed = int.tryParse(value, radix: 16);
+  if (parsed == null) return null;
+  return Color(0xFF000000 | parsed);
+}
+
 class RoleBadge extends StatelessWidget {
-  const RoleBadge({super.key, required this.role});
+  const RoleBadge({super.key, required this.role, this.colorHex});
 
   final String role;
+  final String? colorHex;
 
   Color get _color {
+    final parsed = parseRoleColor(colorHex);
+    if (parsed != null) return parsed;
     switch (role.toLowerCase()) {
       case 'admin':
         return AppColors.purple;

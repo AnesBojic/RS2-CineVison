@@ -15,6 +15,8 @@ public class ProjectionsController : BaseCRUDController<ProjectionResponse, Proj
     {
     }
 
+    protected override string WritePermission => RolePermissionNames.ManageProjections;
+
     [HttpGet("{id}/Seats")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -27,7 +29,7 @@ public class ProjectionsController : BaseCRUDController<ProjectionResponse, Proj
     /// <summary>
     /// Preview of related records that will be removed if this projection is cascade-deleted.
     /// </summary>
-    [Authorize(Roles = RoleNames.AdminStaff)]
+    [Authorize(Policy = RolePermissionNames.ManageProjections)]
     [HttpGet("{id}/DeleteImpact")]
     [ProducesResponseType(typeof(CascadeDeleteImpactResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -37,7 +39,7 @@ public class ProjectionsController : BaseCRUDController<ProjectionResponse, Proj
         return Ok(result);
     }
 
-    [Authorize(Roles = RoleNames.AdminStaff)]
+    [Authorize(Policy = RolePermissionNames.ManageProjections)]
     [HttpPost("{id}/Cancel")]
     [ProducesResponseType(typeof(ProjectionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

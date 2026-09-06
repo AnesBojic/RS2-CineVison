@@ -11,4 +11,9 @@ public interface IAuthenticatedUserAccessor
     /// Returns whether the current principal is authenticated and has the given application role (JWT Role claim).
     /// </summary>
     bool IsInRole(string role);
+
+    /// <summary>
+    /// Returns whether the JWT <c>Permissions</c> claim includes the given permission name.
+    /// </summary>
+    bool HasPermission(string permission);
 }

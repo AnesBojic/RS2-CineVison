@@ -1,6 +1,5 @@
 ﻿import 'package:cinevision_desktop/main.dart';
 import 'package:cinevision_desktop/providers/auth_provider.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 

@@ -179,7 +179,7 @@ namespace CineVision.Services
                 ?? throw new KeyNotFoundException($"Review with id {id} not found.");
 
             // Users may remove their own review; administrators may remove any review.
-            if (review.UserId != userId && !_userAccessor.IsInRole(RoleNames.Admin))
+            if (review.UserId != userId && !_userAccessor.HasPermission(RolePermissionNames.ManageUsers))
             {
                 throw new ClientException("You can only delete your own review.");
             }
