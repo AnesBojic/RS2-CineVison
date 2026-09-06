@@ -65,6 +65,8 @@ namespace CineVision.Services
             var userId = _userAccessor.GetUserId()
                 ?? throw new InvalidOperationException("User id claim is missing.");
 
+            // Whole catalog: Movie has no IsActive/state flag. "Now showing" is a client filter
+            // on upcoming projections, not a ranking predicate (see recommender-dokumentacija.md).
             var movies = await _dbContext.Movies
                 .AsNoTracking()
                 .Include(m => m.Genre)

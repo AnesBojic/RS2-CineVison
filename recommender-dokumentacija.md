@@ -36,7 +36,19 @@ Za search profil uzima se do **40 najnovijih** zapisa iz `SearchHistories` za tr
 
 ### 3.1. Kandidati
 
-Svi **aktivni** filmovi (`Movies.IsActive = true`) ulaze u rangiranje.
+`Movies` **nema** kolonu `IsActive` (niti published/archived status). Rangiranje u
+`RecommendationService.GetRecommendationsAsync()` uzima **cijeli katalog**
+(`_dbContext.Movies` bez dodatnog filtera).
+
+To je namjerno: popularity / content / search skorovi se računaju nad svim
+filmovima, pa recenzija ili rezervacija filma koji više nije na rasporedu i
+dalje ulazi u profil ukusa.
+
+Ograničenje na “sada u ponudi” **nije** dio algoritma. Flutter klijent
+(`movies_page.dart`) nakon API odgovora zadržava samo filmove čiji `id` postoji
+u skupu predstojećih projekcija (`GET /Projections?onlyUpcoming=true`:
+`CancelledAt == null`, `StartTime >= UtcNow`, sala `AllowsProjections`).
+To je prikazni filter, ne uslov rangiranja.
 
 ### 3.2. Popularity score
 
@@ -166,9 +178,11 @@ Odgovor (`RecommendationResponse`):
 
 ### Mobile
 
-- Učitavanje: `MovieProvider.getRecommendations`  
+- Učitavanje: `MovieProvider.getRecommendations` (`GET /Movies/Recommendations?take=…`)  
 - Upis pretrage: `POST /Movies/SearchHistory` pri filter/search akcijama  
-- UI: `movies_page.dart` + `movie_card.dart` (prikaz razloga)
+- Prikaz: `movies_page.dart` + `movie_card.dart` (`reason` na kartici)  
+- Nakon rangiranja klijent ostavlja samo filmove s predstojećom projekcijom
+  (`_upcomingMovieIds`). Katalog koji API rangira može biti širi od liste na ekranu.
 
 ---
 
@@ -190,7 +204,7 @@ Težine treba da budu u rasponu koji ima smisla za hibrid (zbir tipično 1.0). P
 |---------|-------------------|
 | Popularity | Rješava cold start i ističe popularan sadržaj |
 | Content-based | Personalizacija prema žanru i sličnim opisima |
-| Search history | Koristi stvarno ponašanje u app-u (obavezno po RS2 uputama) |
+| Search history | Koristi stvarno ponašanje u app-u |
 | Explainability | Korisnik vidi *zašto* je film predložen |
 
 Nema collaborative filtering matrice korisnik–film; hibrid je namjerno jednostavan, determinističan i provjerljiv u odnosu na ovu dokumentaciju.

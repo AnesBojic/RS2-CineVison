@@ -21,7 +21,10 @@ public class RecommendationsController : ControllerBase
         _recommendationService = recommendationService;
     }
 
-    /// <summary>Personalized scores for active movies. Pass take=0 to rank the full catalog.</summary>
+    /// <summary>
+    /// Personalized scores over the whole movie catalog (there is no Movies.IsActive flag).
+    /// <paramref name="take"/> ≤ 0 is treated as 10 by the service.
+    /// </summary>
     [HttpGet("Recommendations")]
     [ProducesResponseType(typeof(List<RecommendationResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<RecommendationResponse>>> GetRecommendations([FromQuery] int take = 0)
