@@ -18,7 +18,7 @@ namespace CineVision.Model.Responses
         public DateTime? UpdatedAt { get; set; }
         public int SeatCount { get; set; }
 
-        /// <summary>Total bookable seats in the hall.</summary>
+        /// <summary>Physical people-capacity: regular active = 1, couple primary = 2, inactive partner = 0.</summary>
         public int Capacity { get; set; }
 
         /// <summary>Number of seat rows (A, B, C…).</summary>

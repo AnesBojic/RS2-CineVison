@@ -14,6 +14,7 @@ namespace CineVision.Model.Responses
         public int TotalCustomers { get; set; }
 
         public int TotalMovies { get; set; }
+        /// <summary>Movies with a non-cancelled projection that has not yet ended (now showing / upcoming).</summary>
         public int ActiveMovies { get; set; }
 
         public int TotalProjections { get; set; }

@@ -210,8 +210,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           icon: Icons.movie,
           iconColor: AppColors.purple,
           value: '${d?.activeMovies ?? 0}',
-          label: 'Total Movies',
-          subtitle: 'Now Showing',
+          label: 'Now Showing',
+          subtitle: 'Current & upcoming',
         ),
         const SizedBox(width: 14),
         StatCard(

@@ -464,7 +464,7 @@ namespace CineVision.Services
                 .ThenBy(s => s.SeatNumber)
                 .Select(s =>
                 {
-                    var spots = s.SeatType == SeatType.Couple ? 2 : 1;
+                    var spots = SeatCapacity.PhysicalSpots(s.IsActive, s.SeatType);
                     return new ProjectionSeatResponse
                     {
                         SeatId = s.Id,
@@ -567,7 +567,7 @@ namespace CineVision.Services
 
             if (includeSeatStats)
             {
-                var totalSeats = s.Hall?.Seats.Count(x => x.IsActive) ?? 0;
+                var totalSeats = s.Hall != null ? SeatCapacity.Of(s.Hall.Seats) : 0;
                 var occupied = s.ReservationSeats?.Count(rs => rs.ReleasedAt == null) ?? 0;
                 response.TotalSeats = totalSeats;
                 response.AvailableSeats = Math.Max(0, totalSeats - occupied);
@@ -581,8 +581,9 @@ namespace CineVision.Services
             {
                 response.Hall = _mapper.Map<HallResponse>(s.Hall);
                 response.Hall.SeatCount = includeSeatStats
-                    ? s.Hall.Seats.Count
+                    ? SeatCapacity.Of(s.Hall.Seats)
                     : 0;
+                response.Hall.Capacity = response.Hall.SeatCount;
             }
 
             return response;

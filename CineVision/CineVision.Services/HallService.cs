@@ -458,8 +458,8 @@ namespace CineVision.Services
             response.ScreenTypeName = hall.ScreenType?.Name ?? string.Empty;
             response.StatusName = hall.Status?.Name ?? string.Empty;
             response.AllowsProjections = hall.Status?.AllowsProjections ?? false;
-            response.SeatCount = hall.Seats.Count(s => s.IsActive);
-            response.Capacity = hall.Seats.Count(s => s.IsActive);
+            response.SeatCount = SeatCapacity.Of(hall.Seats);
+            response.Capacity = SeatCapacity.Of(hall.Seats);
             var rowGroups = hall.Seats.GroupBy(s => s.RowLabel).ToList();
             response.RowCount = rowGroups.Count;
             response.SeatsPerRow = rowGroups.Count > 0 ? rowGroups.Max(g => g.Count()) : 0;
@@ -483,7 +483,7 @@ namespace CineVision.Services
                 SeatNumber = s.SeatNumber,
                 SeatType = (int)s.SeatType,
                 PartnerSeatId = s.PartnerSeatId,
-                SpotsOccupied = s.SeatType == SeatType.Couple ? 2 : 1,
+                SpotsOccupied = SeatCapacity.PhysicalSpots(s.IsActive, s.SeatType),
                 IsActive = s.IsActive,
             };
         }

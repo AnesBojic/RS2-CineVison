@@ -18,12 +18,13 @@ namespace CineVision.Services
     /// (<see cref="PaymentStatus.Paid"/> and <see cref="RefundStatus"/> other than Refunded),
     /// never from the booking lifecycle. Completing a paid reservation therefore cannot
     /// erase it from TotalRevenue, and a Confirmed booking that was never paid cannot enter it.
-    /// Tickets sold count seats that are still occupied (ReleasedAt is null).
+    /// Tickets sold count seats that are still occupied (ReleasedAt is null). Hall capacity and
+    /// occupancy use <see cref="SeatCapacity"/> so couple primaries count as two physical spots.
     /// </summary>
     public class AnalyticsService : IAnalyticsService
     {
         private static readonly TimeSpan SnapshotTtl = TimeSpan.FromSeconds(30);
-        private const string SnapshotCacheKey = "analytics:snapshot:v3";
+        private const string SnapshotCacheKey = "analytics:snapshot:v4";
 
         private readonly CineVisionDbContext _dbContext;
         private readonly IMemoryCache _cache;
@@ -199,6 +200,8 @@ namespace CineVision.Services
 
         public async Task<AnalyticsLiveSnapshotResponse> GetLiveSnapshotAsync()
         {
+            // Real-time clients must not receive a snapshot that was cached before this event.
+            InvalidateSnapshot();
             return new AnalyticsLiveSnapshotResponse
             {
                 Dashboard = await GetDashboardAsync(),
@@ -207,6 +210,11 @@ namespace CineVision.Services
                 HallUtilization = await GetHallUtilizationAsync(null),
                 UpdatedAt = DateTime.UtcNow
             };
+        }
+
+        public void InvalidateSnapshot()
+        {
+            _cache.Remove(SnapshotCacheKey);
         }
 
         private async Task AttachPostersAsync(List<MoviePerformanceResponse> movies)
@@ -253,7 +261,15 @@ namespace CineVision.Services
                 u.IsActive &&
                 u.UserRoles.Any(ur => ur.Role != null && ur.Role.Name == RoleNames.Customer));
             var totalMovies = await _dbContext.Movies.CountAsync();
-            var activeMovies = totalMovies;
+            var now = DateTime.UtcNow;
+            var activeMovies = await _dbContext.Projections
+                .AsNoTracking()
+                .Where(s =>
+                    s.CancelledAt == null &&
+                    s.StartTime.AddMinutes(s.Movie.DurationMinutes) > now)
+                .Select(s => s.MovieId)
+                .Distinct()
+                .CountAsync();
 
             return new AnalyticsSnapshot(
                 capByHall,
@@ -268,14 +284,28 @@ namespace CineVision.Services
 
         private async Task<Dictionary<int, int>> GetHallCapacitiesAsync()
         {
-            var rows = await _dbContext.Seats
+            // Grouped by layout shape rather than per seat, then summed through SeatCapacity so the
+            // physical-spot rule lives in exactly one place instead of being restated in SQL.
+            var groups = await _dbContext.Seats
                 .AsNoTracking()
-                .Where(s => s.IsActive)
-                .GroupBy(s => s.HallId)
-                .Select(g => new { HallId = g.Key, Count = g.Count() })
+                .GroupBy(s => new { s.HallId, s.IsActive, s.SeatType })
+                .Select(g => new
+                {
+                    g.Key.HallId,
+                    g.Key.IsActive,
+                    g.Key.SeatType,
+                    Seats = g.Count()
+                })
                 .ToListAsync();
 
-            return rows.ToDictionary(x => x.HallId, x => x.Count);
+            var capacity = new Dictionary<int, int>();
+            foreach (var group in groups)
+            {
+                var spots = SeatCapacity.PhysicalSpots(group.IsActive, group.SeatType) * group.Seats;
+                capacity[group.HallId] = capacity.GetValueOrDefault(group.HallId) + spots;
+            }
+
+            return capacity;
         }
 
         private async Task<Dictionary<int, double>> GetAvgRatingsAsync()

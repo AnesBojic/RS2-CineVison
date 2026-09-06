@@ -28,6 +28,7 @@ namespace CineVision.Model.Responses
         public bool HasBookings { get; set; }
 
         public int TotalSeats { get; set; }
+        /// <summary>Physical spots still free: hall capacity minus unreleased ReservationSeat rows.</summary>
         public int AvailableSeats { get; set; }
 
         public MovieResponse? Movie { get; set; }

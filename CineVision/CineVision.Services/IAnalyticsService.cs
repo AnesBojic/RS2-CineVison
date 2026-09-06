@@ -11,5 +11,10 @@ namespace CineVision.Services
         Task<List<HallUtilizationResponse>> GetHallUtilizationAsync(ReportSearchObject? search);
         Task<List<TimeSlotPerformanceResponse>> GetPerformanceByTimeSlotAsync(ReportSearchObject? search);
         Task<AnalyticsLiveSnapshotResponse> GetLiveSnapshotAsync();
+
+        /// <summary>
+        /// Drops the in-memory snapshot so the next read (HTTP or SignalR) is rebuilt from the database.
+        /// </summary>
+        void InvalidateSnapshot();
     }
 }

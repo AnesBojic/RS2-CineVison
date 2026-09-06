@@ -250,7 +250,7 @@ namespace CineVision.Services
             sb.AppendLine($"Halls: {halls.Count}");
             foreach (var h in halls)
             {
-                var cap = h.Seats.Count(s => s.IsActive);
+                var cap = SeatCapacity.Of(h.Seats);
                 sb.AppendLine($"  - {h.Name} | {cap} seats | {h.ScreenType?.Name ?? "—"} | status={h.Status?.Name ?? "—"}");
             }
 
