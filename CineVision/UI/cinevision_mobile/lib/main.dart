@@ -31,19 +31,19 @@ void main() {
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => NewsProvider()),
       ],
-      child: const MyApp(),
+      child: const CineVisionApp(),
     ),
   );
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+class CineVisionApp extends StatefulWidget {
+  const CineVisionApp({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  State<CineVisionApp> createState() => _CineVisionAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _CineVisionAppState extends State<CineVisionApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
 
   @override

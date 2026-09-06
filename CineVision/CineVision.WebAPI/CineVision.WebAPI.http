@@ -1,6 +1,10 @@
-@eCommerce.WebAPI_HostAddress = http://localhost:5126
+@CineVision.WebAPI_HostAddress = http://localhost:5126
 
-GET {{eCommerce.WebAPI_HostAddress}}/weatherforecast/
-Accept: application/json
+### Login
+POST {{CineVision.WebAPI_HostAddress}}/Access/Login
+Content-Type: application/json
 
-###
+{
+  "username": "admin1",
+  "password": "Test123"
+}
