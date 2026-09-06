@@ -9,17 +9,22 @@ namespace CineVision.Services
         /// <summary>
         /// The version is read on every authenticated request, so it is cached. The window is
         /// short enough that a change made outside this service still takes effect quickly;
-        /// changes made through it evict the entry immediately.
+        /// logout, deactivation, and role changes evict the entry via InvalidateUserSessions.
         /// </summary>
         private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(2);
 
         private readonly CineVisionDbContext _dbContext;
         private readonly IMemoryCache _cache;
+        private readonly IRealtimeSessionTerminator _realtimeSessions;
 
-        public TokenRevocationService(CineVisionDbContext dbContext, IMemoryCache cache)
+        public TokenRevocationService(
+            CineVisionDbContext dbContext,
+            IMemoryCache cache,
+            IRealtimeSessionTerminator realtimeSessions)
         {
             _dbContext = dbContext;
             _cache = cache;
+            _realtimeSessions = realtimeSessions;
         }
 
         public async Task<int> GetVersionAsync(int userId)
@@ -56,10 +61,16 @@ namespace CineVision.Services
 
             // A single save keeps the version bump and the refresh-token cleanup atomic.
             await _dbContext.SaveChangesAsync();
-            InvalidateCache(userId);
+            InvalidateUserSessions(userId);
         }
 
-        public void InvalidateCache(int userId) => _cache.Remove(CacheKey(userId));
+        public void InvalidateUserSessions(int userId)
+        {
+            _cache.Remove(CacheKey(userId));
+
+            // Hub authorization ran at the handshake, so open connections have to be closed too.
+            _realtimeSessions.TerminateUserConnections(userId);
+        }
 
         private async Task<UserTokenSnapshot?> GetSnapshotAsync(int userId)
         {

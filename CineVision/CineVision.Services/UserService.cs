@@ -136,7 +136,8 @@ namespace CineVision.Services
             await _dbContext.SaveChangesAsync();
         }
 
-        private async Task AssignRoleAsync(int userId, string roleName)
+        /// <returns>True when the stored role actually changed.</returns>
+        private async Task<bool> AssignRoleAsync(int userId, string roleName)
         {
             var role = await _dbContext.Roles.FirstOrDefaultAsync(r => r.Name == roleName)
                 ?? throw new ClientException($"Role '{roleName}' was not found.");
@@ -144,7 +145,7 @@ namespace CineVision.Services
             var existingRoles = await _dbContext.UserRoles.Where(ur => ur.UserId == userId).ToListAsync();
             if (existingRoles.Count == 1 && existingRoles[0].RoleId == role.Id)
             {
-                return;
+                return false;
             }
 
             _dbContext.UserRoles.RemoveRange(existingRoles);
@@ -154,6 +155,21 @@ namespace CineVision.Services
                 RoleId = role.Id,
                 DateAssigned = DateTime.UtcNow
             });
+            return true;
+        }
+
+        /// <summary>
+        /// Bumps <see cref="User.TokenVersion"/> and drops refresh tokens so existing JWTs fail
+        /// OnTokenValidated. Call <see cref="ITokenRevocationService.InvalidateUserSessions"/> after SaveChanges.
+        /// </summary>
+        private async Task RevokeSessionsInPlaceAsync(User user)
+        {
+            user.TokenVersion++;
+            var tokens = await _dbContext.RefreshTokens.Where(t => t.UserId == user.Id).ToListAsync();
+            if (tokens.Count > 0)
+            {
+                _dbContext.RefreshTokens.RemoveRange(tokens);
+            }
         }
 
         public override async Task<PageResult<UserResponse>> GetAllAsync(UserSearch? search = null)
@@ -356,27 +372,24 @@ namespace CineVision.Services
             MapUpdateRequestToEntity(request, entity);
             entity.UpdatedAt = DateTime.UtcNow;
 
+            var roleChanged = false;
             if (!string.IsNullOrWhiteSpace(request.Role))
             {
-                await AssignRoleAsync(id, request.Role);
+                roleChanged = await AssignRoleAsync(id, request.Role);
             }
 
-            // Deactivating kicks active sessions so the account cannot keep using the API.
-            if (wasActive && !entity.IsActive)
+            // Deactivation or a real role change must kill JWTs that still carry the old claims.
+            var deactivateAccount = wasActive && !entity.IsActive;
+            if (deactivateAccount || roleChanged)
             {
-                entity.TokenVersion++;
-                var tokens = await _dbContext.RefreshTokens.Where(t => t.UserId == id).ToListAsync();
-                if (tokens.Count > 0)
-                {
-                    _dbContext.RefreshTokens.RemoveRange(tokens);
-                }
+                await RevokeSessionsInPlaceAsync(entity);
             }
 
             await _dbContext.SaveChangesAsync();
 
-            if (wasActive && !entity.IsActive)
+            if (deactivateAccount || roleChanged)
             {
-                _tokenRevocationService.InvalidateCache(id);
+                _tokenRevocationService.InvalidateUserSessions(id);
             }
 
             return await GetByIdAsync(id);
@@ -473,19 +486,14 @@ namespace CineVision.Services
 
             if (wasActive && !isActive)
             {
-                entity.TokenVersion++;
-                var tokens = await _dbContext.RefreshTokens.Where(t => t.UserId == id).ToListAsync();
-                if (tokens.Count > 0)
-                {
-                    _dbContext.RefreshTokens.RemoveRange(tokens);
-                }
+                await RevokeSessionsInPlaceAsync(entity);
             }
 
             await _dbContext.SaveChangesAsync();
 
             if (wasActive && !isActive)
             {
-                _tokenRevocationService.InvalidateCache(id);
+                _tokenRevocationService.InvalidateUserSessions(id);
             }
 
             return await GetByIdAsync(id);
@@ -638,15 +646,10 @@ namespace CineVision.Services
 
             // A reset means the account may have been compromised, and whoever runs it is not
             // signed in anyway, so every session goes: refresh tokens and access tokens alike.
-            user.TokenVersion++;
-            var tokens = await _dbContext.RefreshTokens.Where(t => t.UserId == user.Id).ToListAsync();
-            if (tokens.Count > 0)
-            {
-                _dbContext.RefreshTokens.RemoveRange(tokens);
-            }
+            await RevokeSessionsInPlaceAsync(user);
 
             await _dbContext.SaveChangesAsync();
-            _tokenRevocationService.InvalidateCache(user.Id);
+            _tokenRevocationService.InvalidateUserSessions(user.Id);
         }
     }
 }

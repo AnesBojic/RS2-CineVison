@@ -1,6 +1,8 @@
 ﻿namespace CineVision.Services
 {
-    /// <summary>Tracks per-user JWT version so logout can invalidate issued access tokens.</summary>
+    /// <summary>
+    /// Tracks per-user JWT version so logout, deactivation, and role changes invalidate issued access tokens.
+    /// </summary>
     public interface ITokenRevocationService
     {
         Task<int> GetVersionAsync(int userId);
@@ -9,6 +11,10 @@
 
         Task RevokeAllSessionsAsync(int userId);
 
-        void InvalidateCache(int userId);
+        /// <summary>
+        /// Drops the cached token state and closes the user's live SignalR connections. Call this
+        /// after saving a change that bumped <c>TokenVersion</c> outside this service.
+        /// </summary>
+        void InvalidateUserSessions(int userId);
     }
 }

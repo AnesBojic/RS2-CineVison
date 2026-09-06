@@ -128,6 +128,9 @@ builder.Services.AddScoped<INotificationPushNotifier, NotificationPushNotifier>(
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<ITokenRevocationService, TokenRevocationService>();
+// Live hub connections outlive request scopes, so the tracker has to be a singleton.
+builder.Services.AddSingleton<HubConnectionTracker>();
+builder.Services.AddSingleton<IRealtimeSessionTerminator>(sp => sp.GetRequiredService<HubConnectionTracker>());
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IAccessManager, AccessManager>();
 builder.Services.AddScoped<ICryptoService, CryptoService>();
@@ -228,7 +231,7 @@ builder.Services.AddAuthentication(options =>
             }
             return Task.CompletedTask;
         },
-        // Reject JWTs whose token version no longer matches (logout / disabled user).
+        // Reject JWTs whose token version no longer matches (logout / disabled user / role change).
         OnTokenValidated = async context =>
         {
             var claims = context.Principal;
