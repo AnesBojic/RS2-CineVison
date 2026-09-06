@@ -2,7 +2,7 @@
 {
     /// <summary>
     /// Shared shape of reference (lookup) data rows: screen types, hall statuses,
-    /// age ratings and languages.
+    /// age ratings, languages and roles.
     /// </summary>
     public abstract class LookupResponse
     {

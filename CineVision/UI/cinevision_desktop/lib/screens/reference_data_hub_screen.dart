@@ -2,6 +2,7 @@ import 'package:cinevision_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:cinevision_desktop/providers/age_rating_provider.dart';
 import 'package:cinevision_desktop/providers/hall_status_provider.dart';
 import 'package:cinevision_desktop/providers/language_provider.dart';
+import 'package:cinevision_desktop/providers/role_provider.dart';
 import 'package:cinevision_desktop/providers/screen_type_provider.dart';
 import 'package:cinevision_desktop/screens/genre_list_screen.dart';
 import 'package:cinevision_desktop/screens/lookup_list_screen.dart';
@@ -24,6 +25,7 @@ class _ReferenceDataHubScreenState extends State<ReferenceDataHubScreen> {
     'Hall Statuses',
     'Age Ratings',
     'Languages',
+    'Roles',
   ];
 
   Widget _sectionBody() {
@@ -54,6 +56,13 @@ class _ReferenceDataHubScreenState extends State<ReferenceDataHubScreen> {
           title: 'Languages',
           itemNoun: 'language',
           extraField: LookupExtraField.code,
+        );
+      case 5:
+        return const LookupListScreen<RoleProvider>(
+          key: ValueKey('roles-section'),
+          title: 'Roles',
+          itemNoun: 'role',
+          lockAuthorizationRoleNames: true,
         );
       default:
         return const GenreListScreen(key: ValueKey('genres-section'));

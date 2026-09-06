@@ -1,4 +1,4 @@
-﻿using CineVision.Model;
+﻿using CineVision.Model.Requests;
 using CineVision.Model.Responses;
 using CineVision.Model.SearchObjects;
 using CineVision.Services;
@@ -7,11 +7,11 @@ using Microsoft.AspNetCore.Authorization;
 namespace CineVision.WebAPI.Controllers;
 
 /// <summary>
-/// Feeds the role picker in the admin user form. Only administrators assign roles,
-/// so the whole controller is restricted to them.
+/// Reference-data CRUD for roles. Writes follow the same AdminStaff rule as other lookups.
+/// Admin, Staff, and Customer names stay frozen because JWT [Authorize] depends on them.
 /// </summary>
-[Authorize(Roles = RoleNames.Admin)]
-public class RolesController : BaseReadController<RoleResponse, LookupSearchObject, IRoleService>
+[Authorize]
+public class RolesController : BaseCRUDController<RoleResponse, LookupSearchObject, RoleInsertRequest, RoleUpdateRequest, IRoleService>
 {
     public RolesController(IRoleService service) : base(service)
     {

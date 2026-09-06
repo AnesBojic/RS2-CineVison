@@ -173,9 +173,9 @@ namespace CineVision.Services.Database
         private void SeedRoles(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Role>().HasData(
-                new { Id = 1, Name = RoleNames.Admin, Description = "Administrator role with full permissions", CreatedAt = SeedDate },
-                new { Id = 2, Name = RoleNames.Customer, Description = "Default customer role", CreatedAt = SeedDate },
-                new { Id = 3, Name = RoleNames.Staff, Description = "Employee role for content management and analytics", CreatedAt = SeedDate }
+                new { Id = 1, Name = RoleNames.Admin, Description = "Administrator role with full permissions", CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 2, Name = RoleNames.Customer, Description = "Default customer role", CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 3, Name = RoleNames.Staff, Description = "Employee role for content management and analytics", CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
             );
         }
 

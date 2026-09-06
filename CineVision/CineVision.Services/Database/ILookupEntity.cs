@@ -4,7 +4,7 @@ namespace CineVision.Services.Database
 {
     /// <summary>
     /// Shared shape of the simple reference (lookup) tables: screen types, hall statuses,
-    /// age ratings and languages. Lets one generic service cover all of them.
+    /// age ratings, languages and roles. Lets one generic service cover all of them.
     /// </summary>
     public interface ILookupEntity
     {

@@ -339,11 +339,13 @@ class _UserListState extends State<UserList> {
     final usernameCtrl = TextEditingController(text: fullUser?.username ?? '');
     final phoneCtrl = TextEditingController(text: fullUser?.phoneNumber ?? '');
     final passwordCtrl = TextEditingController();
+    final currentRole = fullUser?.role;
     final roleNames = _roles
         .map((r) => r.name ?? '')
-        .where((name) => name.isNotEmpty)
+        .where((name) =>
+            UserRoles.isAuthorizationRole(name) ||
+            (currentRole != null && name == currentRole))
         .toList();
-    final currentRole = fullUser?.role;
     String selectedRole = roleNames.contains(currentRole)
         ? currentRole!
         : roleNames.firstWhere(

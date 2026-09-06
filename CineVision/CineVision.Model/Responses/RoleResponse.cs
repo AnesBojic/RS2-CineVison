@@ -1,11 +1,6 @@
 ﻿namespace CineVision.Model.Responses
 {
-    public class RoleResponse
+    public class RoleResponse : LookupResponse
     {
-        public int Id { get; set; }
-
-        public string Name { get; set; } = string.Empty;
-
-        public string Description { get; set; } = string.Empty;
     }
 }

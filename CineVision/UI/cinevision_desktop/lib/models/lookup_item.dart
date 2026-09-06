@@ -1,4 +1,4 @@
-/// Shared shape for reference tables (screen types, hall statuses, age ratings, languages).
+/// Shared shape for reference tables (screen types, hall statuses, age ratings, languages, roles).
 class LookupItem {
   final int? id;
   final String? name;

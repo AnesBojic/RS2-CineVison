@@ -69,6 +69,7 @@ TypeAdapterConfig<ScreenType, ScreenTypeResponse>.NewConfig().IgnoreNullValues(t
 TypeAdapterConfig<HallStatus, HallStatusResponse>.NewConfig().IgnoreNullValues(true);
 TypeAdapterConfig<AgeRating, AgeRatingResponse>.NewConfig().IgnoreNullValues(true);
 TypeAdapterConfig<Language, LanguageResponse>.NewConfig().IgnoreNullValues(true);
+TypeAdapterConfig<Role, RoleResponse>.NewConfig().IgnoreNullValues(true);
 
 // Lookup names are flattened into the movie/projection/hall responses so clients can render
 // a label without fetching the reference tables.
@@ -102,6 +103,7 @@ builder.Services.AddScoped<IScreenTypeService, ScreenTypeService>();
 builder.Services.AddScoped<IHallStatusService, HallStatusService>();
 builder.Services.AddScoped<IAgeRatingService, AgeRatingService>();
 builder.Services.AddScoped<ILanguageService, LanguageService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
 
 builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<IHallService, HallService>();
@@ -131,7 +133,6 @@ builder.Services.AddScoped<ITokenRevocationService, TokenRevocationService>();
 // Live hub connections outlive request scopes, so the tracker has to be a singleton.
 builder.Services.AddSingleton<HubConnectionTracker>();
 builder.Services.AddSingleton<IRealtimeSessionTerminator>(sp => sp.GetRequiredService<HubConnectionTracker>());
-builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IAccessManager, AccessManager>();
 builder.Services.AddScoped<ICryptoService, CryptoService>();
 
@@ -151,11 +152,13 @@ else
 builder.Services.AddScoped<IValidator<GenreInsertRequest>, GenreInsertValidator>();
 builder.Services.AddScoped<IValidator<GenreUpdateRequest>, GenreUpdateValidator>();
 
-// reference data: screen types and hall statuses only need the shared name/description rules
+// reference data: screen types, hall statuses and roles only need the shared name/description rules
 builder.Services.AddScoped<IValidator<ScreenTypeInsertRequest>, LookupRequestValidator<ScreenTypeInsertRequest>>();
 builder.Services.AddScoped<IValidator<ScreenTypeUpdateRequest>, LookupRequestValidator<ScreenTypeUpdateRequest>>();
 builder.Services.AddScoped<IValidator<HallStatusInsertRequest>, LookupRequestValidator<HallStatusInsertRequest>>();
 builder.Services.AddScoped<IValidator<HallStatusUpdateRequest>, LookupRequestValidator<HallStatusUpdateRequest>>();
+builder.Services.AddScoped<IValidator<RoleInsertRequest>, LookupRequestValidator<RoleInsertRequest>>();
+builder.Services.AddScoped<IValidator<RoleUpdateRequest>, LookupRequestValidator<RoleUpdateRequest>>();
 builder.Services.AddScoped<IValidator<AgeRatingInsertRequest>, AgeRatingInsertValidator>();
 builder.Services.AddScoped<IValidator<AgeRatingUpdateRequest>, AgeRatingUpdateValidator>();
 builder.Services.AddScoped<IValidator<LanguageInsertRequest>, LanguageInsertValidator>();

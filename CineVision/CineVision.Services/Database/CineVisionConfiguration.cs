@@ -12,6 +12,7 @@ namespace CineVision.Services.Database
             modelBuilder.Entity<HallStatus>().HasIndex(s => s.Name).IsUnique();
             modelBuilder.Entity<AgeRating>().HasIndex(a => a.Name).IsUnique();
             modelBuilder.Entity<Language>().HasIndex(l => l.Name).IsUnique();
+            modelBuilder.Entity<Role>().HasIndex(r => r.Name).IsUnique();
 
             // A movie belongs to an optional genre; deleting a genre must not cascade-delete movies.
             modelBuilder.Entity<Movie>()
@@ -166,7 +167,7 @@ namespace CineVision.Services.Database
                 .HasOne(ur => ur.Role)
                 .WithMany(ur => ur.UserRoles)
                 .HasForeignKey(ur => ur.RoleId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Refresh tokens die with their user; configured explicitly rather than by convention
             // so every relationship in the model is declared in one place.

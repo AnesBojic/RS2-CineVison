@@ -130,6 +130,12 @@ namespace CineVision.Services
             response.DeleteBlockedReason = count == 0
                 ? null
                 : $"Used by {count} record(s).";
+            AfterApplyUsage(response);
+        }
+
+        /// <summary>Optional extra rules after usage flags are set (e.g. authorization roles).</summary>
+        protected virtual void AfterApplyUsage(TResponse response)
+        {
         }
     }
 }

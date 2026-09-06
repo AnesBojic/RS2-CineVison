@@ -1,3 +1,4 @@
+import 'package:cinevision_desktop/core/enums/api_enums.dart';
 import 'package:cinevision_desktop/core/theme/app_theme.dart';
 import 'package:cinevision_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:cinevision_desktop/models/lookup_item.dart';
@@ -31,6 +32,7 @@ class LookupListScreen<P extends BaseProvider<LookupItem>> extends StatefulWidge
     required this.title,
     required this.itemNoun,
     this.extraField = LookupExtraField.none,
+    this.lockAuthorizationRoleNames = false,
   });
 
   /// Plural heading, e.g. "Screen Types".
@@ -40,6 +42,9 @@ class LookupListScreen<P extends BaseProvider<LookupItem>> extends StatefulWidge
   final String itemNoun;
 
   final LookupExtraField extraField;
+
+  /// When true, Admin/Staff/Customer keep a read-only name in the editor (JWT [Authorize] depends on them).
+  final bool lockAuthorizationRoleNames;
 
   @override
   State<LookupListScreen<P>> createState() => _LookupListScreenState<P>();
@@ -120,6 +125,9 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
     );
     var allowsProjections = existing?.allowsProjections ?? false;
     var submitting = false;
+    final nameLocked = existing != null &&
+        widget.lockAuthorizationRoleNames &&
+        UserRoles.isAuthorizationRole(existing.name);
 
     final saved = await showDialog<bool>(
       context: context,
@@ -170,7 +178,13 @@ class _LookupListScreenState<P extends BaseProvider<LookupItem>>
               children: [
                 TextFormField(
                   controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Name'),
+                  readOnly: nameLocked,
+                  decoration: InputDecoration(
+                    labelText: 'Name',
+                    helperText: nameLocked
+                        ? 'Admin, Staff, and Customer names are used by authorization and cannot be renamed.'
+                        : null,
+                  ),
                   validator: (v) => FieldValidators.required(v, field: 'Name'),
                 ),
                 const SizedBox(height: 12),

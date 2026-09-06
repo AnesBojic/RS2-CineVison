@@ -20,4 +20,8 @@ class UserRoles {
   static const admin = 'Admin';
   static const staff = 'Staff';
   static const customer = 'Customer';
+
+  /// Names baked into JWT [Authorize] — must stay in sync with `RoleNames` on the API.
+  static bool isAuthorizationRole(String? name) =>
+      name == admin || name == staff || name == customer;
 }
