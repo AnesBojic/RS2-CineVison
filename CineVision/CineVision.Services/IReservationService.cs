@@ -11,7 +11,7 @@ namespace CineVision.Services
 
         Task<PaymentIntentResponse> CreatePaymentIntentAsync(CreatePaymentIntentRequest request);
 
-        Task<ReservationResponse> CancelAsync(int id, ReservationCancelRequest? request = null);
+        Task<ReservationResponse> CancelAsync(int id, ReservationCancelRequest request);
 
         Task<ReservationResponse> CompleteAsync(int id);
 

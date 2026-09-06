@@ -2,7 +2,7 @@
 {
     public class ReservationCancelRequest
     {
-        /// <summary>Optional reason recorded in the audit trail and shown to admins.</summary>
-        public string? Reason { get; set; }
+        /// <summary>Required reason stored in the audit trail (CancellationReason).</summary>
+        public string Reason { get; set; } = string.Empty;
     }
 }

@@ -523,12 +523,9 @@ namespace CineVision.Services
             }
         }
 
-        public async Task<ReservationResponse> CancelAsync(int id, ReservationCancelRequest? request = null)
+        public async Task<ReservationResponse> CancelAsync(int id, ReservationCancelRequest request)
         {
-            if (request != null)
-            {
-                await _cancelValidator.ValidateAndThrowAsync(request);
-            }
+            await _cancelValidator.ValidateAndThrowAsync(request);
 
             var userId = _userAccessor.GetUserId()
                 ?? throw new InvalidOperationException("User id claim is missing.");
@@ -573,9 +570,7 @@ namespace CineVision.Services
                     "Tickets can only be refunded at least 4 hours before the projection starts.");
             }
 
-            var reason = string.IsNullOrWhiteSpace(request?.Reason)
-                ? (isStaff ? "Cancelled by staff" : "Cancelled by customer")
-                : request!.Reason!.Trim();
+            var reason = request.Reason.Trim();
 
             ReservationStatusTransitions.Apply(
                 reservation,

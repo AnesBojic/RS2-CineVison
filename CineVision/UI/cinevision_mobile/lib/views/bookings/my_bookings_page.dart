@@ -3,6 +3,7 @@ import 'package:cinevision_mobile/core/constants/app_colors.dart';
 import 'package:cinevision_mobile/core/constants/app_defaults.dart';
 import 'package:cinevision_mobile/core/enums/api_enums.dart';
 import 'package:cinevision_mobile/core/routes/app_routes.dart';
+import 'package:cinevision_mobile/core/utils/field_validators.dart';
 import 'package:cinevision_mobile/models/reservation.dart';
 import 'package:cinevision_mobile/models/review_eligibility.dart';
 import 'package:cinevision_mobile/providers/auth_provider.dart';
@@ -25,6 +26,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
   Map<int, ReviewEligibility> _eligibilityByMovie = {};
   bool _loading = true;
   int? _refundingId;
+  int? _statusFilter;
 
   @override
   void initState() {
@@ -48,7 +50,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
       final reviewProvider = context.read<ReviewProvider>();
       // Bookings and review eligibility are independent feeds.
       final loaded = await Future.wait([
-        reservationProvider.fetchMyReservations(),
+        reservationProvider.fetchMyReservations(status: _statusFilter),
         reviewProvider.fetchMyEligibility(),
       ]);
       final reservations = loaded[0] as List<Reservation>;
@@ -70,33 +72,15 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
 
   Future<void> _refund(Reservation reservation) async {
     final isPaid = reservation.wasPaid;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isPaid ? 'Refund ticket?' : 'Cancel booking?'),
-        content: Text(
-          isPaid
-              ? 'Your payment will be refunded and the seats will become available again.'
-              : 'This booking will be cancelled and the seats will become available again.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Keep ticket'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(isPaid ? 'Refund' : 'Cancel booking'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
+    final reason = await _askCancelReason(isPaid: isPaid);
+    if (reason == null || !mounted) return;
 
     setState(() => _refundingId = reservation.id);
     try {
-      await context.read<ReservationProvider>().cancel(reservation.id);
+      await context.read<ReservationProvider>().cancel(
+        reservation.id,
+        reason: reason,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -114,6 +98,63 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
       if (mounted) alertBox(context, 'Refund failed', e.toString());
     } finally {
       if (mounted) setState(() => _refundingId = null);
+    }
+  }
+
+  Future<String?> _askCancelReason({required bool isPaid}) async {
+    final reasonCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(isPaid ? 'Refund ticket?' : 'Cancel booking?'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isPaid
+                      ? 'Your payment will be refunded and the seats will become available again.'
+                      : 'This booking will be cancelled and the seats will become available again.',
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: reasonCtrl,
+                  maxLines: 3,
+                  maxLength: 500,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Reason',
+                    hintText: 'Why are you cancelling this booking?',
+                  ),
+                  validator: (v) => FieldValidators.minLength(
+                    v,
+                    5,
+                    field: 'Cancellation reason',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Keep ticket'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (!(formKey.currentState?.validate() ?? false)) return;
+                Navigator.pop(ctx, reasonCtrl.text.trim());
+              },
+              child: Text(isPaid ? 'Refund' : 'Cancel booking'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      reasonCtrl.dispose();
     }
   }
 
@@ -151,6 +192,53 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (isLoggedIn)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppDefaults.padding,
+                12,
+                AppDefaults.padding,
+                0,
+              ),
+              child: DropdownButtonFormField<int?>(
+                key: ValueKey(_statusFilter),
+                initialValue: _statusFilter,
+                decoration: const InputDecoration(
+                  hintText: 'All statuses',
+                ),
+                items: const [
+                  DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('All statuses'),
+                  ),
+                  DropdownMenuItem<int?>(
+                    value: ReservationStatus.pending,
+                    child: Text('Pending'),
+                  ),
+                  DropdownMenuItem<int?>(
+                    value: ReservationStatus.confirmed,
+                    child: Text('Confirmed'),
+                  ),
+                  DropdownMenuItem<int?>(
+                    value: ReservationStatus.paid,
+                    child: Text('Paid'),
+                  ),
+                  DropdownMenuItem<int?>(
+                    value: ReservationStatus.cancelled,
+                    child: Text('Cancelled'),
+                  ),
+                  DropdownMenuItem<int?>(
+                    value: ReservationStatus.completed,
+                    child: Text('Completed'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == _statusFilter) return;
+                  setState(() => _statusFilter = value);
+                  _load();
+                },
+              ),
+            ),
           Expanded(
             child: !isLoggedIn
                 ? _LoginPrompt(
@@ -162,10 +250,14 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                 : _loading
                     ? const Center(child: CircularProgressIndicator())
                     : _reservations.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
-                              'No bookings yet',
-                              style: TextStyle(color: AppColors.textSecondary),
+                              _statusFilter == null
+                                  ? 'No bookings yet'
+                                  : 'No bookings with this status',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                           )
                         : RefreshIndicator(

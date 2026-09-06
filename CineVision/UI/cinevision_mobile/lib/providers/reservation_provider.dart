@@ -10,8 +10,15 @@ class ReservationProvider extends BaseProvider<Reservation> {
   @override
   Reservation fromJson(data) => Reservation.fromJson(data);
 
-  Future<List<Reservation>> fetchMyReservations() async {
-    final result = await get(filter: {'page': 1, 'pageSize': 100});
+  Future<List<Reservation>> fetchMyReservations({int? status}) async {
+    final filter = <String, dynamic>{
+      'page': 1,
+      'pageSize': 100,
+    };
+    if (status != null) {
+      filter['status'] = status;
+    }
+    final result = await get(filter: filter);
     return result.items ?? [];
   }
 
@@ -64,10 +71,14 @@ class ReservationProvider extends BaseProvider<Reservation> {
     return Reservation.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  Future<Reservation> cancel(int reservationId) async {
+  Future<Reservation> cancel(int reservationId, {required String reason}) async {
     final uri =
         Uri.parse('${BaseProvider.baseUrl}Reservations/$reservationId/Cancel');
-    final response = await http.post(uri, headers: createHeaders());
+    final response = await http.post(
+      uri,
+      headers: createHeaders(),
+      body: jsonEncode({'reason': reason}),
+    );
     validateResponse(response);
     return Reservation.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }

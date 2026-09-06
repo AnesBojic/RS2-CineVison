@@ -67,8 +67,12 @@ namespace CineVision.Services.Validators
         public ReservationCancelValidator()
         {
             RuleFor(x => x.Reason)
-                .MaximumLength(500).WithMessage("Cancellation reason cannot exceed 500 characters.")
-                .When(x => !string.IsNullOrWhiteSpace(x.Reason));
+                .Cascade(CascadeMode.Stop)
+                .Must(r => !string.IsNullOrWhiteSpace(r))
+                .WithMessage("Cancellation reason is required.")
+                .Must(r => (r ?? string.Empty).Trim().Length >= 5)
+                .WithMessage("Cancellation reason must be at least 5 characters.")
+                .MaximumLength(500).WithMessage("Cancellation reason cannot exceed 500 characters.");
         }
     }
 }

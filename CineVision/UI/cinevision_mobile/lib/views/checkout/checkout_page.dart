@@ -325,7 +325,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             hintText: 'John Doe',
                           ),
                           validator: (v) =>
-                              (v == null || v.trim().isEmpty) ? 'Required' : null,
+                              FieldValidators.required(v, field: 'Full name'),
                         ),
                         const SizedBox(height: 12),
                         TextFormField(

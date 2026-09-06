@@ -36,12 +36,14 @@ public class ReservationsController : BaseReadController<ReservationResponse, Re
     }
 
     /// <summary>
-    /// Customer cancels own booking (4h rule). Admin or Staff may cancel any booking with a reason.
+    /// Customer cancels own booking (4h rule). Admin or Staff may cancel any booking.
+    /// A real cancellation reason is required for the audit trail.
     /// </summary>
     [HttpPost("{id}/Cancel")]
     [ProducesResponseType(typeof(ReservationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ReservationResponse>> Cancel(int id, [FromBody] ReservationCancelRequest? request)
+    public async Task<ActionResult<ReservationResponse>> Cancel(int id, [FromBody] ReservationCancelRequest request)
     {
         var result = await _service.CancelAsync(id, request);
         return Ok(result);
