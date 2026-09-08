@@ -58,4 +58,18 @@ public class ReservationsController : BaseReadController<ReservationResponse, Re
         var result = await _service.CompleteAsync(id);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Retries Stripe for a cancelled booking whose automatic refund is still pending or failed.
+    /// </summary>
+    [HttpPost("{id}/RetryRefund")]
+    [Authorize(Policy = RolePermissionNames.AccessDesktop)]
+    [ProducesResponseType(typeof(ReservationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ReservationResponse>> RetryRefund(int id)
+    {
+        var result = await _service.RetryRefundAsync(id);
+        return Ok(result);
+    }
 }

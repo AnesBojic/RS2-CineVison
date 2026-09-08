@@ -183,27 +183,21 @@ class AnalyticsProvider with ChangeNotifier {
 
 
   void _handleAnalyticsUpdated(List<Object?>? arguments) {
-
     if (arguments == null || arguments.isEmpty) return;
+    try {
+      final map = _asStringKeyedMap(arguments.first);
+      if (map == null) return;
+      _liveSnapshot = AnalyticsLiveSnapshot.fromJson(map);
+      notifyListeners();
+    } catch (_) {}
+  }
 
-
-
-    final payload = arguments.first;
-
-    if (payload is! Map) return;
-
-
-
-  final snapshot = AnalyticsLiveSnapshot.fromJson(
-
-      Map<String, dynamic>.from(payload),
-
-    );
-
-    _liveSnapshot = snapshot;
-
-    notifyListeners();
-
+  static Map<String, dynamic>? _asStringKeyedMap(Object? value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) {
+      return value.map((key, item) => MapEntry(key.toString(), item));
+    }
+    return null;
   }
 
 

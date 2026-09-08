@@ -1049,25 +1049,53 @@ String formatCurrency(num? value) {
   return '\$${value.toStringAsFixed(value == value.roundToDouble() ? 0 : 2)}';
 }
 
-Future<bool?> confirmCancel(BuildContext context, String message) {
+Future<bool?> confirmAction(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String confirmLabel,
+  String cancelLabel = 'Cancel',
+  IconData icon = Icons.warning_amber_rounded,
+}) {
   return showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       backgroundColor: AppColors.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.event_busy, color: AppColors.orange, size: 22),
-          SizedBox(width: 10),
-          Text('Cancel projection', style: TextStyle(color: AppColors.textPrimary)),
+          Icon(icon, color: AppColors.orange, size: 22),
+          const SizedBox(width: 10),
+          Text(title, style: const TextStyle(color: AppColors.textPrimary)),
         ],
       ),
       content: Text(message, style: const TextStyle(color: AppColors.textSecondary)),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Keep')),
-        ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Cancel show')),
+        TextButton(onPressed: () => Navigator.pop(context, false), child: Text(cancelLabel)),
+        ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(confirmLabel)),
       ],
     ),
+  );
+}
+
+Future<bool?> confirmCancel(BuildContext context, String message) {
+  return confirmAction(
+    context,
+    title: 'Cancel projection',
+    message: message,
+    confirmLabel: 'Cancel show',
+    cancelLabel: 'Keep',
+    icon: Icons.event_busy,
+  );
+}
+
+Future<bool?> confirmRefund(BuildContext context, String message) {
+  return confirmAction(
+    context,
+    title: 'Retry refund',
+    message: message,
+    confirmLabel: 'Refund',
+    icon: Icons.currency_exchange,
   );
 }
 

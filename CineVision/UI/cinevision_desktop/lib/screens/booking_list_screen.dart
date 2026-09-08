@@ -3,6 +3,7 @@ import 'package:cinevision_desktop/core/theme/app_theme.dart';
 import 'package:cinevision_desktop/core/widgets/cinevision_widgets.dart';
 import 'package:cinevision_desktop/models/reservation.dart';
 import 'package:cinevision_desktop/providers/reservation_provider.dart';
+import 'package:cinevision_desktop/utils/api_client_exception.dart';
 import 'package:cinevision_desktop/utils/utils_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -22,7 +23,10 @@ class _BookingListScreenState extends State<BookingListScreen> {
   static const int _pageSize = 10;
   int _page = 1;
   int _totalCount = 0;
-  String? _statusFilter = '${ReservationStatus.cancelled}';
+  String? _statusFilter;
+  String? _refundFilter;
+  int? _projectionId;
+  int? _retryingId;
   final _searchController = TextEditingController();
   int _seenLiveTick = 0;
 
@@ -34,6 +38,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
     super.initState();
     _provider = context.read<ReservationProvider>();
     _seenLiveTick = _provider.liveTick;
+    _projectionId = _provider.focusProjectionId;
     _provider.addListener(_onProviderChanged);
     _load();
   }
@@ -47,6 +52,16 @@ class _BookingListScreenState extends State<BookingListScreen> {
 
   void _onProviderChanged() {
     if (!mounted) return;
+    final focused = _provider.focusProjectionId;
+    if (focused != null && focused != _projectionId) {
+      setState(() {
+        _projectionId = focused;
+        _statusFilter = null;
+        _page = 1;
+      });
+      _load();
+      return;
+    }
     if (_provider.liveTick == _seenLiveTick) return;
     _seenLiveTick = _provider.liveTick;
     _load();
@@ -63,6 +78,16 @@ class _BookingListScreenState extends State<BookingListScreen> {
       if (_statusFilter != null) {
         filter['status'] = int.parse(_statusFilter!);
       }
+      if (_refundFilter != null) {
+        filter['refundStatus'] = int.parse(_refundFilter!);
+      }
+      if (_projectionId != null) {
+        filter['projectionId'] = _projectionId;
+      }
+      final query = _searchController.text.trim();
+      if (query.isNotEmpty) {
+        filter['query'] = query;
+      }
       final data = await _provider.get(filter: filter);
       if (!mounted) return;
       setState(() {
@@ -76,18 +101,6 @@ class _BookingListScreenState extends State<BookingListScreen> {
         alertBox(context, 'Error', e.toString());
       }
     }
-  }
-
-  List<Reservation> get _filtered {
-    final q = _searchController.text.trim().toLowerCase();
-    if (q.isEmpty) return _items;
-    return _items.where((r) {
-      return r.reservationNumber.toLowerCase().contains(q) ||
-          r.movieTitle.toLowerCase().contains(q) ||
-          (r.customerName ?? '').toLowerCase().contains(q) ||
-          (r.customerEmail ?? '').toLowerCase().contains(q) ||
-          r.reasonLabel.toLowerCase().contains(q);
-    }).toList();
   }
 
   @override
@@ -132,12 +145,56 @@ class _BookingListScreenState extends State<BookingListScreen> {
             },
           ),
           const SizedBox(width: 10),
+          FilterDropdown(
+            hint: 'All refunds',
+            value: _refundFilter,
+            items: const [
+              DropdownMenuItem(value: null, child: Text('All refunds')),
+              DropdownMenuItem(
+                value: '${RefundStatus.failed}',
+                child: Text('Refund failed'),
+              ),
+              DropdownMenuItem(
+                value: '${RefundStatus.pending}',
+                child: Text('Refund pending'),
+              ),
+              DropdownMenuItem(
+                value: '${RefundStatus.refunded}',
+                child: Text('Refunded'),
+              ),
+            ],
+            onChanged: (v) {
+              setState(() {
+                _refundFilter = v;
+                _page = 1;
+              });
+              _load();
+            },
+          ),
+          const SizedBox(width: 10),
           SearchField(
             controller: _searchController,
-            hint: 'Search number, movie, customer, reason...',
+            hint: 'Search number, movie, customer...',
             width: 320,
-            onSubmitted: (_) => setState(() {}),
+            onSubmitted: (_) {
+              setState(() => _page = 1);
+              _load();
+            },
           ),
+          if (_projectionId != null) ...[
+            const SizedBox(width: 10),
+            InputChip(
+              label: Text('Projection #$_projectionId'),
+              onDeleted: () {
+                _provider.clearProjectionFocus();
+                setState(() {
+                  _projectionId = null;
+                  _page = 1;
+                });
+                _load();
+              },
+            ),
+          ],
         ],
       ),
       child: Column(
@@ -146,7 +203,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
           const SizedBox(height: 12),
           Expanded(
             child: DataCard(
-              emptyMessage: _filtered.isEmpty ? 'No bookings found' : null,
+              emptyMessage: _items.isEmpty ? 'No bookings found' : null,
               child: StyledDataTable(
                 columns: const [
                   DataColumn(label: Text('Ticket')),
@@ -154,10 +211,11 @@ class _BookingListScreenState extends State<BookingListScreen> {
                   DataColumn(label: Text('Movie')),
                   DataColumn(label: Text('Show')),
                   DataColumn(label: Text('Status')),
+                  DataColumn(label: Text('Refund')),
                   DataColumn(label: Text('Cancellation reason')),
                   actionsDataColumn,
                 ],
-                rows: _filtered.map(_buildRow).toList(),
+                rows: _items.map(_buildRow).toList(),
               ),
             ),
           ),
@@ -213,6 +271,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
         '${formatDate(r.projectionStartTime)} ${formatTime(r.projectionStartTime)}',
       )),
       DataCell(_statusBadge(r)),
+      DataCell(_refundBadge(r)),
       DataCell(
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 280),
@@ -230,8 +289,72 @@ class _BookingListScreenState extends State<BookingListScreen> {
           tooltip: 'Details',
           onPressed: () => _showDetails(r),
         ),
+        ActionIconButton(
+          icon: Icons.currency_exchange,
+          color: AppColors.orange,
+          tooltip: _refundButtonTooltip(r),
+          enabled: r.canRetryRefund && _retryingId != r.id,
+          onPressed: () => _retryRefund(r),
+        ),
       ]),
     ]);
+  }
+
+  String _refundButtonTooltip(Reservation r) {
+    if (_retryingId == r.id) return 'Retrying refund…';
+    return switch (r.refundStatus) {
+      RefundStatus.failed => 'Refund',
+      RefundStatus.refunded => 'Already refunded',
+      RefundStatus.pending => 'Refund is still pending with Stripe',
+      _ => 'Refund is available only when Stripe failed',
+    };
+  }
+
+  Widget _refundBadge(Reservation r) {
+    if (r.refundStatus == RefundStatus.none) {
+      return const Text('—', style: TextStyle(color: AppColors.textSecondary));
+    }
+    final color = switch (r.refundStatus) {
+      RefundStatus.refunded => AppColors.green,
+      RefundStatus.failed => AppColors.primary,
+      RefundStatus.pending => AppColors.orange,
+      _ => AppColors.textSecondary,
+    };
+    return StatusBadge(label: r.refundLabel, color: color, filled: true);
+  }
+
+  Future<void> _retryRefund(Reservation r) async {
+    final ok = await confirmRefund(
+      context,
+      r.refundStatus == RefundStatus.failed
+          ? 'Retry the Stripe refund for ${r.reservationNumber}?'
+          : 'Stripe has not confirmed the refund for ${r.reservationNumber}. Try again now?',
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _retryingId = r.id);
+    try {
+      final updated = await _provider.retryRefund(r.id);
+      if (!mounted) return;
+      if (updated.refundStatus == RefundStatus.refunded) {
+        showAppSnackBar(context, 'Refund completed for ${r.reservationNumber}');
+      } else {
+        showAppSnackBar(
+          context,
+          updated.refundError?.trim().isNotEmpty == true
+              ? updated.refundError!
+              : 'Refund is still ${updated.refundLabel.toLowerCase()}.',
+          isError: true,
+        );
+      }
+      await _load();
+    } on ApiClientException catch (e) {
+      if (mounted) alertBox(context, 'Refund retry failed', e.message);
+    } on Exception catch (e) {
+      if (mounted) alertBox(context, 'Error', e.toString());
+    } finally {
+      if (mounted) setState(() => _retryingId = null);
+    }
   }
 
   Widget _statusBadge(Reservation r) {
@@ -275,13 +398,14 @@ class _BookingListScreenState extends State<BookingListScreen> {
               ),
               _detailLine('Amount', formatCurrency(r.totalAmount)),
               _detailLine('Status', r.statusName),
+              _detailLine('Refund', r.refundLabel),
+              if (r.refundError != null && r.refundError!.trim().isNotEmpty)
+                _detailLine('Refund error', r.refundError!),
               if (r.status == ReservationStatus.pending && r.holdExpiresAt != null)
                 _detailLine(
                   'Hold until',
                   '${formatDate(r.holdExpiresAt)} ${formatTime(r.holdExpiresAt)}',
                 ),
-              if (r.refundStatusName.isNotEmpty)
-                _detailLine('Refund', r.refundStatusName),
               if (r.cancelledAt != null)
                 _detailLine(
                   'Cancelled',
@@ -305,6 +429,14 @@ class _BookingListScreenState extends State<BookingListScreen> {
           ),
         ),
         actions: [
+          if (r.canRetryRefund)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _retryRefund(r);
+              },
+              child: const Text('Retry refund'),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
@@ -321,7 +453,7 @@ class _BookingListScreenState extends State<BookingListScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 90,
+            width: 100,
             child: Text(
               label,
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
@@ -347,7 +479,7 @@ class _BookingStatusInfoBox extends StatelessWidget {
     (label: 'Confirmed', detail: 'Sold at the counter'),
     (label: 'Paid', detail: 'Paid online, ticket still valid'),
     (label: 'Completed', detail: 'Show already happened'),
-    (label: 'Cancelled', detail: 'Refunded or voided'),
+    (label: 'Cancelled', detail: 'Voided — check Refund column; retry if Stripe failed'),
   ];
 
   @override

@@ -125,6 +125,22 @@ namespace CineVision.Services
                 query = query.Where(r => r.ProjectionId == search.ProjectionId.Value);
             }
 
+            var q = search.Query?.Trim();
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                query = query.Where(r =>
+                    r.ReservationNumber.Contains(q) ||
+                    (r.CustomerName != null && r.CustomerName.Contains(q)) ||
+                    (r.CustomerEmail != null && r.CustomerEmail.Contains(q)) ||
+                    (r.Projection != null && r.Projection.Movie != null &&
+                     r.Projection.Movie.Title.Contains(q)));
+            }
+
+            if (search.RefundStatus.HasValue)
+            {
+                query = query.Where(r => (int)r.RefundStatus == search.RefundStatus.Value);
+            }
+
             int? totalCount = null;
             if (search.IncludeTotalCount ?? false)
             {
@@ -619,6 +635,50 @@ namespace CineVision.Services
         }
 
         /// <inheritdoc />
+        public async Task<ReservationResponse> RetryRefundAsync(int id)
+        {
+            if (!IsAdminOrStaff())
+            {
+                throw new ClientException("Only Admin or Staff can retry a refund.");
+            }
+
+            var reservation = await _dbContext.Reservations
+                .FirstOrDefaultAsync(r => r.Id == id)
+                ?? throw new KeyNotFoundException($"Reservation with id {id} not found.");
+
+            if (reservation.RefundStatus == RefundStatus.Refunded)
+            {
+                throw new ClientException("This booking has already been refunded.");
+            }
+
+            if (reservation.RefundStatus is not (RefundStatus.Pending or RefundStatus.Failed))
+            {
+                throw new ClientException("There is no outstanding refund to retry on this booking.");
+            }
+
+            if (string.IsNullOrWhiteSpace(reservation.PaymentTransactionId))
+            {
+                throw new ClientException(
+                    "This booking has no Stripe payment to refund. Counter sales are settled at the desk.");
+            }
+
+            await RefundAndRecordAsync(reservation);
+            await _dbContext.SaveChangesAsync();
+
+            if (reservation.RefundStatus == RefundStatus.Refunded)
+            {
+                await NotifySafeAsync(
+                    reservation.UserId,
+                    "Refund completed",
+                    $"Reservation {reservation.ReservationNumber} has been refunded.",
+                    NotificationType.Payment);
+            }
+
+            await NotifyAnalyticsSafeAsync();
+            return await GetByIdAsync(reservation.Id);
+        }
+
+        /// <inheritdoc />
         public async Task<IReadOnlyList<ReservationResponse>> CancelActiveForProjectionAsync(
             int projectionId,
             string reason,
@@ -761,6 +821,12 @@ namespace CineVision.Services
         /// </summary>
         private async Task RefundAndRecordAsync(Reservation reservation)
         {
+            if (IsSeededPaymentIntent(reservation.PaymentTransactionId))
+            {
+                CompleteSeededRefund(reservation);
+                return;
+            }
+
             ConfigureStripe();
 
             try
@@ -826,6 +892,24 @@ namespace CineVision.Services
                 : DateTime.UtcNow;
             reservation.RefundError = null;
             return true;
+        }
+
+        private static bool IsSeededPaymentIntent(string? paymentIntentId) =>
+            !string.IsNullOrWhiteSpace(paymentIntentId)
+            && paymentIntentId.StartsWith("pi_seed_", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Seed bookings use fake Stripe ids so a professor can retry a failed refund without
+        /// a live PaymentIntent. Completing them locally keeps the same status path as Stripe.
+        /// </summary>
+        private static void CompleteSeededRefund(Reservation reservation)
+        {
+            reservation.RefundStatus = RefundStatus.Refunded;
+            reservation.RefundId = string.IsNullOrWhiteSpace(reservation.RefundId)
+                ? $"re_{reservation.ReservationNumber}"
+                : reservation.RefundId;
+            reservation.RefundedAt = DateTime.UtcNow;
+            reservation.RefundError = null;
         }
 
         private static string Truncate(string value, int maxLength) =>

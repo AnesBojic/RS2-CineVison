@@ -14,6 +14,8 @@ class DashboardStats {
 
   final int activeMovies;
 
+  final int totalScreens;
+
   final int totalProjections;
 
   final int upcomingProjections;
@@ -37,6 +39,8 @@ class DashboardStats {
     required this.totalMovies,
 
     required this.activeMovies,
+
+    required this.totalScreens,
 
     required this.totalProjections,
 
@@ -65,6 +69,8 @@ class DashboardStats {
       totalMovies: json['totalMovies'] as int? ?? 0,
 
       activeMovies: json['activeMovies'] as int? ?? 0,
+
+      totalScreens: json['totalScreens'] as int? ?? 0,
 
       totalProjections: json['totalProjections'] as int? ?? 0,
 

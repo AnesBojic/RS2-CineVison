@@ -16,6 +16,7 @@ class Reservation {
   final DateTime? projectionStartTime;
   final int refundStatus;
   final String refundStatusName;
+  final String? refundError;
   final DateTime? cancelledAt;
   final String? cancellationReason;
   final DateTime? holdExpiresAt;
@@ -35,6 +36,7 @@ class Reservation {
     this.projectionStartTime,
     this.refundStatus = RefundStatus.none,
     this.refundStatusName = '',
+    this.refundError,
     this.cancelledAt,
     this.cancellationReason,
     this.holdExpiresAt,
@@ -56,6 +58,7 @@ class Reservation {
       projectionStartTime: UtcDateTime.tryParse(json['projectionStartTime']),
       refundStatus: json['refundStatus'] as int? ?? RefundStatus.none,
       refundStatusName: json['refundStatusName'] as String? ?? '',
+      refundError: json['refundError'] as String?,
       cancelledAt: UtcDateTime.tryParse(json['cancelledAt']),
       cancellationReason: json['cancellationReason'] as String?,
       holdExpiresAt: UtcDateTime.tryParse(json['holdExpiresAt']),
@@ -63,6 +66,17 @@ class Reservation {
   }
 
   bool get isCancelled => status == ReservationStatus.cancelled;
+
+  bool get canRetryRefund => refundStatus == RefundStatus.failed;
+
+  String get refundLabel {
+    return switch (refundStatus) {
+      RefundStatus.refunded => 'Refunded',
+      RefundStatus.failed => 'Failed',
+      RefundStatus.pending => 'Pending',
+      _ => '—',
+    };
+  }
 
   String get reasonLabel {
     final text = cancellationReason?.trim();

@@ -97,6 +97,7 @@ namespace CineVision.Services
             _dbContext.Halls.Add(hall);
             await _dbContext.SaveChangesAsync();
 
+            await _analyticsNotifier.NotifyAnalyticsChangedAsync();
             return await GetByIdAsync(hall.Id);
         }
 
@@ -204,6 +205,7 @@ namespace CineVision.Services
 
             await _dbContext.SaveChangesAsync();
 
+            await _analyticsNotifier.NotifyAnalyticsChangedAsync();
             return BuildResponse(hall, includeSeats: true);
         }
 

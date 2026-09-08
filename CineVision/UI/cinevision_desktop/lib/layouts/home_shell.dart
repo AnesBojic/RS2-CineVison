@@ -168,6 +168,7 @@ class _HomeShellState extends State<HomeShell> {
           key: ValueKey('projections-${_projectionEditId ?? 'list'}'),
           editId: _projectionEditId,
           onEditConsumed: () => _clearEditId(3),
+          onNavigate: _navigateTo,
         );
       case 4:
         return const BookingListScreen(key: ValueKey('bookings'));

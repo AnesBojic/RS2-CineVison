@@ -152,7 +152,7 @@ namespace CineVision.Services
             sb.AppendLine("=== WORKFLOW CHEAT SHEET ===");
             sb.AppendLine("1. Movies: create via desktop admin, set poster with PUT /Movies/{id}/Poster.");
             sb.AppendLine("2. Halls: create with RowsCount × SeatsPerRow to auto-generate seats. Screen types: Standard, IMAX, 3D. Status: Active, Maintenance, Inactive.");
-            sb.AppendLine("3. Projections: pick an existing Movie + an Active Hall + date/time + price. Cannot schedule in Maintenance/Inactive halls. After tickets are sold, movie/hall/time/price cannot change — staff must cancel the projection (refunds customers) instead of editing or deleting it.");
+            sb.AppendLine("3. Projections: pick an existing Movie + an Active Hall + date/time + price. Cannot schedule in Maintenance/Inactive halls. After any booking exists, the projection cannot be edited or deleted — staff must cancel it (refunds customers) instead.");
             sb.AppendLine("4. Reservations: customers reserve seats on mobile; payment via Stripe. Admin/Staff manage content; only Admin manages user accounts.");
             sb.AppendLine("5. Analytics: dashboard revenue is money actually collected and not refunded (PaymentStatus), independent of whether the booking is still Paid or already Completed. Tickets sold, occupancy, hall utilization.");
             sb.AppendLine("6. Email: admin can email users; reservation confirmations are queued via RabbitMQ when configured.");

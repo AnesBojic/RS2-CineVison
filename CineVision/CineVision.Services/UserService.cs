@@ -32,6 +32,7 @@ namespace CineVision.Services
         private readonly IValidator<UserPasswordChangeRequest> _passwordChangeValidator;
         private readonly IEmailService _emailService;
         private readonly ITokenRevocationService _tokenRevocationService;
+        private readonly IAnalyticsNotifier _analyticsNotifier;
 
         public UserService(
             CineVisionDbContext dbContext,
@@ -45,7 +46,8 @@ namespace CineVision.Services
             IValidator<UserRegisterRequest> registerValidator,
             IValidator<UserPasswordChangeRequest> passwordChangeValidator,
             IEmailService emailService,
-            ITokenRevocationService tokenRevocationService)
+            ITokenRevocationService tokenRevocationService,
+            IAnalyticsNotifier analyticsNotifier)
             : base(dbContext, mapper, insertValidator, updateValidator)
         {
             _tokenRevocationService = tokenRevocationService;
@@ -56,6 +58,7 @@ namespace CineVision.Services
             _registerValidator = registerValidator;
             _passwordChangeValidator = passwordChangeValidator;
             _emailService = emailService;
+            _analyticsNotifier = analyticsNotifier;
         }
 
 
@@ -305,7 +308,9 @@ namespace CineVision.Services
                 throw;
             }
 
-            return await GetByIdAsync(entity.Id);
+            var created = await GetByIdAsync(entity.Id);
+            await _analyticsNotifier.NotifyAnalyticsChangedAsync();
+            return created;
         }
 
         public async Task<UserResponse> RegisterAsync(UserRegisterRequest request)
@@ -399,6 +404,11 @@ namespace CineVision.Services
             if (deactivateAccount || roleChanged)
             {
                 _tokenRevocationService.InvalidateUserSessions(id);
+            }
+
+            if (deactivateAccount || roleChanged || wasActive != entity.IsActive)
+            {
+                await _analyticsNotifier.NotifyAnalyticsChangedAsync();
             }
 
             return await GetByIdAsync(id);
@@ -505,6 +515,7 @@ namespace CineVision.Services
                 _tokenRevocationService.InvalidateUserSessions(id);
             }
 
+            await _analyticsNotifier.NotifyAnalyticsChangedAsync();
             return await GetByIdAsync(id);
         }
 

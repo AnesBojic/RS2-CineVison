@@ -54,6 +54,44 @@ internal static class BookingGraphCascade
     }
 
     /// <summary>
+    /// Short labels so staff can find the rows that block a delete (including Pending holds
+    /// and Cancelled tickets, which still count as history).
+    /// </summary>
+    public static async Task<List<string>> SummarizeBookingsAsync(
+        CineVisionDbContext db,
+        IReadOnlyCollection<int> projectionIds,
+        int take = 8)
+    {
+        if (projectionIds.Count == 0)
+        {
+            return new List<string>();
+        }
+
+        var rows = await db.Reservations
+            .AsNoTracking()
+            .Where(r => projectionIds.Contains(r.ProjectionId))
+            .OrderByDescending(r => r.ReservationDate)
+            .Select(r => new
+            {
+                r.ReservationNumber,
+                r.Status,
+                r.CustomerName,
+                r.CustomerEmail
+            })
+            .Take(take)
+            .ToListAsync();
+
+        return rows.Select(r =>
+        {
+            var who = !string.IsNullOrWhiteSpace(r.CustomerName)
+                ? r.CustomerName
+                : r.CustomerEmail;
+            var suffix = string.IsNullOrWhiteSpace(who) ? string.Empty : $" — {who}";
+            return $"{r.ReservationNumber} ({r.Status}){suffix}";
+        }).ToList();
+    }
+
+    /// <summary>
     /// Deletes projections that have never been used in a booking. Throws when any reservation
     /// exists — cancelled, paid, counter, or abandoned hold — so the record stays permanent.
     /// </summary>
@@ -91,10 +129,34 @@ internal static class BookingGraphCascade
         int bookingHistoryCount,
         params (string name, int count)[] parts)
     {
+        return BuildImpact(id, displayName, bookingHistoryCount, null, parts);
+    }
+
+    public static CascadeDeleteImpactResponse BuildImpact(
+        int id,
+        string displayName,
+        int bookingHistoryCount,
+        IReadOnlyList<string>? bookingSummaries,
+        params (string name, int count)[] parts)
+    {
         var items = parts
             .Where(p => p.count > 0)
             .Select(p => new CascadeDeleteImpactItem { EntityName = p.name, Count = p.count })
             .ToList();
+
+        string? blockReason = null;
+        if (bookingHistoryCount > 0)
+        {
+            blockReason =
+                $"{bookingHistoryCount} booking(s) exist for this record and cannot be erased. " +
+                "Open Bookings, set the status filter to All statuses (Pending checkout holds " +
+                "and Cancelled tickets also count), then search for the ticket. " +
+                "Cancel those bookings to refund customers; the history stays permanently.";
+            if (bookingSummaries is { Count: > 0 })
+            {
+                blockReason += " Found: " + string.Join("; ", bookingSummaries) + ".";
+            }
+        }
 
         return new CascadeDeleteImpactResponse
         {
@@ -102,10 +164,7 @@ internal static class BookingGraphCascade
             DisplayName = displayName,
             TotalAffectedRows = items.Sum(i => i.Count),
             CanDelete = bookingHistoryCount == 0,
-            BlockReason = bookingHistoryCount == 0
-                ? null
-                : $"{bookingHistoryCount} booking(s) exist for this record and cannot be erased. " +
-                  "Cancel those bookings to refund customers; the history stays permanently.",
+            BlockReason = blockReason,
             Items = items
         };
     }

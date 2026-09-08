@@ -142,8 +142,10 @@ namespace CineVision.Services.Database
 
         private void SeedProjections(ModelBuilder modelBuilder)
         {
-            // 1-5: historical (July 2026) - keep for seeded reservations/analytics.
-            // 7-17: upcoming (Aug-Oct 2026). Id 6 skipped - may already exist from admin-created data.
+            // 1-5, 7-12: past shows (analytics + completed tickets).
+            // 13-17: original upcoming rows (may already have been edited or deleted in a live DB).
+            // 1001-1006: defence demo rows with high ids that do not collide with admin-created data.
+            // Id 6 skipped — may already exist from admin-created data.
             modelBuilder.Entity<Projection>().HasData(
                 new { Id = 1, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 18, 0, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 2, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 7, 5, 21, 0, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
@@ -163,10 +165,41 @@ namespace CineVision.Services.Database
                 new { Id = 13, MovieId = 1, HallId = 2, StartTime = new DateTime(2026, 9, 12, 19, 0, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 14, MovieId = 2, HallId = 1, StartTime = new DateTime(2026, 9, 18, 16, 0, 0, DateTimeKind.Utc), BasePrice = 7.50m, LanguageId = (int?)1, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
 
-                // October 2026
+                // October 2026 — 16 and 17 stay empty so staff can still fully edit or delete them
                 new { Id = 15, MovieId = 5, HallId = 1, StartTime = new DateTime(2026, 10, 3, 20, 0, 0, DateTimeKind.Utc), BasePrice = 10.50m, LanguageId = (int?)1, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
                 new { Id = 16, MovieId = 3, HallId = 2, StartTime = new DateTime(2026, 10, 10, 18, 0, 0, DateTimeKind.Utc), BasePrice = 9.00m, LanguageId = (int?)1, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
-                new { Id = 17, MovieId = 4, HallId = 2, StartTime = new DateTime(2026, 10, 22, 19, 30, 0, DateTimeKind.Utc), BasePrice = 8.00m, LanguageId = (int?)2, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
+                new { Id = 17, MovieId = 4, HallId = 2, StartTime = new DateTime(2026, 10, 22, 19, 30, 0, DateTimeKind.Utc), BasePrice = 8.00m, LanguageId = (int?)2, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+
+                new
+                {
+                    Id = 1001,
+                    MovieId = 6,
+                    HallId = 1,
+                    StartTime = new DateTime(2026, 9, 25, 18, 0, 0, DateTimeKind.Utc),
+                    BasePrice = 9.00m,
+                    LanguageId = (int?)1,
+                    CreatedAt = SeedDate,
+                    UpdatedAt = (DateTime?)new DateTime(2026, 9, 6, 10, 0, 0, DateTimeKind.Utc),
+                    CancelledAt = (DateTime?)new DateTime(2026, 9, 6, 10, 0, 0, DateTimeKind.Utc),
+                    CancellationReason = (string?)"Projector fault — show cancelled by staff."
+                },
+                new
+                {
+                    Id = 1002,
+                    MovieId = 6,
+                    HallId = 1,
+                    StartTime = new DateTime(2026, 9, 26, 20, 0, 0, DateTimeKind.Utc),
+                    BasePrice = 9.00m,
+                    LanguageId = (int?)2,
+                    CreatedAt = SeedDate,
+                    UpdatedAt = (DateTime?)new DateTime(2026, 9, 6, 11, 0, 0, DateTimeKind.Utc),
+                    CancelledAt = (DateTime?)new DateTime(2026, 9, 6, 11, 0, 0, DateTimeKind.Utc),
+                    CancellationReason = (string?)"Low attendance — screening withdrawn."
+                },
+                new { Id = 1003, MovieId = 1, HallId = 1, StartTime = new DateTime(2026, 9, 14, 18, 0, 0, DateTimeKind.Utc), BasePrice = 8.50m, LanguageId = (int?)1, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 1004, MovieId = 2, HallId = 1, StartTime = new DateTime(2026, 9, 20, 17, 0, 0, DateTimeKind.Utc), BasePrice = 7.50m, LanguageId = (int?)1, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 1005, MovieId = 5, HallId = 1, StartTime = new DateTime(2026, 10, 5, 19, 0, 0, DateTimeKind.Utc), BasePrice = 10.50m, LanguageId = (int?)1, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null },
+                new { Id = 1006, MovieId = 3, HallId = 1, StartTime = new DateTime(2026, 10, 12, 19, 0, 0, DateTimeKind.Utc), BasePrice = 9.00m, LanguageId = (int?)1, CreatedAt = SeedDate, UpdatedAt = (DateTime?)null }
             );
         }
 
@@ -273,15 +306,15 @@ namespace CineVision.Services.Database
 
         private void SeedReservations(ModelBuilder modelBuilder)
         {
-            // customer1 (4) and customer2 (5) purchased tickets across projections for analytics testing.
-            // Paid = online Stripe sale; the single Confirmed row is a counter sale paid at the cinema.
+            // customer1 (4) and customer2 (5). July shows are Completed. Later rows cover
+            // Paid / Confirmed / Cancelled+Refunded / Cancelled+Failed for the defence demo.
             modelBuilder.Entity<Reservation>().HasData(
                 new
                 {
                     Id = 1,
                     ReservationNumber = "R-SEED-001",
                     ReservationDate = new DateTime(2026, 6, 15, 14, 30, 0, DateTimeKind.Utc),
-                    Status = ReservationStatus.Paid,
+                    Status = ReservationStatus.Completed,
                     TotalAmount = 25.50m,
                     UserId = 4,
                     ProjectionId = 1,
@@ -296,14 +329,14 @@ namespace CineVision.Services.Database
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
-                    CompletedAt = (DateTime?)null
+                    CompletedAt = (DateTime?)new DateTime(2026, 7, 5, 20, 0, 0, DateTimeKind.Utc)
                 },
                 new
                 {
                     Id = 2,
                     ReservationNumber = "R-SEED-002",
                     ReservationDate = new DateTime(2026, 6, 20, 10, 15, 0, DateTimeKind.Utc),
-                    Status = ReservationStatus.Paid,
+                    Status = ReservationStatus.Completed,
                     TotalAmount = 17.00m,
                     UserId = 5,
                     ProjectionId = 1,
@@ -318,14 +351,14 @@ namespace CineVision.Services.Database
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
-                    CompletedAt = (DateTime?)null
+                    CompletedAt = (DateTime?)new DateTime(2026, 7, 5, 20, 0, 0, DateTimeKind.Utc)
                 },
                 new
                 {
                     Id = 3,
                     ReservationNumber = "R-SEED-003",
                     ReservationDate = new DateTime(2026, 6, 22, 18, 45, 0, DateTimeKind.Utc),
-                    Status = ReservationStatus.Paid,
+                    Status = ReservationStatus.Completed,
                     TotalAmount = 21.00m,
                     UserId = 4,
                     ProjectionId = 3,
@@ -340,14 +373,14 @@ namespace CineVision.Services.Database
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
-                    CompletedAt = (DateTime?)null
+                    CompletedAt = (DateTime?)new DateTime(2026, 7, 6, 19, 30, 0, DateTimeKind.Utc)
                 },
                 new
                 {
                     Id = 4,
                     ReservationNumber = "R-SEED-004",
                     ReservationDate = new DateTime(2026, 7, 1, 11, 0, 0, DateTimeKind.Utc),
-                    Status = ReservationStatus.Paid,
+                    Status = ReservationStatus.Completed,
                     TotalAmount = 36.00m,
                     UserId = 5,
                     ProjectionId = 4,
@@ -362,14 +395,14 @@ namespace CineVision.Services.Database
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
-                    CompletedAt = (DateTime?)null
+                    CompletedAt = (DateTime?)new DateTime(2026, 7, 6, 22, 0, 0, DateTimeKind.Utc)
                 },
                 new
                 {
                     Id = 5,
                     ReservationNumber = "R-SEED-005",
                     ReservationDate = new DateTime(2026, 7, 3, 16, 20, 0, DateTimeKind.Utc),
-                    Status = ReservationStatus.Paid,
+                    Status = ReservationStatus.Completed,
                     TotalAmount = 40.00m,
                     UserId = 4,
                     ProjectionId = 5,
@@ -384,14 +417,14 @@ namespace CineVision.Services.Database
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
-                    CompletedAt = (DateTime?)null
+                    CompletedAt = (DateTime?)new DateTime(2026, 7, 7, 21, 0, 0, DateTimeKind.Utc)
                 },
                 new
                 {
                     Id = 6,
                     ReservationNumber = "R-SEED-006",
                     ReservationDate = new DateTime(2026, 6, 28, 20, 5, 0, DateTimeKind.Utc),
-                    Status = ReservationStatus.Paid,
+                    Status = ReservationStatus.Completed,
                     TotalAmount = 34.00m,
                     UserId = 5,
                     ProjectionId = 2,
@@ -406,14 +439,14 @@ namespace CineVision.Services.Database
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
-                    CompletedAt = (DateTime?)null
+                    CompletedAt = (DateTime?)new DateTime(2026, 7, 5, 23, 0, 0, DateTimeKind.Utc)
                 },
                 new
                 {
                     Id = 7,
                     ReservationNumber = "R-SEED-007",
                     ReservationDate = new DateTime(2026, 6, 30, 9, 40, 0, DateTimeKind.Utc),
-                    Status = ReservationStatus.Confirmed,
+                    Status = ReservationStatus.Completed,
                     TotalAmount = 8.50m,
                     UserId = 4,
                     ProjectionId = 2,
@@ -430,6 +463,97 @@ namespace CineVision.Services.Database
                     CancelledByUserId = (int?)null,
                     CancelledAt = (DateTime?)null,
                     CancellationReason = (string?)null,
+                    CompletedAt = (DateTime?)new DateTime(2026, 7, 5, 23, 0, 0, DateTimeKind.Utc)
+                },
+                new
+                {
+                    Id = 1001,
+                    ReservationNumber = "R-SEED-008",
+                    ReservationDate = new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc),
+                    Status = ReservationStatus.Paid,
+                    TotalAmount = 17.00m,
+                    UserId = 4,
+                    ProjectionId = 1003,
+                    CustomerName = (string?)"Dave Customer",
+                    CustomerEmail = (string?)"customer1@gmail.com",
+                    PaymentMethod = PaymentMethod.Online,
+                    PaymentStatus = PaymentStatus.Paid,
+                    PaymentTransactionId = (string?)"pi_seed_008",
+                    PaymentDate = (DateTime?)new DateTime(2026, 9, 1, 12, 1, 0, DateTimeKind.Utc),
+                    RefundStatus = RefundStatus.None,
+                    HoldExpiresAt = (DateTime?)null,
+                    CancelledByUserId = (int?)null,
+                    CancelledAt = (DateTime?)null,
+                    CancellationReason = (string?)null,
+                    CompletedAt = (DateTime?)null
+                },
+                new
+                {
+                    Id = 1003,
+                    ReservationNumber = "R-SEED-010",
+                    ReservationDate = new DateTime(2026, 9, 7, 11, 15, 0, DateTimeKind.Utc),
+                    Status = ReservationStatus.Confirmed,
+                    TotalAmount = 10.50m,
+                    UserId = 4,
+                    ProjectionId = 1005,
+                    CustomerName = (string?)"Dave Customer",
+                    CustomerEmail = (string?)"customer1@gmail.com",
+                    PaymentMethod = PaymentMethod.Counter,
+                    PaymentStatus = PaymentStatus.Paid,
+                    PaymentTransactionId = (string?)null,
+                    PaymentDate = (DateTime?)new DateTime(2026, 9, 7, 11, 15, 0, DateTimeKind.Utc),
+                    RefundStatus = RefundStatus.None,
+                    HoldExpiresAt = (DateTime?)null,
+                    CancelledByUserId = (int?)null,
+                    CancelledAt = (DateTime?)null,
+                    CancellationReason = (string?)null,
+                    CompletedAt = (DateTime?)null
+                },
+                new
+                {
+                    Id = 1004,
+                    ReservationNumber = "R-SEED-011",
+                    ReservationDate = new DateTime(2026, 9, 2, 16, 0, 0, DateTimeKind.Utc),
+                    Status = ReservationStatus.Cancelled,
+                    TotalAmount = 18.00m,
+                    UserId = 5,
+                    ProjectionId = 1001,
+                    CustomerName = (string?)"Eve Customer",
+                    CustomerEmail = (string?)"customer2@gmail.com",
+                    PaymentMethod = PaymentMethod.Online,
+                    PaymentStatus = PaymentStatus.Paid,
+                    PaymentTransactionId = (string?)"pi_seed_011",
+                    PaymentDate = (DateTime?)new DateTime(2026, 9, 2, 16, 1, 0, DateTimeKind.Utc),
+                    RefundStatus = RefundStatus.Refunded,
+                    RefundId = (string?)"re_seed_011",
+                    RefundedAt = (DateTime?)new DateTime(2026, 9, 6, 10, 5, 0, DateTimeKind.Utc),
+                    HoldExpiresAt = (DateTime?)null,
+                    CancelledByUserId = (int?)1,
+                    CancelledAt = (DateTime?)new DateTime(2026, 9, 6, 10, 0, 0, DateTimeKind.Utc),
+                    CancellationReason = (string?)"Projector fault — show cancelled by staff.",
+                    CompletedAt = (DateTime?)null
+                },
+                new
+                {
+                    Id = 1005,
+                    ReservationNumber = "R-SEED-012",
+                    ReservationDate = new DateTime(2026, 9, 3, 14, 20, 0, DateTimeKind.Utc),
+                    Status = ReservationStatus.Cancelled,
+                    TotalAmount = 18.00m,
+                    UserId = 4,
+                    ProjectionId = 1002,
+                    CustomerName = (string?)"Dave Customer",
+                    CustomerEmail = (string?)"customer1@gmail.com",
+                    PaymentMethod = PaymentMethod.Online,
+                    PaymentStatus = PaymentStatus.Paid,
+                    PaymentTransactionId = (string?)"pi_seed_012",
+                    PaymentDate = (DateTime?)new DateTime(2026, 9, 3, 14, 21, 0, DateTimeKind.Utc),
+                    RefundStatus = RefundStatus.Failed,
+                    RefundError = (string?)"Stripe refund failed: the charge could not be refunded (seeded demo for retry).",
+                    HoldExpiresAt = (DateTime?)null,
+                    CancelledByUserId = (int?)1,
+                    CancelledAt = (DateTime?)new DateTime(2026, 9, 6, 11, 0, 0, DateTimeKind.Utc),
+                    CancellationReason = (string?)"Low attendance — screening withdrawn.",
                     CompletedAt = (DateTime?)null
                 }
             );
@@ -498,8 +622,19 @@ namespace CineVision.Services.Database
                 new { Id = 18, ReservationId = 6, SeatId = 10, ProjectionId = 2, Price = 8.50m },
                 new { Id = 19, ReservationId = 6, SeatId = 11, ProjectionId = 2, Price = 8.50m },
                 new { Id = 20, ReservationId = 6, SeatId = 12, ProjectionId = 2, Price = 8.50m },
-                // R-SEED-007 - unpaid hold on late projection
-                new { Id = 21, ReservationId = 7, SeatId = 13, ProjectionId = 2, Price = 8.50m }
+                // R-SEED-007 - counter sale on the late July projection
+                new { Id = 21, ReservationId = 7, SeatId = 13, ProjectionId = 2, Price = 8.50m },
+                // R-SEED-008 - upcoming Edge of Tomorrow (cannot edit/delete)
+                new { Id = 1001, ReservationId = 1001, SeatId = 33, ProjectionId = 1003, Price = 8.50m },
+                new { Id = 1002, ReservationId = 1001, SeatId = 34, ProjectionId = 1003, Price = 8.50m },
+                // R-SEED-010 - counter sale on upcoming Final Strike
+                new { Id = 1004, ReservationId = 1003, SeatId = 36, ProjectionId = 1005, Price = 10.50m },
+                // R-SEED-011 - cancelled Quantum Drift, refund succeeded (seats released)
+                new { Id = 1005, ReservationId = 1004, SeatId = 1, ProjectionId = 1001, Price = 9.00m, ReleasedAt = (DateTime?)new DateTime(2026, 9, 6, 10, 0, 0, DateTimeKind.Utc) },
+                new { Id = 1006, ReservationId = 1004, SeatId = 2, ProjectionId = 1001, Price = 9.00m, ReleasedAt = (DateTime?)new DateTime(2026, 9, 6, 10, 0, 0, DateTimeKind.Utc) },
+                // R-SEED-012 - cancelled Quantum Drift, Stripe refund failed
+                new { Id = 1007, ReservationId = 1005, SeatId = 3, ProjectionId = 1002, Price = 9.00m, ReleasedAt = (DateTime?)new DateTime(2026, 9, 6, 11, 0, 0, DateTimeKind.Utc) },
+                new { Id = 1008, ReservationId = 1005, SeatId = 4, ProjectionId = 1002, Price = 9.00m, ReleasedAt = (DateTime?)new DateTime(2026, 9, 6, 11, 0, 0, DateTimeKind.Utc) }
             );
         }
     }

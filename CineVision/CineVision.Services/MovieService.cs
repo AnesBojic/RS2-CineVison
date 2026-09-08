@@ -144,6 +144,13 @@ public class MovieService : BaseReadService<Movie, MovieResponse, MovieSearchObj
             {
                 query = query.Where(m => m.GenreId == search.GenreId.Value);
             }
+            if (search.NowShowingOnly == true)
+            {
+                var now = DateTime.UtcNow;
+                query = query.Where(m => m.Projections.Any(s =>
+                    s.CancelledAt == null &&
+                    s.StartTime.AddMinutes(m.DurationMinutes) > now));
+            }
         }
 
         return query;

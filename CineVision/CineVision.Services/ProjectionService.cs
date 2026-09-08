@@ -92,6 +92,10 @@ namespace CineVision.Services
             {
                 query = query.Where(s => s.HallId == search.HallId.Value);
             }
+            else if (search.ActiveHallsOnly == true)
+            {
+                query = query.Where(s => s.Hall.Status != null && s.Hall.Status.AllowsProjections);
+            }
             if (search.FromDate.HasValue)
             {
                 query = query.Where(s => s.StartTime >= search.FromDate.Value);
@@ -107,6 +111,29 @@ namespace CineVision.Services
                     s.CancelledAt == null &&
                     s.StartTime >= now &&
                     s.Hall.Status!.AllowsProjections);
+            }
+
+            var status = search.Status?.Trim().ToLowerInvariant();
+            if (status == "upcoming")
+            {
+                var now = DateTime.UtcNow;
+                query = query.Where(s => s.CancelledAt == null && s.StartTime >= now);
+            }
+            else if (status == "live")
+            {
+                var now = DateTime.UtcNow;
+                query = query.Where(s =>
+                    s.CancelledAt == null &&
+                    s.StartTime.AddMinutes(s.Movie.DurationMinutes) > now);
+            }
+            else if (status == "past")
+            {
+                var now = DateTime.UtcNow;
+                query = query.Where(s => s.CancelledAt == null && s.StartTime < now);
+            }
+            else if (status == "cancelled")
+            {
+                query = query.Where(s => s.CancelledAt != null);
             }
 
             int? totalCount = null;
@@ -214,23 +241,9 @@ namespace CineVision.Services
             var hasBookings = await _dbContext.Reservations.AnyAsync(r => r.ProjectionId == id);
             if (hasBookings)
             {
-                if (entity.MovieId != request.MovieId ||
-                    entity.HallId != request.HallId ||
-                    entity.BasePrice != request.BasePrice)
-                {
-                    throw new ClientException(
-                        "This projection already has bookings. Movie, hall, start time and price cannot be changed " +
-                        "because they describe tickets that were already sold. Cancel the projection to refund customers, " +
-                        "or leave the sold details as they are.");
-                }
-
-                // StartTime is ignored: clients often resend a local round-trip that is not byte-equal
-                // to the stored UTC instant, and changing the time would rewrite sold tickets anyway.
-                await EnsureLanguageExistsAsync(request.LanguageId);
-                entity.LanguageId = request.LanguageId;
-                entity.UpdatedAt = DateTime.UtcNow;
-                await _dbContext.SaveChangesAsync();
-                return await GetByIdAsync(entity.Id);
+                throw new ClientException(
+                    "This projection already has bookings and cannot be edited. " +
+                    "Cancel the projection to refund customers; the sold details stay on record.");
             }
 
             var movie = await _dbContext.Movies.FindAsync(request.MovieId)
@@ -340,12 +353,14 @@ namespace CineVision.Services
 
             var graph = await BookingGraphCascade.CountForProjectionIdsAsync(_dbContext, new[] { id });
             var history = await BookingGraphCascade.CountBookingHistoryAsync(_dbContext, new[] { id });
+            var summaries = await BookingGraphCascade.SummarizeBookingsAsync(_dbContext, new[] { id });
             var display = projection.Movie?.Title ?? $"Projection #{id}";
 
             return BookingGraphCascade.BuildImpact(
                 projection.Id,
                 display,
                 history,
+                summaries,
                 ("Reservations", graph.ReservationCount),
                 ("Reserved seats", graph.ReservationSeatCount));
         }

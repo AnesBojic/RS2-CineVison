@@ -101,13 +101,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final catalog = await Future.wait([
         movieProvider.get(
-          filter: {'pageSize': 100, 'includeGenre': true},
+          filter: {
+            'pageSize': 100,
+            'includeGenre': true,
+            'nowShowingOnly': true,
+          },
           includePoster: true,
         ),
         hallProvider.get(filter: {'pageSize': 5}),
         projectionProvider.get(
           filter: {
-            'pageSize': 6,
+            'pageSize': 12,
+            'status': 'live',
+            'includeMovie': true,
             'includeSeatStats': false,
           },
         ),
@@ -117,10 +123,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       projections = (catalog[2] as SearchResult<Projection>).items ?? [];
       movies.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
       halls.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
+      final now = DateTime.now().toUtc();
+      projections = projections.where((s) {
+        final start = s.startTime?.toUtc();
+        return start != null && start.year == now.year && start.month == now.month;
+      }).toList();
       projections.sort((a, b) {
         final at = a.startTime ?? DateTime.fromMillisecondsSinceEpoch(0);
         final bt = b.startTime ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return bt.compareTo(at);
+        return at.compareTo(bt);
       });
     } on Exception catch (e) {
       if (mounted) {
@@ -130,10 +141,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       dashboard = await analyticsProvider.getDashboard();
-      final live = analyticsProvider.liveDashboard;
-      if (live != null) {
-        dashboard = live;
-      }
     } on Exception {
       analyticsError = 'Analytics could not be loaded.';
     }
@@ -201,7 +208,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         StatCard(
           icon: Icons.tv,
           iconColor: AppColors.primary,
-          value: '${d?.totalProjections ?? 0}',
+          value: '${d?.totalScreens ?? 0}',
           label: 'Total Screens',
           subtitle: 'Active',
         ),
@@ -210,8 +217,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           icon: Icons.movie,
           iconColor: AppColors.purple,
           value: '${d?.activeMovies ?? 0}',
-          label: 'Now Showing',
-          subtitle: 'Current & upcoming',
+          label: 'Total Movies',
+          subtitle: 'Now Showing',
         ),
         const SizedBox(width: 14),
         StatCard(
@@ -235,7 +242,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           iconColor: AppColors.orange,
           value: _formatCount(d?.totalCustomers ?? 0),
           label: 'Total Customers',
-          subtitle: 'Registered',
+          subtitle: 'Active',
         ),
       ],
     );
@@ -392,7 +399,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         DataCard(
-          emptyMessage: _filteredMovies.isEmpty ? 'No movies yet' : null,
+          emptyMessage: _filteredMovies.isEmpty ? 'No current or upcoming movies' : null,
           child: StyledDataTable(
             columns: const [
               DataColumn(label: Text('Movie Title')),
@@ -518,7 +525,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         DataCard(
-          emptyMessage: _filteredProjections.isEmpty ? 'No projections scheduled' : null,
+          emptyMessage: _filteredProjections.isEmpty ? 'No upcoming projections this month' : null,
           child: StyledDataTable(
             columns: const [
               DataColumn(label: Text('Movie')),

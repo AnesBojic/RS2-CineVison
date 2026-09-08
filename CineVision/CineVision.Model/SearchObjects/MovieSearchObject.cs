@@ -23,5 +23,10 @@
         /// When true, list items include PosterImageBase64. Default false keeps list payloads small.
         /// </summary>
         public bool? IncludePoster { get; set; }
+
+        /// <summary>
+        /// When true, only movies that still have a non-cancelled projection which has not ended.
+        /// </summary>
+        public bool? NowShowingOnly { get; set; }
     }
 }

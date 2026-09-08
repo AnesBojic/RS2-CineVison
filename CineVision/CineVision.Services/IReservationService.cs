@@ -16,6 +16,11 @@ namespace CineVision.Services
         Task<ReservationResponse> CompleteAsync(int id);
 
         /// <summary>
+        /// Retries Stripe for a cancelled booking whose refund is still Pending or Failed.
+        /// </summary>
+        Task<ReservationResponse> RetryRefundAsync(int id);
+
+        /// <summary>
         /// Cancels every still-active booking on a projection (staff path: no 4-hour customer window).
         /// Refunds are recorded the same way as a customer cancel: Pending first, then Stripe.
         /// </summary>

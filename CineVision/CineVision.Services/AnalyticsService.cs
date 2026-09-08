@@ -18,13 +18,15 @@ namespace CineVision.Services
     /// (<see cref="PaymentStatus.Paid"/> and <see cref="RefundStatus"/> other than Refunded),
     /// never from the booking lifecycle. Completing a paid reservation therefore cannot
     /// erase it from TotalRevenue, and a Confirmed booking that was never paid cannot enter it.
-    /// Tickets sold count seats that are still occupied (ReleasedAt is null). Hall capacity and
+    /// Tickets sold count occupied seats (ReleasedAt is null). The dashboard snapshot
+    /// uses active halls as screens, now-showing movies, and this month's remaining
+    /// shows for upcoming / tickets; historical reports still use the full snapshot. Hall capacity and
     /// occupancy use <see cref="SeatCapacity"/> so couple primaries count as two physical spots.
     /// </summary>
     public class AnalyticsService : IAnalyticsService
     {
         private static readonly TimeSpan SnapshotTtl = TimeSpan.FromSeconds(30);
-        private const string SnapshotCacheKey = "analytics:snapshot:v4";
+        private const string SnapshotCacheKey = "analytics:snapshot:v6";
 
         private readonly CineVisionDbContext _dbContext;
         private readonly IMemoryCache _cache;
@@ -39,26 +41,39 @@ namespace CineVision.Services
         {
             var snapshot = await GetSnapshotAsync();
             var now = DateTime.UtcNow;
+            var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var monthEnd = monthStart.AddMonths(1);
 
-            var topMovies = BuildMoviePerformance(snapshot.Projections, snapshot.SeatSales, snapshot.CapByHall, snapshot.AvgRatings)
+            var live = snapshot.Projections.Where(s => s.IsLive(now)).ToList();
+            var liveThisMonth = live
+                .Where(s => s.StartTime >= monthStart && s.StartTime < monthEnd)
+                .ToList();
+            var liveThisMonthIds = liveThisMonth.Select(s => s.Id).ToHashSet();
+            var monthSales = snapshot.SeatSales
+                .Where(s => liveThisMonthIds.Contains(s.ProjectionId))
+                .ToList();
+
+            var topMovies = BuildMoviePerformance(liveThisMonth, monthSales, snapshot.CapByHall, snapshot.AvgRatings)
                 .Take(5)
                 .ToList();
             await AttachPostersAsync(topMovies);
 
             return new DashboardResponse
             {
-                TotalRevenue = snapshot.SeatSales.Where(s => s.CountsAsRevenue).Sum(s => s.Price),
-                TotalTicketsSold = snapshot.SeatSales.Count(s => s.IsOccupied),
-                TotalReservations = snapshot.TotalReservations,
+                TotalRevenue = monthSales.Where(s => s.CountsAsRevenue).Sum(s => s.Price),
+                TotalTicketsSold = monthSales.Count(s => s.IsOccupied),
+                TotalReservations = monthSales
+                    .Where(s => s.IsOccupied)
+                    .Select(s => s.ReservationId)
+                    .Distinct()
+                    .Count(),
                 TotalCustomers = snapshot.TotalCustomers,
-                TotalMovies = snapshot.TotalMovies,
+                TotalMovies = snapshot.ActiveMovies,
                 ActiveMovies = snapshot.ActiveMovies,
-                TotalProjections = snapshot.Projections.Count(s => !s.IsCancelled),
-                UpcomingProjections = snapshot.Projections.Count(s => !s.IsCancelled && s.StartTime > now),
-                AverageOccupancyPercent = ComputeAverageOccupancy(
-                    snapshot.Projections.Where(s => !s.IsCancelled).ToList(),
-                    snapshot.SeatSales,
-                    snapshot.CapByHall),
+                TotalScreens = snapshot.TotalScreens,
+                TotalProjections = liveThisMonth.Count,
+                UpcomingProjections = liveThisMonth.Count(s => s.StartTime > now),
+                AverageOccupancyPercent = ComputeAverageOccupancy(liveThisMonth, monthSales, snapshot.CapByHall),
                 TopMovies = topMovies
             };
         }
@@ -261,6 +276,9 @@ namespace CineVision.Services
                 u.IsActive &&
                 u.UserRoles.Any(ur => ur.Role != null && ur.Role.Name == RoleNames.Customer));
             var totalMovies = await _dbContext.Movies.CountAsync();
+            var totalScreens = await _dbContext.Halls
+                .AsNoTracking()
+                .CountAsync(h => h.Status != null && h.Status.AllowsProjections);
             var now = DateTime.UtcNow;
             var activeMovies = await _dbContext.Projections
                 .AsNoTracking()
@@ -279,6 +297,7 @@ namespace CineVision.Services
                 totalReservations,
                 totalCustomers,
                 totalMovies,
+                totalScreens,
                 activeMovies);
         }
 
@@ -330,6 +349,7 @@ namespace CineVision.Services
                     MovieTitle = s.Movie.Title,
                     HallId = s.HallId,
                     StartTime = s.StartTime,
+                    DurationMinutes = s.Movie.DurationMinutes,
                     IsCancelled = s.CancelledAt != null
                 })
                 .ToListAsync();
@@ -452,6 +472,7 @@ namespace CineVision.Services
             int TotalReservations,
             int TotalCustomers,
             int TotalMovies,
+            int TotalScreens,
             int ActiveMovies);
 
         private sealed class ProjectionRow
@@ -461,7 +482,12 @@ namespace CineVision.Services
             public string MovieTitle { get; set; } = string.Empty;
             public int HallId { get; set; }
             public DateTime StartTime { get; set; }
+            public int DurationMinutes { get; set; }
             public bool IsCancelled { get; set; }
+
+            public DateTime EndsAt => StartTime.AddMinutes(DurationMinutes);
+
+            public bool IsLive(DateTime now) => !IsCancelled && EndsAt > now;
         }
 
         private sealed class SeatSale

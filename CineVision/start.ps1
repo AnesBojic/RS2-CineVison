@@ -64,11 +64,10 @@ if (-not $ready) {
 Write-Host ""
 Write-Host "Backend is up." -ForegroundColor Green
 Write-Host "  API:            http://localhost:5126"
-Write-Host "  Swagger/Scalar: http://localhost:5126/swagger  (or /scalar)"
+Write-Host "  Swagger:        http://localhost:5126/swagger"
 Write-Host "  Health:         http://localhost:5126/health"
 Write-Host "  RabbitMQ UI:    http://localhost:15672  (guest / guest)"
 Write-Host "  SQL Server:     localhost,1435  (sa / value from .env MSSQL_SA_PASSWORD)"
-Write-Host "  Config:         CineVision/.env  (secrets - not committed)"
 Write-Host "  Email worker:   cinevision-worker (SMTP via RabbitMQ)"
 Write-Host ""
 Write-Host "Flutter apps still run on your PC (not in Docker):" -ForegroundColor Cyan

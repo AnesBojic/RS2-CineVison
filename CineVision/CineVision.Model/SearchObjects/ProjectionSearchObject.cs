@@ -7,10 +7,14 @@ namespace CineVision.Model.SearchObjects
         /// </summary>
         public int? MovieId { get; set; }
 
-        /// <summary>
-        /// Filter projections by hall id.
-        /// </summary>
+        /// <summary>Filter projections by hall id.</summary>
         public int? HallId { get; set; }
+
+        /// <summary>
+        /// When true, only projections whose hall currently allows shows (not Maintenance/Inactive).
+        /// Ignored when <see cref="HallId"/> is set.
+        /// </summary>
+        public bool? ActiveHallsOnly { get; set; }
 
         /// <summary>
         /// Only include projections starting at or after this moment (UTC).
@@ -26,6 +30,13 @@ namespace CineVision.Model.SearchObjects
         /// When true, only returns projections that have not started yet.
         /// </summary>
         public bool? OnlyUpcoming { get; set; }
+
+        /// <summary>
+        /// Desktop list filter: <c>upcoming</c> (active, not started), <c>live</c>
+        /// (not cancelled and not ended), <c>past</c>, <c>cancelled</c>.
+        /// Null or any other value means all statuses.
+        /// </summary>
+        public string? Status { get; set; }
 
         public bool? IncludeMovie { get; set; }
 

@@ -19,10 +19,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class ProjectionListScreen extends StatefulWidget {
-  const ProjectionListScreen({super.key, this.editId, this.onEditConsumed});
+  const ProjectionListScreen({
+    super.key,
+    this.editId,
+    this.onEditConsumed,
+    this.onNavigate,
+  });
 
   final int? editId;
   final VoidCallback? onEditConsumed;
+  final void Function(int index)? onNavigate;
 
   @override
   State<ProjectionListScreen> createState() => _ProjectionListScreenState();
@@ -40,6 +46,8 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
   int _totalCount = 0;
   bool _pickerLoaded = false;
   final _searchController = TextEditingController();
+  String? _statusFilter = 'upcoming';
+  String? _hallFilter = 'active';
 
   int get _totalPages =>
       _totalCount == 0 ? 1 : (_totalCount / _pageSize).ceil();
@@ -63,13 +71,22 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final data = await _provider.get(filter: {
+      final filter = <String, dynamic>{
         'page': _page,
         'pageSize': _pageSize,
         'includeTotalCount': true,
         'includeSeatStats': false,
         'includePoster': true,
-      });
+      };
+      if (_statusFilter != null) {
+        filter['status'] = _statusFilter;
+      }
+      if (_hallFilter == 'active') {
+        filter['activeHallsOnly'] = true;
+      } else if (_hallFilter != null) {
+        filter['hallId'] = int.parse(_hallFilter!);
+      }
+      final data = await _provider.get(filter: filter);
 
       if (!mounted) return;
       setState(() {
@@ -134,6 +151,24 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
     return null;
   }
 
+  /// Active halls first so the default filter and the add-form picker stay consistent.
+  Iterable<Hall> get _hallsForFilter {
+    final withId = _halls.where((h) => h.id != null).toList();
+    withId.sort((a, b) {
+      final activeCmp = (hallIsActive(b) ? 1 : 0) - (hallIsActive(a) ? 1 : 0);
+      if (activeCmp != 0) return activeCmp;
+      return (a.name ?? '').compareTo(b.name ?? '');
+    });
+    return withId;
+  }
+
+  int? get _defaultActiveHallId {
+    for (final hall in _hallsForFilter) {
+      if (hallIsActive(hall)) return hall.id;
+    }
+    return null;
+  }
+
   Movie? _movieById(int? id) {
     if (id == null) return null;
     for (final movie in _movies) {
@@ -171,7 +206,7 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
     widget.onEditConsumed?.call();
     if (projection != null && mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _showDialog(projection: projection);
+        if (mounted) _edit(projection!);
       });
     }
   }
@@ -183,9 +218,54 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
       isLoading: _loading,
       toolbar: Row(
         children: [
+          FilterDropdown(
+            hint: 'All statuses',
+            value: _statusFilter,
+            items: const [
+              DropdownMenuItem(value: null, child: Text('All statuses')),
+              DropdownMenuItem(value: 'upcoming', child: Text('Active')),
+              DropdownMenuItem(value: 'past', child: Text('Past')),
+              DropdownMenuItem(value: 'cancelled', child: Text('Cancelled')),
+            ],
+            onChanged: (v) {
+              setState(() {
+                _statusFilter = v;
+                _page = 1;
+              });
+              _load();
+            },
+          ),
+          const SizedBox(width: 10),
+          FilterDropdown(
+            hint: 'Active halls',
+            value: _hallFilter,
+            items: [
+              const DropdownMenuItem(value: 'active', child: Text('Active halls')),
+              const DropdownMenuItem(value: null, child: Text('All halls')),
+              ..._hallsForFilter.map((h) {
+                final name = (h.name ?? '').trim();
+                final label = name.isEmpty ? 'Hall ${h.id}' : name;
+                return DropdownMenuItem(
+                  value: '${h.id}',
+                  child: Text(
+                    hallIsActive(h) ? label : '$label — ${h.statusName ?? 'unavailable'}',
+                  ),
+                );
+              }),
+            ],
+            onChanged: (v) {
+              setState(() {
+                _hallFilter = v;
+                _page = 1;
+              });
+              _load();
+            },
+          ),
+          const SizedBox(width: 10),
           SearchField(
             controller: _searchController,
             hint: 'Search projections...',
+            width: 220,
             onSubmitted: (_) => setState(() {}),
           ),
           const SizedBox(width: 10),
@@ -212,6 +292,7 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
                   DataColumn(label: Text('Hall')),
                   DataColumn(label: Text('Date')),
                   DataColumn(label: Text('Time')),
+                  DataColumn(label: Text('Status')),
                   DataColumn(label: Text('Price')),
                   DataColumn(label: Text('Cancellation reason')),
                   actionsDataColumn,
@@ -256,6 +337,16 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
     );
   }
 
+  Widget _statusBadge(Projection s) {
+    if (s.isCancelled) {
+      return const StatusBadge(label: 'Cancelled', color: AppColors.orange, filled: true);
+    }
+    if (s.isUpcoming) {
+      return const StatusBadge(label: 'Active', color: AppColors.green, filled: true);
+    }
+    return const StatusBadge(label: 'Past', color: AppColors.textSecondary, filled: true);
+  }
+
   DataRow _buildRow(Projection s) {
     return DataRow(cells: [
       DataCell(Row(children: [
@@ -265,9 +356,8 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
       ])),
       DataCell(Text(s.hallName ?? '—')),
       DataCell(Text(formatDate(s.startTime))),
-      DataCell(s.isCancelled
-          ? const StatusBadge(label: 'Cancelled', color: AppColors.orange, filled: true)
-          : StatusBadge(label: formatTime(s.startTime), color: AppColors.green, filled: true)),
+      DataCell(Text(formatTime(s.startTime))),
+      DataCell(_statusBadge(s)),
       DataCell(Text(formatCurrency(s.basePrice))),
       DataCell(
         ConstrainedBox(
@@ -284,19 +374,20 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
         ),
       ),
       actionButtonsCell([
-        if (s.isCancelled)
-          ActionIconButton(
-            icon: Icons.info_outline,
-            color: AppColors.blue,
-            tooltip: 'Cancellation details',
-            onPressed: () => _showCancellationDetails(s),
-          ),
+        ActionIconButton(
+          icon: Icons.info_outline,
+          color: AppColors.blue,
+          tooltip: 'Info',
+          onPressed: () => _showProjectionInfo(s),
+        ),
         if (!s.isCancelled)
           ActionIconButton(
             icon: Icons.edit_outlined,
             color: AppColors.blue,
-            tooltip: s.hasBookings ? 'Edit language only' : 'Edit',
-            onPressed: () => _showDialog(projection: s),
+            tooltip: s.hasBookings
+                ? 'Cannot edit — has booking history'
+                : 'Edit',
+            onPressed: () => _edit(s),
           ),
         if (!s.isCancelled && s.isUpcoming)
           ActionIconButton(
@@ -308,102 +399,323 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
         ActionIconButton(
           icon: Icons.delete_outline,
           color: AppColors.primary,
-          tooltip: 'Delete',
+          tooltip: s.hasBookings ? 'Cannot delete — has booking history' : 'Delete',
           onPressed: () => _delete(s),
         ),
       ]),
     ]);
   }
 
-  Future<void> _showCancellationDetails(Projection s) async {
-    List<Reservation> tickets = [];
+  Future<List<Reservation>> _ticketsForProjection(int? projectionId) async {
+    if (projectionId == null) return const [];
     try {
       final data = await context.read<ReservationProvider>().get(filter: {
         'page': 1,
         'pageSize': 100,
         'includeTotalCount': false,
-        'projectionId': s.id,
-        'status': ReservationStatus.cancelled,
+        'projectionId': projectionId,
       });
-      tickets = data.items ?? [];
+      return data.items ?? const [];
+    } on Exception catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _showProjectionInfo(Projection s) {
+    final ticketsFuture = _ticketsForProjection(s.id);
+    return showDialog<void>(
+      context: context,
+      builder: (context) => FutureBuilder<List<Reservation>>(
+        future: ticketsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return AlertDialog(
+              backgroundColor: AppColors.card,
+              content: const SizedBox(
+                width: 360,
+                height: 88,
+                child: Center(
+                  child: CircularProgressIndicator(color: AppColors.blue),
+                ),
+              ),
+            );
+          }
+
+          final tickets = snapshot.data ?? const <Reservation>[];
+          final hasHistory = s.hasBookings || tickets.isNotEmpty;
+          final statusLabel = s.isCancelled
+              ? 'Cancelled'
+              : s.isUpcoming
+                  ? 'Active'
+                  : 'Past';
+          final statusColor = s.isCancelled
+              ? AppColors.orange
+              : s.isUpcoming
+                  ? AppColors.green
+                  : AppColors.textSecondary;
+          final canEdit = !s.isCancelled && !hasHistory;
+          final canCancelShow = s.isUpcoming && !s.isCancelled;
+          final canDelete = !hasHistory;
+          final failedRefunds = tickets
+              .where((t) => t.refundStatus == RefundStatus.failed)
+              .length;
+          final language = s.language?.trim();
+          final reason = s.cancellationReason?.trim();
+
+          return AlertDialog(
+            backgroundColor: AppColors.card,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    s.movieTitle?.trim().isNotEmpty == true
+                        ? s.movieTitle!
+                        : 'Projection',
+                    style: const TextStyle(color: AppColors.textPrimary),
+                  ),
+                ),
+                StatusBadge(label: statusLabel, color: statusColor, filled: true),
+              ],
+            ),
+            content: SizedBox(
+              width: 460,
+              child: SingleChildScrollView(
+                child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _infoLine('Hall', s.hallName ?? '—'),
+                  _infoLine(
+                    'Show',
+                    '${formatDate(s.startTime)}  ${formatTime(s.startTime)}',
+                  ),
+                  _infoLine('Price', formatCurrency(s.basePrice)),
+                  _infoLine(
+                    'Language',
+                    (language == null || language.isEmpty) ? '—' : language,
+                  ),
+                  _infoLine('Bookings', _bookingSummary(s, tickets)),
+                  if (s.isCancelled)
+                    _infoLine(
+                      'Reason',
+                      (reason == null || reason.isEmpty)
+                          ? 'No reason recorded'
+                          : reason,
+                    ),
+                  if (failedRefunds > 0) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '$failedRefunds Stripe refund${failedRefunds == 1 ? '' : 's'} failed. Open Bookings and use Refund on those rows.',
+                      style: const TextStyle(
+                        color: AppColors.orange,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  const Text(
+                    'What you can do',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+                    decoration: AppDecorations.subtleBorder(radius: 12),
+                    child: Column(
+                      children: [
+                        _canDoRow(
+                          allowed: canEdit,
+                          action: 'Edit',
+                          detail: s.isCancelled
+                              ? 'Cancelled shows are frozen.'
+                              : hasHistory
+                                  ? 'Booking history freezes the sold show, including language. Cancel the show if it is still upcoming.'
+                                  : 'Movie, hall, time, price and language can all change.',
+                        ),
+                        _canDoRow(
+                          allowed: canCancelShow,
+                          action: 'Cancel show',
+                          detail: s.isCancelled
+                              ? 'Already cancelled.'
+                              : s.isUpcoming
+                                  ? 'Refunds active tickets. This row stays in history.'
+                                  : 'The show has already started.',
+                        ),
+                        _canDoRow(
+                          allowed: canDelete,
+                          action: 'Delete',
+                          detail: canDelete
+                              ? 'No booking history, so this row can be removed.'
+                              : s.isUpcoming && !s.isCancelled
+                                  ? 'Booking history must stay. Cancel the show instead.'
+                                  : 'Booking history must stay.',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              ),
+            ),
+            actions: [
+              if (hasHistory)
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    if (s.id != null) {
+                      context.read<ReservationProvider>().focusProjection(s.id!);
+                      widget.onNavigate?.call(4);
+                    }
+                  },
+                  child: const Text('Open bookings'),
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  String _bookingSummary(Projection s, List<Reservation> tickets) {
+    if (tickets.isEmpty) {
+      return s.hasBookings ? 'Has booking history' : 'None';
+    }
+    final parts = <String>[];
+    void add(String label, int status) {
+      final count = tickets.where((t) => t.status == status).length;
+      if (count > 0) parts.add('$count $label');
+    }
+
+    add('pending', ReservationStatus.pending);
+    add('confirmed', ReservationStatus.confirmed);
+    add('paid', ReservationStatus.paid);
+    add('completed', ReservationStatus.completed);
+    add('cancelled', ReservationStatus.cancelled);
+    return parts.isEmpty ? '${tickets.length}' : '${tickets.length} · ${parts.join(', ')}';
+  }
+
+  Widget _infoLine(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 84,
+            child: Text(
+              label,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _canDoRow({
+    required bool allowed,
+    required String action,
+    required String detail,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            allowed ? Icons.check_circle_outline : Icons.block,
+            size: 16,
+            color: allowed ? AppColors.green : AppColors.orange,
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 108,
+            child: Text(
+              action,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              '${allowed ? 'Allowed' : 'Not allowed'}. $detail',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Same booking-history gate as delete: no field can change once a reservation exists.
+  Future<void> _edit(Projection s) async {
+    if (s.isCancelled) {
+      showAppSnackBar(context, 'Cancelled projections cannot be edited.', isError: true);
+      return;
+    }
+    if (s.id == null) {
+      await _showDialog(projection: s);
+      return;
+    }
+
+    Map<String, dynamic>? impact;
+    try {
+      impact = await _provider.getDeleteImpact(s.id!);
     } on Exception catch (_) {}
 
     if (!mounted) return;
-    await showDialog<void>(
+    final blocked = cascadeDeleteBlockReason(impact);
+    final hasHistory = blocked != null || (impact == null && s.hasBookings);
+    if (hasHistory) {
+      final choice = await _blockedEditChoice();
+      if (choice == 'bookings') {
+        context.read<ReservationProvider>().focusProjection(s.id!);
+        widget.onNavigate?.call(4);
+      }
+      return;
+    }
+
+    await _showDialog(projection: s);
+  }
+
+  Future<String?> _blockedEditChoice() {
+    return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Cancelled · ${s.movieTitle ?? 'Projection'}',
-          style: const TextStyle(color: AppColors.textPrimary),
+        title: const Text(
+          'Cannot edit',
+          style: TextStyle(color: AppColors.textPrimary),
         ),
-        content: SizedBox(
-          width: 520,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Projection reason',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                s.cancellationReason?.trim().isNotEmpty == true
-                    ? s.cancellationReason!
-                    : 'No reason recorded',
-                style: const TextStyle(color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Ticket reasons',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (tickets.isEmpty)
-                const Text(
-                  'No cancelled tickets for this projection.',
-                  style: TextStyle(color: AppColors.textSecondary),
-                )
-              else
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 280),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: tickets.length,
-                    separatorBuilder: (context, index) => const Divider(height: 16),
-                    itemBuilder: (context, index) {
-                      final t = tickets[index];
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${t.reservationNumber} · ${t.customerName ?? t.customerEmail ?? 'Customer'}',
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            t.reasonLabel,
-                            style: const TextStyle(color: AppColors.textSecondary),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-            ],
+        content: const SizedBox(
+          width: 460,
+          child: Text(
+            'This projection has booking records — the same history that blocks delete — '
+            'so it cannot be changed at all, including language. Cancel the show if it is '
+            'still upcoming; the sold details stay on record.',
+            style: TextStyle(color: AppColors.textSecondary),
           ),
         ),
         actions: [
@@ -411,6 +723,50 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
           ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'bookings'),
+            child: const Text('View bookings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// A sold or held projection cannot be hard-deleted. Offer the Bookings list
+  /// (where the blocking row actually lives) and Cancel when the show is still upcoming.
+  Future<String?> _blockedDeleteChoice(Projection s, String blocked) {
+    final canCancelShow = s.isUpcoming && !s.isCancelled;
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text(
+          'Cannot delete',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        content: SizedBox(
+          width: 460,
+          child: Text(
+            canCancelShow
+                ? blocked
+                : '$blocked A projection that has already started or was cancelled cannot be removed.',
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'bookings'),
+            child: const Text('View bookings'),
+          ),
+          if (canCancelShow)
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, 'cancel'),
+              child: const Text('Cancel projection'),
+            ),
         ],
       ),
     );
@@ -427,23 +783,17 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
     if (!mounted) return;
     final blocked = cascadeDeleteBlockReason(impact);
     if (blocked != null) {
-      if (s.isCancelled) {
-        alertBox(context, 'Cannot delete', blocked);
-        return;
-      }
-      if (s.isUpcoming) {
+      final choice = await _blockedDeleteChoice(s, blocked);
+      if (choice == 'bookings' && s.id != null) {
+        context.read<ReservationProvider>().focusProjection(s.id!);
+        widget.onNavigate?.call(4);
+      } else if (choice == 'cancel') {
         await _cancel(
           s,
           extraMessage:
-              'This projection has bookings, so it cannot be deleted. Cancel it instead: customers are refunded and the sold tickets stay on record.',
+              'Customers are refunded and the sold tickets stay on record.',
         );
-        return;
       }
-      alertBox(
-        context,
-        'Cannot delete',
-        '$blocked A projection that has already started cannot be cancelled either.',
-      );
       return;
     }
 
@@ -509,11 +859,8 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
       return;
     }
 
-    final scheduleLocked = projection?.hasBookings == true;
-    const soldLockHint = 'Sold tickets freeze movie, hall, time and price.';
-
     int? movieId = projection?.movieId;
-    int? hallId = projection?.hallId;
+    int? hallId = projection?.hallId ?? _defaultActiveHallId;
     int? languageId = projection?.languageId;
     final localStart = projection?.startTime?.toLocal();
     DateTime? date = localStart;
@@ -577,14 +924,11 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
               DropdownButtonFormField<int>(
                 initialValue: movieId,
                 dropdownColor: AppColors.card,
-                decoration: InputDecoration(
-                  labelText: 'Movie',
-                  helperText: scheduleLocked ? soldLockHint : null,
-                ),
+                decoration: const InputDecoration(labelText: 'Movie'),
                 items: _movies
                     .map((m) => DropdownMenuItem(value: m.id, child: Text(m.title ?? '')))
                     .toList(),
-                onChanged: scheduleLocked ? null : (v) => setDialogState(() => movieId = v),
+                onChanged: (v) => setDialogState(() => movieId = v),
                 validator: (v) => v == null ? 'Movie is required' : null,
               ),
               const SizedBox(height: 12),
@@ -593,15 +937,13 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
                 dropdownColor: AppColors.card,
                 decoration: InputDecoration(
                   labelText: 'Hall',
-                  helperText: scheduleLocked
-                      ? soldLockHint
-                      : (_halls.any((h) => !hallIsActive(h))
-                          ? 'Halls whose status blocks projections cannot be selected.'
-                          : null),
+                  helperText: _halls.any((h) => !hallIsActive(h))
+                      ? 'Halls whose status blocks projections cannot be selected.'
+                      : null,
                 ),
                 // Unavailable halls stay visible but greyed out, with the status
                 // spelled out, rather than being selectable and rejected afterwards.
-                items: _halls.map((h) {
+                items: _hallsForFilter.map((h) {
                   final available = hallIsActive(h);
                   return DropdownMenuItem(
                     value: h.id,
@@ -616,7 +958,7 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
                     ),
                   );
                 }).toList(),
-                onChanged: scheduleLocked ? null : (v) => setDialogState(() => hallId = v),
+                onChanged: (v) => setDialogState(() => hallId = v),
                 // Still validated: an existing projection may point at a hall that
                 // was taken out of service after it was scheduled.
                 autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -637,13 +979,15 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
                   child: FormField<DateTime>(
                     validator: (_) => date == null ? 'Date is required' : null,
                     builder: (fieldState) => InkWell(
-                      onTap: scheduleLocked
-                          ? null
-                          : () async {
+                      onTap: () async {
+                        final now = DateTime.now();
+                        final firstDate = (date != null && date!.isBefore(now))
+                            ? date!
+                            : now;
                         final picked = await showDatePicker(
                           context: context,
-                          initialDate: date ?? DateTime.now(),
-                          firstDate: DateTime.now(),
+                          initialDate: date ?? now,
+                          firstDate: firstDate,
                           lastDate: DateTime(2100),
                         );
                         if (picked == null) return;
@@ -665,9 +1009,7 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
                   child: FormField<TimeOfDay>(
                     validator: (_) => time == null ? 'Time is required' : null,
                     builder: (fieldState) => InkWell(
-                      onTap: scheduleLocked
-                          ? null
-                          : () async {
+                      onTap: () async {
                         final picked = await showTimePicker(
                           context: context,
                           initialTime: time ?? TimeOfDay.now(),
@@ -701,12 +1043,10 @@ class _ProjectionListScreenState extends State<ProjectionListScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: priceCtrl,
-                readOnly: scheduleLocked,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Price',
                   hintText: 'e.g. \$15',
-                  helperText: scheduleLocked ? soldLockHint : null,
                 ),
                 validator: FieldValidators.price,
               ),
